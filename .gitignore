@@ -75,3 +75,11 @@ htmlcov/
 *.bak
 *.backup
 .idea/
+
+#data files
+# Scraped Data - Don't track test data
+data/raw/*.csv
+data/raw/*.json
+data/raw/
+translations/*.txt
+translations/
