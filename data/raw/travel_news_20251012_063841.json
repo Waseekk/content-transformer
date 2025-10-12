@@ -1,0 +1,1000 @@
+{
+  "total_articles": 49,
+  "scraped_at": "2025-10-12T06:38:41.071850",
+  "source_url": "https://www.newsnow.co.uk/h/Lifestyle/Travel",
+  "views_scraped": [
+    "top",
+    "latest",
+    "popular"
+  ],
+  "articles_by_view": {
+    "top": [
+      {
+        "headline": "Hotel staff reveal insider secrets to free perks and upgrades",
+        "article_url": "https://c.newsnow.co.uk/A/1290118588?-18728:4648",
+        "publisher": "Calgary Herald",
+        "published_time": "8h",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.213610"
+      },
+      {
+        "headline": "Vietnam's 10 best 4-star hotels of 2025 named",
+        "article_url": "https://c.newsnow.co.uk/A/1290095240?-18728:4648",
+        "publisher": "VnExpress International",
+        "published_time": "15h",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.214610"
+      },
+      {
+        "headline": "Thailand is world's best country for food as voted by British readers",
+        "article_url": "https://c.newsnow.co.uk/A/1290082045?-18728:4648",
+        "publisher": "VnExpress International",
+        "published_time": "19h",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.214610"
+      },
+      {
+        "headline": "How to nail a hotel-hopping road trip through the South of France",
+        "article_url": "https://c.newsnow.co.uk/A/1290079341?-18728:4648",
+        "publisher": "Evening Standard",
+        "published_time": "20h",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.214610"
+      },
+      {
+        "headline": "Vietnam voted world's 6th friendliest country for tourists by UK travel magazine readers",
+        "article_url": "https://c.newsnow.co.uk/A/1290076800?-18728:4648",
+        "publisher": "VnExpress International",
+        "published_time": "21h",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.215612"
+      },
+      {
+        "headline": "Claude Monet’s beautiful paintings of Venice are headlining an exhibition for the first time in more than a century",
+        "article_url": "https://c.newsnow.co.uk/A/1290062570?-18728:4648",
+        "publisher": "Smithsonian Magazine",
+        "published_time": "1d",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.215612"
+      },
+      {
+        "headline": "Full English breakfast item that 'baffles' American tourists when visiting the UK",
+        "article_url": "https://c.newsnow.co.uk/A/1290141464?-18728:4648",
+        "publisher": "The Mirror",
+        "published_time": "01:38",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.215612"
+      },
+      {
+        "headline": "Waldorf Astoria Chicago: Historic Luxury and Charm",
+        "article_url": "https://c.newsnow.co.uk/A/1290137794?-18728:4648",
+        "publisher": "Miami Herald",
+        "published_time": "23:48 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.215612"
+      },
+      {
+        "headline": "A $521m superyacht turns heads on Auckland waterfront",
+        "article_url": "https://c.newsnow.co.uk/A/1290136729?-18728:4648",
+        "publisher": "New Zealand Herald",
+        "published_time": "23:19 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.216609"
+      },
+      {
+        "headline": "‘Kawaii’ Future Train restaurant in Kyoto opens on elevated rail",
+        "article_url": "https://c.newsnow.co.uk/A/1290135855?-18728:4648",
+        "publisher": "Asahi Shimbun",
+        "published_time": "23:02 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.216609"
+      },
+      {
+        "headline": "Too easy - enjoying a long weekend in Brisbane",
+        "article_url": "https://c.newsnow.co.uk/A/1290134651?-18728:4648",
+        "publisher": "New Zealand Herald",
+        "published_time": "22:39 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.216609"
+      },
+      {
+        "headline": "These Locals Have Stepped in to Keep Country’s Most Visited National Park Fully Open",
+        "article_url": "https://c.newsnow.co.uk/A/1290134283?-18728:4648",
+        "publisher": "Outside",
+        "published_time": "22:31 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.217611"
+      },
+      {
+        "headline": "Travel: Guernsey",
+        "article_url": "https://c.newsnow.co.uk/A/1290132994?-18728:4648",
+        "publisher": "YOU Magazine",
+        "published_time": "22:05 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.217611"
+      },
+      {
+        "headline": "Best hotels in the Lake District 2025, reviewed",
+        "article_url": "https://c.newsnow.co.uk/A/1290132641?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "21:58 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.217611"
+      },
+      {
+        "headline": "The best things to do in London for free in 2025",
+        "article_url": "https://c.newsnow.co.uk/A/1290132640?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "21:58 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.218720"
+      },
+      {
+        "headline": "Weekly Review: October 11, 2025",
+        "article_url": "https://c.newsnow.co.uk/A/1290131849?-18728:4648",
+        "publisher": "One Mile at a Time",
+        "published_time": "21:39 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "top",
+        "scraped_at": "2025-10-12T06:38:34.218720"
+      }
+    ],
+    "latest": [
+      {
+        "headline": "Best P&O Cruises holiday deals",
+        "article_url": "https://c.newsnow.co.uk/A/1290131341?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "21:28 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.620451"
+      },
+      {
+        "headline": "Disney Visa Card review: Simple rewards and Disney perks for frequent parkgoers",
+        "article_url": "https://c.newsnow.co.uk/A/1290130751?-18728:4648",
+        "publisher": "The Points Guy",
+        "published_time": "21:13 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.620451"
+      },
+      {
+        "headline": "UK tourists warned they could face £5,000 fine for bringing back certain items from EU",
+        "article_url": "https://c.newsnow.co.uk/A/1290130319?-18728:4648",
+        "publisher": "Glasgow Live",
+        "published_time": "21:04 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.620451"
+      },
+      {
+        "headline": "Six US cities that bring Mexico’s Day of the Dead tradition to life",
+        "article_url": "https://c.newsnow.co.uk/A/1290128629?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "20:26 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.621454"
+      },
+      {
+        "headline": "A First Look at Hyatt Studios Mobile: Where Comfort Meets Extended Stay",
+        "article_url": "https://c.newsnow.co.uk/A/1290125006?-18728:4648",
+        "publisher": "Miami Herald",
+        "published_time": "19:14 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.621454"
+      },
+      {
+        "headline": "I've Visited Vermont for Over 20 Years—This Is the Most Underrated Fall Foliage Town",
+        "article_url": "https://c.newsnow.co.uk/A/1290124575?-18728:4648",
+        "publisher": "Travel & Leisure Magazine",
+        "published_time": "19:06 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.621454"
+      },
+      {
+        "headline": "This Swiss Region Is the 'Top of Europe'—and It Has the Highest Train Station on the Continent",
+        "article_url": "https://c.newsnow.co.uk/A/1290124574?-18728:4648",
+        "publisher": "Travel & Leisure Magazine",
+        "published_time": "19:06 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.621454"
+      },
+      {
+        "headline": "Hidden Fall Foliage Gem: Exploring the Teton Mountain Range in Autumn",
+        "article_url": "https://c.newsnow.co.uk/A/1290123884?-18728:4648",
+        "publisher": "Miami Herald",
+        "published_time": "18:53 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.621454"
+      },
+      {
+        "headline": "Luxury, lagoons and local flavour at Fiji Marriott Momi Bay",
+        "article_url": "https://c.newsnow.co.uk/A/1290122780?-18728:4648",
+        "publisher": "New Zealand Herald",
+        "published_time": "18:33 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.622450"
+      },
+      {
+        "headline": "Kids can get bored visiting temples, museums, and other historical sights during international travel. I have a no-fail fix.",
+        "article_url": "https://c.newsnow.co.uk/A/1290121511?-18728:4648",
+        "publisher": "Business Insider",
+        "published_time": "18:09 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.622450"
+      },
+      {
+        "headline": "Sweet spot alert: Book this business-class lie-flat seat to Germany using Citi or Chase points",
+        "article_url": "https://c.newsnow.co.uk/A/1290120078?-18728:4648",
+        "publisher": "The Points Guy",
+        "published_time": "17:44 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.622450"
+      },
+      {
+        "headline": "25 best beaches in Spain to visit in 2025",
+        "article_url": "https://c.newsnow.co.uk/A/1290116296?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "16:39 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.623451"
+      },
+      {
+        "headline": "20 best museums in London for 2025",
+        "article_url": "https://c.newsnow.co.uk/A/1290115400?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "16:23 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.623451"
+      },
+      {
+        "headline": "We had a staycation with our adult children and their families. It was so much fun, we want to do it annually.",
+        "article_url": "https://c.newsnow.co.uk/A/1290114367?-18728:4648",
+        "publisher": "Business Insider",
+        "published_time": "16:07 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.623451"
+      },
+      {
+        "headline": "Ancient landmark free of scaffolding for first time in decades",
+        "article_url": "https://c.newsnow.co.uk/A/1290113494?-18728:4648",
+        "publisher": "The Independent",
+        "published_time": "15:52 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.624449"
+      },
+      {
+        "headline": "Nobel Peace Prize winner praises Trump for ‘bold’ actions against Venezuela",
+        "article_url": "https://c.newsnow.co.uk/A/1290113336?-18728:4648",
+        "publisher": "Fox News",
+        "published_time": "15:49 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.624449"
+      },
+      {
+        "headline": "These NYC Spas Are All About Group Wellness, With Sauna Parties and Communal Sound Baths",
+        "article_url": "https://c.newsnow.co.uk/A/1290111082?-18728:4648",
+        "publisher": "Travel & Leisure Magazine",
+        "published_time": "15:22 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.624449"
+      },
+      {
+        "headline": "Upgraded MSC Cruises ship to sail in-demand Alaska cruises",
+        "article_url": "https://c.newsnow.co.uk/A/1290109851?-18728:4648",
+        "publisher": "The Tribune, California",
+        "published_time": "15:04 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.624449"
+      },
+      {
+        "headline": "These 10 Countries Are Surging In Popularity This Year: Which One Is Your Perfect Match?",
+        "article_url": "https://c.newsnow.co.uk/A/1290108898?-18728:4648",
+        "publisher": "Travel Off Path",
+        "published_time": "14:50 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.624449"
+      },
+      {
+        "headline": "New ship November: 3 new cruise vacations come to Fort Lauderdale",
+        "article_url": "https://c.newsnow.co.uk/A/1290108309?-18728:4648",
+        "publisher": "The Tribune, California",
+        "published_time": "14:44 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.624449"
+      },
+      {
+        "headline": "The hottest new airline loyalty perk doesn't require status or a credit card — and it's free",
+        "article_url": "https://c.newsnow.co.uk/A/1290108188?-18728:4648",
+        "publisher": "The Points Guy",
+        "published_time": "14:42 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.625640"
+      },
+      {
+        "headline": "New Flights Launching From 3 U.S. Cities To Lesser-Known Caribbean Paradise",
+        "article_url": "https://c.newsnow.co.uk/A/1290108097?-18728:4648",
+        "publisher": "Travel Off Path",
+        "published_time": "14:40 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.625640"
+      },
+      {
+        "headline": "Americans Will Have To Get Fingerprinted In These 22 European Countries Starting October 12 Confirmed",
+        "article_url": "https://c.newsnow.co.uk/A/1290108096?-18728:4648",
+        "publisher": "Travel Off Path",
+        "published_time": "14:40 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.625640"
+      },
+      {
+        "headline": "All the European airport strikes planned for October 2025 and beyond",
+        "article_url": "https://c.newsnow.co.uk/A/1290107774?-18728:4648",
+        "publisher": "Metro.co.uk",
+        "published_time": "14:36 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.626648"
+      },
+      {
+        "headline": "I studied abroad in London to meet new people. I fell in love with my own company instead.",
+        "article_url": "https://c.newsnow.co.uk/A/1290107729?-18728:4648",
+        "publisher": "Business Insider",
+        "published_time": "14:35 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.626648"
+      },
+      {
+        "headline": "Most Popular Leaf Peeping Destinations in the U.S.",
+        "article_url": "https://c.newsnow.co.uk/A/1290107710?-18728:4648",
+        "publisher": "Good Housekeeping (US)",
+        "published_time": "14:35 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.627792"
+      },
+      {
+        "headline": "A Snob’s Guide to North Carolina",
+        "article_url": "https://c.newsnow.co.uk/A/1290106354?-18728:4648",
+        "publisher": "Town & Country Magazine",
+        "published_time": "14:11 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.628296"
+      },
+      {
+        "headline": "Flying drones take aim at retail theft",
+        "article_url": "https://c.newsnow.co.uk/A/1290105168?-18728:4648",
+        "publisher": "Fox News",
+        "published_time": "13:53 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.628296"
+      },
+      {
+        "headline": "World Migratory Bird Day: Aerial visitors over lands and waters",
+        "article_url": "https://c.newsnow.co.uk/A/1290103890?-18728:4648",
+        "publisher": "CGTN",
+        "published_time": "13:27 Sat, 11 Oct",
+        "country": "Unknown",
+        "tags": [],
+        "view": "latest",
+        "scraped_at": "2025-10-12T06:38:37.628296"
+      }
+    ],
+    "popular": [
+      {
+        "headline": "Get an eyeful of Iceland in these 20 photos that capture its natural beauty",
+        "article_url": "https://c.newsnow.co.uk/A/1290049331?-18728:4648",
+        "publisher": "Smithsonian Magazine",
+        "published_time": "1d",
+        "country": "Unknown",
+        "tags": [],
+        "view": "popular",
+        "scraped_at": "2025-10-12T06:38:41.060311"
+      },
+      {
+        "headline": "Etiquette expert reveals whether you need to change clothes on long-haul flights",
+        "article_url": "https://c.newsnow.co.uk/A/1290030514?-18728:4648",
+        "publisher": "MailOnline",
+        "published_time": "1d",
+        "country": "Unknown",
+        "tags": [],
+        "view": "popular",
+        "scraped_at": "2025-10-12T06:38:41.060311"
+      },
+      {
+        "headline": "European city has award-winning Christmas market and almost no crowds",
+        "article_url": "https://c.newsnow.co.uk/A/1290027002?-18728:4648",
+        "publisher": "The Mirror",
+        "published_time": "1d",
+        "country": "Unknown",
+        "tags": [],
+        "view": "popular",
+        "scraped_at": "2025-10-12T06:38:41.060311"
+      },
+      {
+        "headline": "United Airlines just added new European routes to iconic beach destinations for 2026",
+        "article_url": "https://c.newsnow.co.uk/A/1290028521?-18728:4648",
+        "publisher": "Travel & Leisure Magazine",
+        "published_time": "1d",
+        "country": "Unknown",
+        "tags": [],
+        "view": "popular",
+        "scraped_at": "2025-10-12T06:38:41.060311"
+      }
+    ]
+  },
+  "all_articles": [
+    {
+      "headline": "Hotel staff reveal insider secrets to free perks and upgrades",
+      "article_url": "https://c.newsnow.co.uk/A/1290118588?-18728:4648",
+      "publisher": "Calgary Herald",
+      "published_time": "8h",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.213610"
+    },
+    {
+      "headline": "Vietnam's 10 best 4-star hotels of 2025 named",
+      "article_url": "https://c.newsnow.co.uk/A/1290095240?-18728:4648",
+      "publisher": "VnExpress International",
+      "published_time": "15h",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.214610"
+    },
+    {
+      "headline": "Thailand is world's best country for food as voted by British readers",
+      "article_url": "https://c.newsnow.co.uk/A/1290082045?-18728:4648",
+      "publisher": "VnExpress International",
+      "published_time": "19h",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.214610"
+    },
+    {
+      "headline": "How to nail a hotel-hopping road trip through the South of France",
+      "article_url": "https://c.newsnow.co.uk/A/1290079341?-18728:4648",
+      "publisher": "Evening Standard",
+      "published_time": "20h",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.214610"
+    },
+    {
+      "headline": "Vietnam voted world's 6th friendliest country for tourists by UK travel magazine readers",
+      "article_url": "https://c.newsnow.co.uk/A/1290076800?-18728:4648",
+      "publisher": "VnExpress International",
+      "published_time": "21h",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.215612"
+    },
+    {
+      "headline": "Claude Monet’s beautiful paintings of Venice are headlining an exhibition for the first time in more than a century",
+      "article_url": "https://c.newsnow.co.uk/A/1290062570?-18728:4648",
+      "publisher": "Smithsonian Magazine",
+      "published_time": "1d",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.215612"
+    },
+    {
+      "headline": "Full English breakfast item that 'baffles' American tourists when visiting the UK",
+      "article_url": "https://c.newsnow.co.uk/A/1290141464?-18728:4648",
+      "publisher": "The Mirror",
+      "published_time": "01:38",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.215612"
+    },
+    {
+      "headline": "Waldorf Astoria Chicago: Historic Luxury and Charm",
+      "article_url": "https://c.newsnow.co.uk/A/1290137794?-18728:4648",
+      "publisher": "Miami Herald",
+      "published_time": "23:48 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.215612"
+    },
+    {
+      "headline": "A $521m superyacht turns heads on Auckland waterfront",
+      "article_url": "https://c.newsnow.co.uk/A/1290136729?-18728:4648",
+      "publisher": "New Zealand Herald",
+      "published_time": "23:19 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.216609"
+    },
+    {
+      "headline": "‘Kawaii’ Future Train restaurant in Kyoto opens on elevated rail",
+      "article_url": "https://c.newsnow.co.uk/A/1290135855?-18728:4648",
+      "publisher": "Asahi Shimbun",
+      "published_time": "23:02 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.216609"
+    },
+    {
+      "headline": "Too easy - enjoying a long weekend in Brisbane",
+      "article_url": "https://c.newsnow.co.uk/A/1290134651?-18728:4648",
+      "publisher": "New Zealand Herald",
+      "published_time": "22:39 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.216609"
+    },
+    {
+      "headline": "These Locals Have Stepped in to Keep Country’s Most Visited National Park Fully Open",
+      "article_url": "https://c.newsnow.co.uk/A/1290134283?-18728:4648",
+      "publisher": "Outside",
+      "published_time": "22:31 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.217611"
+    },
+    {
+      "headline": "Travel: Guernsey",
+      "article_url": "https://c.newsnow.co.uk/A/1290132994?-18728:4648",
+      "publisher": "YOU Magazine",
+      "published_time": "22:05 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.217611"
+    },
+    {
+      "headline": "Best hotels in the Lake District 2025, reviewed",
+      "article_url": "https://c.newsnow.co.uk/A/1290132641?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "21:58 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.217611"
+    },
+    {
+      "headline": "The best things to do in London for free in 2025",
+      "article_url": "https://c.newsnow.co.uk/A/1290132640?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "21:58 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.218720"
+    },
+    {
+      "headline": "Weekly Review: October 11, 2025",
+      "article_url": "https://c.newsnow.co.uk/A/1290131849?-18728:4648",
+      "publisher": "One Mile at a Time",
+      "published_time": "21:39 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "top",
+      "scraped_at": "2025-10-12T06:38:34.218720"
+    },
+    {
+      "headline": "Best P&O Cruises holiday deals",
+      "article_url": "https://c.newsnow.co.uk/A/1290131341?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "21:28 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.620451"
+    },
+    {
+      "headline": "Disney Visa Card review: Simple rewards and Disney perks for frequent parkgoers",
+      "article_url": "https://c.newsnow.co.uk/A/1290130751?-18728:4648",
+      "publisher": "The Points Guy",
+      "published_time": "21:13 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.620451"
+    },
+    {
+      "headline": "UK tourists warned they could face £5,000 fine for bringing back certain items from EU",
+      "article_url": "https://c.newsnow.co.uk/A/1290130319?-18728:4648",
+      "publisher": "Glasgow Live",
+      "published_time": "21:04 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.620451"
+    },
+    {
+      "headline": "Six US cities that bring Mexico’s Day of the Dead tradition to life",
+      "article_url": "https://c.newsnow.co.uk/A/1290128629?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "20:26 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.621454"
+    },
+    {
+      "headline": "A First Look at Hyatt Studios Mobile: Where Comfort Meets Extended Stay",
+      "article_url": "https://c.newsnow.co.uk/A/1290125006?-18728:4648",
+      "publisher": "Miami Herald",
+      "published_time": "19:14 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.621454"
+    },
+    {
+      "headline": "I've Visited Vermont for Over 20 Years—This Is the Most Underrated Fall Foliage Town",
+      "article_url": "https://c.newsnow.co.uk/A/1290124575?-18728:4648",
+      "publisher": "Travel & Leisure Magazine",
+      "published_time": "19:06 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.621454"
+    },
+    {
+      "headline": "This Swiss Region Is the 'Top of Europe'—and It Has the Highest Train Station on the Continent",
+      "article_url": "https://c.newsnow.co.uk/A/1290124574?-18728:4648",
+      "publisher": "Travel & Leisure Magazine",
+      "published_time": "19:06 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.621454"
+    },
+    {
+      "headline": "Hidden Fall Foliage Gem: Exploring the Teton Mountain Range in Autumn",
+      "article_url": "https://c.newsnow.co.uk/A/1290123884?-18728:4648",
+      "publisher": "Miami Herald",
+      "published_time": "18:53 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.621454"
+    },
+    {
+      "headline": "Luxury, lagoons and local flavour at Fiji Marriott Momi Bay",
+      "article_url": "https://c.newsnow.co.uk/A/1290122780?-18728:4648",
+      "publisher": "New Zealand Herald",
+      "published_time": "18:33 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.622450"
+    },
+    {
+      "headline": "Kids can get bored visiting temples, museums, and other historical sights during international travel. I have a no-fail fix.",
+      "article_url": "https://c.newsnow.co.uk/A/1290121511?-18728:4648",
+      "publisher": "Business Insider",
+      "published_time": "18:09 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.622450"
+    },
+    {
+      "headline": "Sweet spot alert: Book this business-class lie-flat seat to Germany using Citi or Chase points",
+      "article_url": "https://c.newsnow.co.uk/A/1290120078?-18728:4648",
+      "publisher": "The Points Guy",
+      "published_time": "17:44 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.622450"
+    },
+    {
+      "headline": "25 best beaches in Spain to visit in 2025",
+      "article_url": "https://c.newsnow.co.uk/A/1290116296?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "16:39 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.623451"
+    },
+    {
+      "headline": "20 best museums in London for 2025",
+      "article_url": "https://c.newsnow.co.uk/A/1290115400?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "16:23 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.623451"
+    },
+    {
+      "headline": "We had a staycation with our adult children and their families. It was so much fun, we want to do it annually.",
+      "article_url": "https://c.newsnow.co.uk/A/1290114367?-18728:4648",
+      "publisher": "Business Insider",
+      "published_time": "16:07 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.623451"
+    },
+    {
+      "headline": "Ancient landmark free of scaffolding for first time in decades",
+      "article_url": "https://c.newsnow.co.uk/A/1290113494?-18728:4648",
+      "publisher": "The Independent",
+      "published_time": "15:52 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.624449"
+    },
+    {
+      "headline": "Nobel Peace Prize winner praises Trump for ‘bold’ actions against Venezuela",
+      "article_url": "https://c.newsnow.co.uk/A/1290113336?-18728:4648",
+      "publisher": "Fox News",
+      "published_time": "15:49 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.624449"
+    },
+    {
+      "headline": "These NYC Spas Are All About Group Wellness, With Sauna Parties and Communal Sound Baths",
+      "article_url": "https://c.newsnow.co.uk/A/1290111082?-18728:4648",
+      "publisher": "Travel & Leisure Magazine",
+      "published_time": "15:22 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.624449"
+    },
+    {
+      "headline": "Upgraded MSC Cruises ship to sail in-demand Alaska cruises",
+      "article_url": "https://c.newsnow.co.uk/A/1290109851?-18728:4648",
+      "publisher": "The Tribune, California",
+      "published_time": "15:04 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.624449"
+    },
+    {
+      "headline": "These 10 Countries Are Surging In Popularity This Year: Which One Is Your Perfect Match?",
+      "article_url": "https://c.newsnow.co.uk/A/1290108898?-18728:4648",
+      "publisher": "Travel Off Path",
+      "published_time": "14:50 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.624449"
+    },
+    {
+      "headline": "New ship November: 3 new cruise vacations come to Fort Lauderdale",
+      "article_url": "https://c.newsnow.co.uk/A/1290108309?-18728:4648",
+      "publisher": "The Tribune, California",
+      "published_time": "14:44 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.624449"
+    },
+    {
+      "headline": "The hottest new airline loyalty perk doesn't require status or a credit card — and it's free",
+      "article_url": "https://c.newsnow.co.uk/A/1290108188?-18728:4648",
+      "publisher": "The Points Guy",
+      "published_time": "14:42 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.625640"
+    },
+    {
+      "headline": "New Flights Launching From 3 U.S. Cities To Lesser-Known Caribbean Paradise",
+      "article_url": "https://c.newsnow.co.uk/A/1290108097?-18728:4648",
+      "publisher": "Travel Off Path",
+      "published_time": "14:40 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.625640"
+    },
+    {
+      "headline": "Americans Will Have To Get Fingerprinted In These 22 European Countries Starting October 12 Confirmed",
+      "article_url": "https://c.newsnow.co.uk/A/1290108096?-18728:4648",
+      "publisher": "Travel Off Path",
+      "published_time": "14:40 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.625640"
+    },
+    {
+      "headline": "All the European airport strikes planned for October 2025 and beyond",
+      "article_url": "https://c.newsnow.co.uk/A/1290107774?-18728:4648",
+      "publisher": "Metro.co.uk",
+      "published_time": "14:36 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.626648"
+    },
+    {
+      "headline": "I studied abroad in London to meet new people. I fell in love with my own company instead.",
+      "article_url": "https://c.newsnow.co.uk/A/1290107729?-18728:4648",
+      "publisher": "Business Insider",
+      "published_time": "14:35 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.626648"
+    },
+    {
+      "headline": "Most Popular Leaf Peeping Destinations in the U.S.",
+      "article_url": "https://c.newsnow.co.uk/A/1290107710?-18728:4648",
+      "publisher": "Good Housekeeping (US)",
+      "published_time": "14:35 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.627792"
+    },
+    {
+      "headline": "A Snob’s Guide to North Carolina",
+      "article_url": "https://c.newsnow.co.uk/A/1290106354?-18728:4648",
+      "publisher": "Town & Country Magazine",
+      "published_time": "14:11 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.628296"
+    },
+    {
+      "headline": "Flying drones take aim at retail theft",
+      "article_url": "https://c.newsnow.co.uk/A/1290105168?-18728:4648",
+      "publisher": "Fox News",
+      "published_time": "13:53 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.628296"
+    },
+    {
+      "headline": "World Migratory Bird Day: Aerial visitors over lands and waters",
+      "article_url": "https://c.newsnow.co.uk/A/1290103890?-18728:4648",
+      "publisher": "CGTN",
+      "published_time": "13:27 Sat, 11 Oct",
+      "country": "Unknown",
+      "tags": [],
+      "view": "latest",
+      "scraped_at": "2025-10-12T06:38:37.628296"
+    },
+    {
+      "headline": "Get an eyeful of Iceland in these 20 photos that capture its natural beauty",
+      "article_url": "https://c.newsnow.co.uk/A/1290049331?-18728:4648",
+      "publisher": "Smithsonian Magazine",
+      "published_time": "1d",
+      "country": "Unknown",
+      "tags": [],
+      "view": "popular",
+      "scraped_at": "2025-10-12T06:38:41.060311"
+    },
+    {
+      "headline": "Etiquette expert reveals whether you need to change clothes on long-haul flights",
+      "article_url": "https://c.newsnow.co.uk/A/1290030514?-18728:4648",
+      "publisher": "MailOnline",
+      "published_time": "1d",
+      "country": "Unknown",
+      "tags": [],
+      "view": "popular",
+      "scraped_at": "2025-10-12T06:38:41.060311"
+    },
+    {
+      "headline": "European city has award-winning Christmas market and almost no crowds",
+      "article_url": "https://c.newsnow.co.uk/A/1290027002?-18728:4648",
+      "publisher": "The Mirror",
+      "published_time": "1d",
+      "country": "Unknown",
+      "tags": [],
+      "view": "popular",
+      "scraped_at": "2025-10-12T06:38:41.060311"
+    },
+    {
+      "headline": "United Airlines just added new European routes to iconic beach destinations for 2026",
+      "article_url": "https://c.newsnow.co.uk/A/1290028521?-18728:4648",
+      "publisher": "Travel & Leisure Magazine",
+      "published_time": "1d",
+      "country": "Unknown",
+      "tags": [],
+      "view": "popular",
+      "scraped_at": "2025-10-12T06:38:41.060311"
+    }
+  ]
+}
