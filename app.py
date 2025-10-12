@@ -1,6 +1,6 @@
 """
 Travel News Translator - Integrated Web Application
-With built-in scraper and scheduler
+With built-in scraper and scheduler - LIGHT POLLING VERSION
 """
 
 import streamlit as st
@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import glob
 import threading
+import time
 
 # Translation
 from deep_translator import GoogleTranslator
@@ -102,6 +103,10 @@ if 'scraper_status' not in st.session_state:
     st.session_state.scraper_status = None
 if 'scheduler' not in st.session_state:
     st.session_state.scheduler = get_scheduler()
+if 'is_polling' not in st.session_state:
+    st.session_state.is_polling = False
+if 'notification_shown' not in st.session_state:
+    st.session_state.notification_shown = False
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -218,8 +223,11 @@ with st.sidebar:
             thread.start()
             
             st.session_state.scraper_status = scraper.status
+            st.session_state.is_polling = True  # Enable polling
+            st.session_state.notification_shown = False  # Reset notification flag
             st.success("Scraper started!")
             logger.info("Manual scraping started")
+            time.sleep(0.5)
             st.rerun()
     
     with col2:
@@ -233,6 +241,7 @@ with st.sidebar:
     # Show scraper status
     if st.session_state.scraper_status:
         status = st.session_state.scraper_status
+        
         if status.is_running:
             st.markdown(f"""
             <div class="status-box">
@@ -242,16 +251,38 @@ with st.sidebar:
                 Articles: {status.articles_count}
             </div>
             """, unsafe_allow_html=True)
+            
+            # Keep polling active while running
+            st.session_state.is_polling = True
+            
         elif status.error:
             st.error(f"❌ Error: {status.error}")
+            st.session_state.is_polling = False  # Stop polling on error
+            
         else:
+            # Scraping completed!
             st.markdown(f"""
             <div class="success-box">
-                <strong>✅ Last scrape completed!</strong><br>
+                <strong>✅ Scraping completed!</strong><br>
                 Articles: {status.articles_count}<br>
                 Duration: {(status.end_time - status.start_time).total_seconds():.1f}s
             </div>
             """, unsafe_allow_html=True)
+            
+            # Show notification only once
+            if not st.session_state.notification_shown:
+                st.balloons()
+                st.toast(f"✅ {status.articles_count} articles scraped successfully!", icon="✅")
+                st.session_state.notification_shown = True
+                
+                # Auto-load articles
+                if status.articles_count > 0:
+                    st.session_state.articles = load_articles()
+                    if st.session_state.articles:
+                        st.success(f"🎉 Auto-loaded {len(st.session_state.articles)} articles!")
+            
+            # Stop polling after completion
+            st.session_state.is_polling = False
     
     st.divider()
     
@@ -577,3 +608,10 @@ st.markdown("""
     📝 Data: <code>data/</code> | Translations: <code>translations/</code> | Logs: <code>logs/</code>
 </div>
 """, unsafe_allow_html=True)
+
+# ============================================================================
+# LIGHT POLLING MECHANISM - 4 SECOND INTERVAL
+# ============================================================================
+if st.session_state.is_polling:
+    time.sleep(4)  # Wait 4 seconds
+    st.rerun()  # Refresh page to check status
