@@ -105,3 +105,44 @@ DATA_CONFIG = {
     'auto_archive_days': 30,  # Archive files older than 30 days
     'keep_latest_files': 10,  # Keep last 10 scraping results
 }
+
+
+# AI ENHANCEMENT SETTINGS 
+ENHANCED_DIR = BASE_DIR / 'data' / 'enhanced'
+ENHANCED_DIR.mkdir(parents=True, exist_ok=True)
+
+AI_CONFIG = {
+    'default_provider': 'openai',
+    'default_openai_model': 'gpt-4-turbo',
+    'default_groq_model': 'llama-3-70b',
+    
+    'providers': {
+        'openai': {
+            'name': 'OpenAI',
+            'icon': '🤖',
+            'models': {
+                'gpt-4': 'GPT-4',
+                'gpt-4-turbo': 'GPT-4 Turbo',
+                'gpt-3.5-turbo': 'GPT-3.5 Turbo'
+            }
+        },
+        'groq': {
+            'name': 'Groq',
+            'icon': '⚡',
+            'models': {
+                'llama-3.3-70b': 'llama-3.3-70b-versatile',
+                'llama-3.1-8b': 'llama-3.1-8b-instant',
+                'gpt-oss-120b': 'openai/gpt-oss-120b'
+    }
+        }
+    },
+    
+    'formats': {
+        'newspaper': {'name': 'সংবাদপত্র', 'icon': '📰'},
+        'blog': {'name': 'ব্লগ', 'icon': '📝'},
+        'facebook': {'name': 'ফেসবুক', 'icon': '📱'},
+        'instagram': {'name': 'ইনস্টাগ্রাম', 'icon': '📸'}
+    },
+    
+    'enhanced_dir': ENHANCED_DIR
+}

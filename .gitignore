@@ -83,3 +83,5 @@ data/raw/*.json
 data/raw/
 translations/*.txt
 translations/
+
+app_copy.py
