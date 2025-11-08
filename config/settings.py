@@ -15,6 +15,9 @@ ARCHIVE_DIR = DATA_DIR / 'archive'
 TRANSLATIONS_DIR = BASE_DIR / 'translations'
 LOGS_DIR = BASE_DIR / 'logs'
 
+# Multi-site config file path
+SITES_CONFIG_PATH = Path(__file__).parent / 'sites_config.json'
+
 # Create directories if they don't exist
 for directory in [RAW_DATA_DIR, PROCESSED_DATA_DIR, ARCHIVE_DIR, TRANSLATIONS_DIR, LOGS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)

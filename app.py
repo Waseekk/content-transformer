@@ -100,6 +100,13 @@ if 'translations' not in st.session_state:
     st.session_state.translations = []
 if 'target_lang' not in st.session_state:
     st.session_state.target_lang = TRANSLATION_CONFIG['default_language']
+# Pagination and filters
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
+if 'articles_per_page' not in st.session_state:
+    st.session_state.articles_per_page = 10
+if 'selected_sources' not in st.session_state:
+    st.session_state.selected_sources = []
 if 'current_original' not in st.session_state:
     st.session_state.current_original = ''
 if 'current_translated' not in st.session_state:
@@ -393,56 +400,194 @@ with st.sidebar:
         """)
 
 # Main content area
-#tab1, tab2, tab3, tab4 = st.tabs(["📰 Articles", "🔄 Translate", "📚 History", "📁 Files"])
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📰 Articles", "🔄 Translate", "✨ Enhancement", "📚 History", "📁 Files"])
+tab1, tab2, tab3, tab4 = st.tabs(["📰 Articles", "🔄 Translate", "📚 History", "📁 Files"])
 
 # ============================================================================
 # TAB 1: ARTICLES
 # ============================================================================
 with tab1:
     st.header("📰 Available Travel Articles")
-    
+
     if not st.session_state.articles:
         st.info("👆 Click 'Load Latest' or 'Start Scraping' in the sidebar")
     else:
-        # Search/Filter
-        search = st.text_input("🔍 Search articles", placeholder="Enter keywords...")
-        
+        # Get unique sources
+        all_sources = sorted(list(set([a.get('publisher', 'Unknown') for a in st.session_state.articles])))
+
+        # Filters Section
+        st.subheader("🔍 Filters")
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            # Search box
+            search = st.text_input("Search articles", placeholder="Enter keywords...")
+
+        with col2:
+            # Articles per page
+            articles_per_page = st.selectbox(
+                "Per page",
+                options=[10, 20, 50, 100],
+                index=0
+            )
+            st.session_state.articles_per_page = articles_per_page
+
+        # Website filter
+        selected_sources = st.multiselect(
+            "🌐 Filter by Website",
+            options=all_sources,
+            default=all_sources,
+            help="Select websites to display articles from"
+        )
+
+        st.divider()
+
+        # Apply filters
         filtered_articles = st.session_state.articles
+
+        # Filter by source
+        if selected_sources:
+            filtered_articles = [
+                a for a in filtered_articles
+                if a.get('publisher', 'Unknown') in selected_sources
+            ]
+
+        # Filter by search
         if search:
             filtered_articles = [
-                a for a in st.session_state.articles 
+                a for a in filtered_articles
                 if search.lower() in a.get('headline', '').lower()
             ]
-        
-        st.write(f"Showing {len(filtered_articles)} articles")
-        
+
+        # Pagination calculation
+        total_articles = len(filtered_articles)
+        total_pages = max(1, (total_articles + articles_per_page - 1) // articles_per_page)
+
+        # Reset to page 1 if current page is out of bounds
+        if st.session_state.current_page > total_pages:
+            st.session_state.current_page = 1
+
+        start_idx = (st.session_state.current_page - 1) * articles_per_page
+        end_idx = min(start_idx + articles_per_page, total_articles)
+
+        paginated_articles = filtered_articles[start_idx:end_idx]
+
+        # Display stats and source breakdown
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Articles", total_articles)
+        with col2:
+            # Source breakdown
+            source_counts = {}
+            for article in filtered_articles:
+                source = article.get('publisher', 'Unknown')
+                source_counts[source] = source_counts.get(source, 0) + 1
+
+            breakdown_text = " | ".join([f"{src}: {count}" for src, count in sorted(source_counts.items())])
+            st.info(f"📊 {breakdown_text}")
+
+        st.write(f"Showing {start_idx + 1}-{end_idx} of {total_articles} articles (Page {st.session_state.current_page}/{total_pages})")
+
+        # Pagination controls (top)
+        if total_pages > 1:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+            with col1:
+                if st.button("⏮️ First", disabled=(st.session_state.current_page == 1)):
+                    st.session_state.current_page = 1
+                    st.rerun()
+
+            with col2:
+                if st.button("◀️ Prev", disabled=(st.session_state.current_page == 1)):
+                    st.session_state.current_page -= 1
+                    st.rerun()
+
+            with col3:
+                # Page selector
+                new_page = st.selectbox(
+                    "Go to page",
+                    options=list(range(1, total_pages + 1)),
+                    index=st.session_state.current_page - 1,
+                    key="page_selector_top"
+                )
+                if new_page != st.session_state.current_page:
+                    st.session_state.current_page = new_page
+                    st.rerun()
+
+            with col4:
+                if st.button("Next ▶️", disabled=(st.session_state.current_page == total_pages)):
+                    st.session_state.current_page += 1
+                    st.rerun()
+
+            with col5:
+                if st.button("Last ⏭️", disabled=(st.session_state.current_page == total_pages)):
+                    st.session_state.current_page = total_pages
+                    st.rerun()
+
+        st.divider()
+
         # Display articles
-        for idx, article in enumerate(filtered_articles):
+        for idx, article in enumerate(paginated_articles):
             with st.container():
                 col1, col2 = st.columns([4, 1])
-                
+
                 with col1:
                     st.markdown(f"""
                     <div class="article-card">
                         <div class="article-title">{article.get('headline', 'No title')}</div>
                         <div class="article-meta">
-                            📰 {article.get('publisher', 'Unknown')} | 
-                            ⏰ {article.get('published_time', 'N/A')} | 
+                            📰 {article.get('publisher', 'Unknown')} |
+                            ⏰ {article.get('published_time', 'N/A')} |
                             🌍 {article.get('country', 'Unknown')}
                         </div>
                         {f"<div class='article-meta'>🏷️ {', '.join(article.get('tags', [])[:3])}</div>" if article.get('tags') else ""}
                     </div>
                     """, unsafe_allow_html=True)
-                
+
                 with col2:
-                    if st.button("Select", key=f"select_{idx}", use_container_width=True):
+                    if st.button("Select", key=f"select_{start_idx + idx}", use_container_width=True):
                         st.session_state.selected_article = article
                         url = article.get('article_url', '')
                         if url:
                             st.success("✅ Selected!")
                             st.markdown(f"[🔗 Open Article]({url})")
                             logger.info(f"Article selected: {article.get('headline', 'N/A')[:50]}")
+
+        # Pagination controls (bottom)
+        if total_pages > 1:
+            st.divider()
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+            with col1:
+                if st.button("⏮️ First", key="first_bottom", disabled=(st.session_state.current_page == 1)):
+                    st.session_state.current_page = 1
+                    st.rerun()
+
+            with col2:
+                if st.button("◀️ Prev", key="prev_bottom", disabled=(st.session_state.current_page == 1)):
+                    st.session_state.current_page -= 1
+                    st.rerun()
+
+            with col3:
+                # Page selector
+                new_page_bottom = st.selectbox(
+                    "Go to page",
+                    options=list(range(1, total_pages + 1)),
+                    index=st.session_state.current_page - 1,
+                    key="page_selector_bottom"
+                )
+                if new_page_bottom != st.session_state.current_page:
+                    st.session_state.current_page = new_page_bottom
+                    st.rerun()
+
+            with col4:
+                if st.button("Next ▶️", key="next_bottom", disabled=(st.session_state.current_page == total_pages)):
+                    st.session_state.current_page += 1
+                    st.rerun()
+
+            with col5:
+                if st.button("Last ⏭️", key="last_bottom", disabled=(st.session_state.current_page == total_pages)):
+                    st.session_state.current_page = total_pages
+                    st.rerun()
 
 # ============================================================================
 # TAB 2: TRANSLATE
@@ -552,297 +697,184 @@ TRANSLATION
                     use_container_width=True
                 )
 
-
-
-# TAB 3: AI ENHANCEMENT 
-# ============================================================================
-with tab3:
-    st.header("✨ AI-Powered Content Enhancement")
-    
-    # Check if translation exists
-    if not st.session_state.current_translated:
-        st.warning("⚠️ Please translate an article first (go to Translate tab)")
-    else:
-        # Show current translation info
-        st.success("✅ Translation Ready for Enhancement")
-        
-        if st.session_state.selected_article:
-            article = st.session_state.selected_article
-            st.markdown(f"""
-            <div class="article-card">
-                <div class="article-title">{article.get('headline', 'No title')}</div>
-                <div class="article-meta">
-                    📰 {article.get('publisher', 'Unknown')} | 
-                    🌍 {article.get('country', 'Unknown')}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # AI Provider Selection
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("🤖 Select AI Provider")
-            
-            provider_options = list(AI_CONFIG['providers'].keys())
-            provider_labels = [
-                f"{AI_CONFIG['providers'][p]['icon']} {AI_CONFIG['providers'][p]['name']}" 
-                for p in provider_options
-            ]
-            
-            selected_provider_idx = st.selectbox(
-                "Provider",
-                options=range(len(provider_options)),
-                format_func=lambda x: provider_labels[x],
-                index=provider_options.index(st.session_state.ai_provider),
-                key='provider_select'
-            )
-            
-            st.session_state.ai_provider = provider_options[selected_provider_idx]
-        
-        with col2:
-            st.subheader("🎯 Select Model")
-            
-            # Get models for selected provider
-            models = AI_CONFIG['providers'][st.session_state.ai_provider]['models']
-            model_keys = list(models.keys())
-            model_labels = list(models.values())
-            
-            # Default model
-            if st.session_state.ai_provider == 'openai':
-                default_model = AI_CONFIG['default_openai_model']
-            else:
-                default_model = AI_CONFIG['default_groq_model']
-            
-            try:
-                default_idx = model_keys.index(default_model)
-            except:
-                default_idx = 0
-            
-            selected_model_idx = st.selectbox(
-                "Model",
-                options=range(len(model_keys)),
-                format_func=lambda x: model_labels[x],
-                index=default_idx,
-                key='model_select'
-            )
-            
-            st.session_state.ai_model = model_keys[selected_model_idx]
-        
-        st.divider()
-        
-        # Format Selection
-        st.subheader("📝 Select Output Formats")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        selected_formats = []
-        
-        with col1:
-            if st.checkbox("📰 Newspaper", value=True, key='format_newspaper'):
-                selected_formats.append('newspaper')
-        
-        with col2:
-            if st.checkbox("📝 Blog", value=True, key='format_blog'):
-                selected_formats.append('blog')
-        
-        with col3:
-            if st.checkbox("📱 Facebook", value=True, key='format_facebook'):
-                selected_formats.append('facebook')
-        
-        with col4:
-            if st.checkbox("📸 Instagram", value=True, key='format_instagram'):
-                selected_formats.append('instagram')
-        
-        if not selected_formats:
-            st.error("❌ Please select at least one format")
-        
-        st.divider()
-        
-        # Generate Button
-        col1, col2, col3 = st.columns([2, 1, 1])
-        
-        with col1:
-            generate_btn = st.button(
-                "🚀 Generate Enhanced Content", 
-                use_container_width=True, 
-                type="primary",
-                disabled=st.session_state.enhancement_in_progress or not selected_formats
-            )
-        
-        with col2:
-            if st.button("🗑️ Clear Results", use_container_width=True):
-                st.session_state.enhancement_results = {}
-                st.rerun()
-        
-        with col3:
-            st.metric("Formats", len(selected_formats))
-        
-        # Generate content
-        if generate_btn:
-            st.session_state.enhancement_in_progress = True
-            st.session_state.enhancement_results = {}
-            
-            # Progress tracking
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            try:
-                status_text.text("🚀 Initializing AI provider...")
-                
-                # Get article info
-                article_info = st.session_state.selected_article or {}
-                
-                # Progress callback
-                def progress_callback(format_type, progress, result):
-                    progress_bar.progress(progress)
-                    config = get_format_config(format_type)
-                    status_text.text(f"✨ Generating {config['name']}... ({progress}%)")
-                
-                # Generate content
-                results, enhancer = enhance_translation(
-                    translated_text=st.session_state.current_translated,
-                    article_info=article_info,
-                    provider=st.session_state.ai_provider,
-                    model=st.session_state.ai_model,
-                    formats=selected_formats,
-                    progress_callback=progress_callback
-                )
-                
-                st.session_state.enhancement_results = results
-                st.session_state.enhancement_in_progress = False
-                
-                # Complete
-                progress_bar.progress(100)
-                status_text.text("✅ Enhancement completed!")
-                
-                # Show summary
-                summary = enhancer.get_summary()
-                st.success(f"✅ Generated {summary['successful']} formats using {summary['total_tokens']} tokens")
-                
-                # Save to history
-                st.session_state.enhanced_articles.append({
-                    'article': article_info,
-                    'results': results,
-                    'provider': st.session_state.ai_provider,
-                    'model': st.session_state.ai_model,
-                    'timestamp': datetime.now().isoformat(),
-                    'tokens': summary['total_tokens']
-                })
-                
-                time.sleep(1)
-                st.rerun()
-                
-            except Exception as e:
-                st.session_state.enhancement_in_progress = False
-                st.error(f"❌ Error: {str(e)}")
-                logger.error(f"Enhancement failed: {e}")
-        
-        # Display Results
-        if st.session_state.enhancement_results:
+            # ========================================================================
+            # AI ENHANCEMENT SECTION (Integrated)
+            # ========================================================================
             st.divider()
-            st.header("📊 Generated Content")
-            
-            for format_type, result in st.session_state.enhancement_results.items():
-                if not result.success:
-                    st.error(f"❌ {format_type} generation failed: {result.error}")
-                    continue
-                
-                config = get_format_config(format_type)
-                
-                with st.expander(
-                    f"{config['icon']} {config['name']} ({result.tokens_used} tokens)", 
-                    expanded=True
-                ):
-                    # Display content
-                    st.markdown(f"""
-                    <div class="translation-box">
-                        <div style="white-space: pre-wrap; font-family: 'Kalpurush', 'Noto Sans Bengali', sans-serif;">
-                            {result.content}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Action buttons
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        # Copy button
-                        if st.button(f"📋 Copy", key=f"copy_{format_type}", use_container_width=True):
-                            st.code(result.content, language='text')
-                            st.success("✅ Content displayed above - you can copy it!")
-                    
-                    with col2:
-                        # Download button
-                        download_filename = f"{format_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                        st.download_button(
-                            "📥 Download",
-                            result.content,
-                            file_name=download_filename,
-                            use_container_width=True,
-                            key=f"download_{format_type}"
-                        )
-                    
-                    with col3:
-                        # Save button
-                        if st.button(f"💾 Save", key=f"save_{format_type}", use_container_width=True):
-                            # Save individual file
-                            filepath = AI_CONFIG['enhanced_dir'] / download_filename
-                            
-                            file_content = f"""{'='*80}
-{config['icon']} {config['name'].upper()}
-{'='*80}
+            st.subheader("✨ AI-Powered Enhancement")
 
-ARTICLE: {st.session_state.selected_article.get('headline', 'N/A')}
-PROVIDER: {st.session_state.ai_provider} ({st.session_state.ai_model})
-GENERATED: {result.generated_at}
-TOKENS: {result.tokens_used}
+            with st.expander("🤖 Enhance Translation with AI", expanded=False):
+                # AI Provider Selection
+                col1, col2 = st.columns(2)
 
-{'='*80}
-CONTENT
-{'='*80}
+                with col1:
+                    st.write("**🤖 AI Provider**")
 
-{result.content}
-"""
-                            
-                            with open(filepath, 'w', encoding='utf-8') as f:
-                                f.write(file_content)
-                            
-                            st.success(f"✅ Saved to {filepath}")
-            
-            # Save all button
-            st.divider()
-            
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                if st.button("💾 Save All Formats", use_container_width=True, type="primary"):
+                    provider_options = list(AI_CONFIG['providers'].keys())
+                    provider_labels = [
+                        f"{AI_CONFIG['providers'][p]['icon']} {AI_CONFIG['providers'][p]['name']}"
+                        for p in provider_options
+                    ]
+
+                    selected_provider_idx = st.selectbox(
+                        "Provider",
+                        options=range(len(provider_options)),
+                        format_func=lambda x: provider_labels[x],
+                        index=provider_options.index(st.session_state.ai_provider),
+                        key='provider_select_translate',
+                        label_visibility="collapsed"
+                    )
+
+                    st.session_state.ai_provider = provider_options[selected_provider_idx]
+
+                with col2:
+                    st.write("**🎯 Model**")
+
+                    # Get models for selected provider
+                    models = AI_CONFIG['providers'][st.session_state.ai_provider]['models']
+                    model_keys = list(models.keys())
+                    model_labels = list(models.values())
+
+                    # Default model
+                    if st.session_state.ai_provider == 'openai':
+                        default_model = AI_CONFIG['default_openai_model']
+                    else:
+                        default_model = AI_CONFIG['default_groq_model']
+
                     try:
-                        enhancer = ContentEnhancer(
-                            provider_name=st.session_state.ai_provider,
-                            model=st.session_state.ai_model
+                        default_idx = model_keys.index(default_model)
+                    except:
+                        default_idx = 0
+
+                    selected_model_idx = st.selectbox(
+                        "Model",
+                        options=range(len(model_keys)),
+                        format_func=lambda x: model_labels[x],
+                        index=default_idx,
+                        key='model_select_translate',
+                        label_visibility="collapsed"
+                    )
+
+                    st.session_state.ai_model = model_keys[selected_model_idx]
+
+                st.write("")
+                st.write("**📝 Select Output Formats**")
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                selected_formats = []
+
+                with col1:
+                    if st.checkbox("📰 Newspaper", value=True, key='format_newspaper_translate'):
+                        selected_formats.append('newspaper')
+
+                with col2:
+                    if st.checkbox("📝 Blog", value=True, key='format_blog_translate'):
+                        selected_formats.append('blog')
+
+                with col3:
+                    if st.checkbox("📱 Facebook", value=True, key='format_facebook_translate'):
+                        selected_formats.append('facebook')
+
+                with col4:
+                    if st.checkbox("📸 Instagram", value=True, key='format_instagram_translate'):
+                        selected_formats.append('instagram')
+
+                if not selected_formats:
+                    st.warning("⚠️ Please select at least one format")
+
+                st.write("")
+
+                # Generate Button
+                enhance_btn = st.button(
+                    "🚀 Generate Enhanced Content",
+                    use_container_width=True,
+                    type="primary",
+                    disabled=st.session_state.enhancement_in_progress or not selected_formats,
+                    key='enhance_translate_btn'
+                )
+
+                # Generate content
+                if enhance_btn:
+                    st.session_state.enhancement_in_progress = True
+                    st.session_state.enhancement_results = {}
+
+                    # Progress tracking
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    try:
+                        status_text.text("🚀 Initializing AI provider...")
+
+                        # Progress callback
+                        def progress_callback(format_type, progress, result):
+                            progress_bar.progress(progress)
+                            config = get_format_config(format_type)
+                            status_text.text(f"✨ Generating {config['name']}... ({progress}%)")
+
+                        # Generate content
+                        results, enhancer = enhance_translation(
+                            translated_text=st.session_state.current_translated,
+                            article_info=article,
+                            provider=st.session_state.ai_provider,
+                            model=st.session_state.ai_model,
+                            formats=selected_formats,
+                            progress_callback=progress_callback
                         )
-                        enhancer.results = st.session_state.enhancement_results
-                        enhancer.total_tokens = sum(r.tokens_used for r in enhancer.results.values())
-                        
-                        saved_files = enhancer.save_results(
-                            save_dir=AI_CONFIG['enhanced_dir'],
-                            article_info=st.session_state.selected_article or {}
-                        )
-                        
-                        st.success(f"✅ Saved {len(saved_files)} files to {AI_CONFIG['enhanced_dir']}")
-                        
-                        for format_type, filepath in saved_files.items():
-                            st.text(f"📄 {format_type}: {Path(filepath).name}")
-                        
+
+                        st.session_state.enhancement_results = results
+                        st.session_state.enhancement_in_progress = False
+
+                        # Complete
+                        progress_bar.progress(100)
+                        status_text.text("✅ Enhancement completed!")
+
+                        # Show summary
+                        summary = enhancer.get_summary()
+                        st.success(f"✅ Generated {summary['successful']} formats using {summary['total_tokens']} tokens")
+
+                        # Save to history
+                        st.session_state.enhanced_articles.append({
+                            'article': article,
+                            'results': results,
+                            'provider': st.session_state.ai_provider,
+                            'model': st.session_state.ai_model,
+                            'timestamp': datetime.now().isoformat(),
+                            'tokens': summary['total_tokens']
+                        })
+
+                        time.sleep(1)
+                        st.rerun()
+
                     except Exception as e:
-                        st.error(f"❌ Error saving files: {e}")
-            
-            with col2:
-                total_tokens = sum(r.tokens_used for r in st.session_state.enhancement_results.values())
-                st.metric("Total Tokens", total_tokens)
+                        st.session_state.enhancement_in_progress = False
+                        st.error(f"❌ Error: {str(e)}")
+                        logger.error(f"Enhancement failed: {e}")
+
+            # Display Enhancement Results (if any)
+            if st.session_state.enhancement_results:
+                st.divider()
+                st.subheader("✨ Enhanced Versions")
+
+                for format_type, result in st.session_state.enhancement_results.items():
+                    config = get_format_config(format_type)
+
+                    with st.expander(f"{config['icon']} {config['name']}", expanded=True):
+                        st.markdown(result.content)
+
+                        # Download button for each format
+                        st.download_button(
+                            f"📥 Download {config['name']}",
+                            result.content,
+                            file_name=f"{format_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                            key=f"download_{format_type}_translate"
+                        )
+
+
+
+# ============================================================================
+# NOTE: Enhancement feature is now integrated into the Translate tab (tab2)
+
 
 
 
@@ -850,7 +882,7 @@ CONTENT
 # ============================================================================
 # TAB 3: HISTORY
 # ============================================================================
-with tab4:
+with tab3:
     st.header("📚 Translation History")
     
     if not st.session_state.translations:
@@ -873,7 +905,7 @@ with tab4:
 # ============================================================================
 # TAB 4: FILES
 # ============================================================================
-with tab5:
+with tab4:
     st.header("📁 Data Files")
     
     # Scraped files
