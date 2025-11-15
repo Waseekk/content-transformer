@@ -81,7 +81,22 @@ htmlcov/
 data/raw/*.csv
 data/raw/*.json
 data/raw/
+data/enhanced/
+data/archive/
+data/processed/
 translations/*.txt
 translations/
+
+# Test and utility scripts
+test_bengali_news.py
+verify_6_formats.py
+verify_app_ui.py
+example_6_formats.py
+read_docx.py
+groq_test.py
+bengali_news_output.json
+
+# Claude Code
+.claude/
 
 app_copy.py

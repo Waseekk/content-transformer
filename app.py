@@ -760,25 +760,27 @@ TRANSLATION
                 st.write("")
                 st.write("**📝 Select Output Formats**")
 
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3 = st.columns(3)
 
                 selected_formats = []
 
                 with col1:
                     if st.checkbox("📰 Newspaper", value=True, key='format_newspaper_translate'):
                         selected_formats.append('newspaper')
-
-                with col2:
                     if st.checkbox("📝 Blog", value=True, key='format_blog_translate'):
                         selected_formats.append('blog')
 
-                with col3:
+                with col2:
                     if st.checkbox("📱 Facebook", value=True, key='format_facebook_translate'):
                         selected_formats.append('facebook')
-
-                with col4:
                     if st.checkbox("📸 Instagram", value=True, key='format_instagram_translate'):
                         selected_formats.append('instagram')
+
+                with col3:
+                    if st.checkbox("📄 Hard News", value=True, key='format_hard_news_translate'):
+                        selected_formats.append('hard_news')
+                    if st.checkbox("✍️ Soft News", value=True, key='format_soft_news_translate'):
+                        selected_formats.append('soft_news')
 
                 if not selected_formats:
                     st.warning("⚠️ Please select at least one format")

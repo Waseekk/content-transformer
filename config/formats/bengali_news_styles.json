@@ -1,0 +1,78 @@
+{
+  "hard_news": {
+    "description": "Professional Bengali newspaper article in hard news style - factual, objective, inverted pyramid structure",
+    "style_guide": {
+      "byline": "নিউজ ডেস্ক, বাংলার কলম্বাস",
+      "structure": {
+        "headline": {
+          "style": "Direct, factual, attention-grabbing",
+          "format": "Single line, clear and concise"
+        },
+        "body": {
+          "opening": "Lead paragraph with 5Ws and H (Who, What, When, Where, Why, How)",
+          "development": "Inverted pyramid - most important to least important",
+          "paragraph_length": "2-4 sentences each, short and crisp",
+          "style": "Factual, objective, no personal opinions"
+        }
+      },
+      "language": {
+        "dialect": "Modern Bangladeshi Bengali (not Indian Bengali)",
+        "tone": "Professional, formal, journalistic",
+        "vocabulary": "Clear, precise, accessible"
+      },
+      "content_requirements": [
+        "Include direct quotes with proper attribution",
+        "Use statistics and data where relevant",
+        "Provide context and background",
+        "Past tense for completed actions",
+        "No sensationalism",
+        "Maintain objectivity throughout"
+      ]
+    },
+    "temperature": 0.4,
+    "max_tokens": 1500
+  },
+
+  "soft_news": {
+    "description": "Bengali feature article in soft news/narrative style - storytelling, descriptive, engaging",
+    "style_guide": {
+      "byline": "নিউজ ডেস্ক, বাংলার কলম্বাস",
+      "structure": {
+        "headline": {
+          "style": "Creative, evocative, may use literary devices",
+          "format": "Engaging and intriguing"
+        },
+        "body": {
+          "opening": "Hook the reader with vivid scene-setting or compelling narrative",
+          "development": "Storytelling structure with narrative arc",
+          "paragraph_length": "3-7 sentences, flowing and descriptive",
+          "style": "Literary, descriptive, emotionally engaging"
+        }
+      },
+      "language": {
+        "dialect": "Modern Bangladeshi Bengali (not Indian Bengali)",
+        "tone": "Narrative, descriptive, evocative",
+        "vocabulary": "Rich, literary, sensory"
+      },
+      "content_requirements": [
+        "Use descriptive and evocative language",
+        "Include sensory details (sights, sounds, textures, atmosphere)",
+        "Build narrative arc across the article",
+        "Use present tense for timeless descriptions",
+        "Employ metaphors and literary devices where appropriate",
+        "Create vivid imagery",
+        "Engage reader's emotions and imagination",
+        "Tell a story, not just report facts"
+      ]
+    },
+    "temperature": 0.7,
+    "max_tokens": 2500
+  },
+
+  "format_metadata": {
+    "source": "Based on BC News Style - বাংলার কলম্বাস editorial standards",
+    "target_audience": "Bangladeshi Bengali readers",
+    "use_case": "Transform English travel news into high-quality Bengali news articles",
+    "output_language": "Bengali (Bangladeshi dialect)"
+  }
+}

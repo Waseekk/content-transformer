@@ -114,8 +114,8 @@ class ContentEnhancer:
             
             return result
     
-    def enhance_all_formats(self, translated_text, article_info, 
-                           formats=['newspaper', 'blog', 'facebook', 'instagram'],
+    def enhance_all_formats(self, translated_text, article_info,
+                           formats=['newspaper', 'blog', 'facebook', 'instagram', 'hard_news', 'soft_news'],
                            progress_callback=None):
         """
         Generate content for all formats
@@ -265,24 +265,24 @@ CONTENT
 
 
 # Convenience function
-def enhance_translation(translated_text, article_info, provider='openai', 
+def enhance_translation(translated_text, article_info, provider='openai',
                        model=None, formats=None, progress_callback=None):
     """
     Quick function to enhance translation
-    
+
     Args:
         translated_text: Bengali translated text
         article_info: Article metadata dict
         provider: 'openai' or 'groq'
         model: Model name
-        formats: List of format types (default: all 4)
+        formats: List of format types (default: all 6)
         progress_callback: Optional callback function
-    
+
     Returns:
         dict: Enhancement results
     """
     if formats is None:
-        formats = ['newspaper', 'blog', 'facebook', 'instagram']
+        formats = ['newspaper', 'blog', 'facebook', 'instagram', 'hard_news', 'soft_news']
     
     enhancer = ContentEnhancer(provider_name=provider, model=model)
     results = enhancer.enhance_all_formats(
