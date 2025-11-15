@@ -268,12 +268,22 @@ with st.sidebar:
             st.markdown(f"""
             <div class="status-box">
                 <strong>⏳ Scraping in progress...</strong><br>
-                Progress: {status.progress}%<br>
-                Status: {status.status_message}<br>
-                Articles: {status.articles_count}
+                <strong>Progress:</strong> {status.progress}%<br>
+                <strong>Current Site:</strong> {status.current_site or 'Initializing...'}<br>
+                <strong>Status:</strong> {status.status_message}<br>
+                <strong>Articles Found:</strong> {status.articles_count}
             </div>
             """, unsafe_allow_html=True)
-            
+
+            # Progress bar
+            st.progress(status.progress / 100.0)
+
+            # Show per-site stats if available
+            if status.site_stats:
+                st.caption("**Sites Completed:**")
+                for site_name, count in status.site_stats.items():
+                    st.caption(f"  ✓ {site_name}: {count} articles")
+
             # Keep polling active while running
             st.session_state.is_polling = True
             
@@ -286,10 +296,16 @@ with st.sidebar:
             st.markdown(f"""
             <div class="success-box">
                 <strong>✅ Scraping completed!</strong><br>
-                Articles: {status.articles_count}<br>
-                Duration: {(status.end_time - status.start_time).total_seconds():.1f}s
+                <strong>Total Articles:</strong> {status.articles_count}<br>
+                <strong>Duration:</strong> {(status.end_time - status.start_time).total_seconds():.1f}s
             </div>
             """, unsafe_allow_html=True)
+
+            # Show per-site breakdown
+            if status.site_stats:
+                st.caption("**Breakdown by Site:**")
+                for site_name, count in status.site_stats.items():
+                    st.caption(f"  ✓ {site_name}: {count} articles")
             
             # Show notification only once
             if not st.session_state.notification_shown:
@@ -400,7 +416,7 @@ with st.sidebar:
         """)
 
 # Main content area
-tab1, tab2, tab3, tab4 = st.tabs(["📰 Articles", "🔄 Translate", "📚 History", "📁 Files"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📰 Articles", "🔄 Translate", "📚 History", "📁 Files", "📋 Logs"])
 
 # ============================================================================
 # TAB 1: ARTICLES
@@ -944,6 +960,124 @@ with tab4:
             st.text(f"📄 {file.name}")
     else:
         st.info("No translations yet")
+
+# ============================================================================
+# TAB 5: LOGS
+# ============================================================================
+with tab5:
+    st.header("📋 Scraping Logs")
+
+    # Get log files
+    from config.settings import LOGS_DIR
+    log_files = sorted(LOGS_DIR.glob('*.log'), key=lambda p: p.stat().st_mtime, reverse=True)
+
+    if not log_files:
+        st.info("No log files found")
+    else:
+        # Log type selector
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            log_types = {
+                'scraper': '🕷️ Scraper Logs',
+                'webapp': '🌐 Web App Logs',
+                'scheduler': '⏰ Scheduler Logs',
+                'enhancer': '✨ AI Enhancer Logs'
+            }
+
+            selected_log_type = st.selectbox(
+                "Select Log Type",
+                options=list(log_types.keys()),
+                format_func=lambda x: log_types[x],
+                index=0
+            )
+
+        with col2:
+            auto_refresh = st.checkbox("🔄 Auto-refresh", value=False, help="Refresh logs every 5 seconds")
+
+        # Find logs of selected type
+        matching_logs = [f for f in log_files if selected_log_type in f.name]
+
+        if not matching_logs:
+            st.warning(f"No {log_types[selected_log_type]} found")
+        else:
+            # Date selector
+            log_dates = {}
+            for log_file in matching_logs:
+                # Extract date from filename (format: type_YYYYMMDD.log)
+                parts = log_file.stem.split('_')
+                if len(parts) >= 2:
+                    date_str = parts[-1]
+                    try:
+                        log_date = datetime.strptime(date_str, '%Y%m%d').strftime('%Y-%m-%d')
+                        log_dates[log_date] = log_file
+                    except:
+                        pass
+
+            if log_dates:
+                selected_date = st.selectbox(
+                    "Select Date",
+                    options=sorted(log_dates.keys(), reverse=True),
+                    index=0
+                )
+
+                selected_log_file = log_dates[selected_date]
+
+                # Display controls
+                col1, col2, col3 = st.columns([2, 1, 1])
+
+                with col1:
+                    st.info(f"📄 **File:** `{selected_log_file.name}` | **Size:** {selected_log_file.stat().st_size / 1024:.1f} KB")
+
+                with col2:
+                    max_lines = st.number_input("Max lines", min_value=50, max_value=5000, value=500, step=50)
+
+                with col3:
+                    show_all = st.checkbox("Show all", value=False)
+
+                st.divider()
+
+                # Read and display log
+                try:
+                    with open(selected_log_file, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+
+                    if not show_all:
+                        lines = lines[-max_lines:]  # Show last N lines
+
+                    # Display log content
+                    st.subheader(f"📜 Log Content ({len(lines)} lines)")
+
+                    # Add filter
+                    filter_text = st.text_input("🔍 Filter logs", placeholder="Enter text to filter...", key="log_filter")
+
+                    if filter_text:
+                        filtered_lines = [line for line in lines if filter_text.lower() in line.lower()]
+                        st.write(f"Showing {len(filtered_lines)} matching lines")
+                        log_content = ''.join(filtered_lines)
+                    else:
+                        log_content = ''.join(lines)
+
+                    # Display in code block
+                    st.code(log_content, language='log')
+
+                    # Download button
+                    st.download_button(
+                        "📥 Download Full Log",
+                        ''.join(lines),
+                        file_name=selected_log_file.name,
+                        mime='text/plain'
+                    )
+
+                except Exception as e:
+                    st.error(f"Error reading log file: {e}")
+
+                # Auto-refresh mechanism
+                if auto_refresh:
+                    time.sleep(5)
+                    st.rerun()
+            else:
+                st.warning("No valid log files found")
 
 # Footer
 st.divider()

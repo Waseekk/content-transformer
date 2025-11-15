@@ -192,6 +192,48 @@ class MultiSiteScraper:
                     # Link is in the container itself
                     article_data['link'] = container.get(link_attribute, '')
 
+                # Extract additional metadata if available
+                # Publisher
+                publisher_tag = selector.get('publisher_tag')
+                publisher_class = selector.get('publisher_class')
+                if publisher_tag:
+                    if publisher_class:
+                        publisher_elem = container.find(publisher_tag, class_=publisher_class)
+                    else:
+                        publisher_elem = container.find(publisher_tag)
+                    if publisher_elem:
+                        article_data['publisher'] = publisher_elem.get_text(strip=True)
+
+                # Published time
+                time_tag = selector.get('time_tag')
+                time_class = selector.get('time_class')
+                if time_tag:
+                    if time_class:
+                        time_elem = container.find(time_tag, class_=time_class)
+                    else:
+                        time_elem = container.find(time_tag)
+                    if time_elem:
+                        article_data['published_time'] = time_elem.get_text(strip=True)
+
+                # Country (from flag or other source)
+                flag_tag = selector.get('flag_tag')
+                flag_class = selector.get('flag_class')
+                if flag_tag:
+                    if flag_class:
+                        flag_elem = container.find(flag_tag, class_=flag_class)
+                    else:
+                        flag_elem = container.find(flag_tag)
+                    if flag_elem:
+                        # Try to get country from alt attribute or src
+                        country = flag_elem.get('alt', '')
+                        if not country and 'src' in flag_elem.attrs:
+                            src = flag_elem.get('src', '')
+                            if '/flags/' in src:
+                                # Extract country code from path like /flags/large/US.png
+                                country = src.split('/')[-1].replace('.png', '')
+                        if country:
+                            article_data['country'] = country
+
                 # Add metadata
                 article_data['source'] = site_name
                 article_data['scraped_at'] = datetime.now().isoformat()
@@ -201,10 +243,12 @@ class MultiSiteScraper:
                     article_data['headline'] = article_data['title']  # Map title to headline
                 if article_data.get('link'):
                     article_data['article_url'] = article_data['link']  # Map link to article_url
-                if site_name:
-                    article_data['publisher'] = site_name  # Map source to publisher
-                article_data['published_time'] = 'N/A'  # Default value
-                article_data['country'] = 'Unknown'  # Default value
+                if not article_data.get('publisher'):
+                    article_data['publisher'] = site_name  # Default to site_name
+                if not article_data.get('published_time'):
+                    article_data['published_time'] = 'N/A'  # Default value
+                if not article_data.get('country'):
+                    article_data['country'] = 'Unknown'  # Default value
 
                 # Only add if we have both title and link
                 if article_data.get('title') and article_data.get('link'):
@@ -229,6 +273,8 @@ class MultiSiteScraper:
         site_name = site_config['name']
         site_url = site_config['url']
         selectors = site_config.get('selectors', [])
+        multi_view = site_config.get('multi_view', False)
+        views = site_config.get('views', {})
 
         logger.info(f"Scraping site: {site_name} ({site_url})")
 
@@ -236,24 +282,61 @@ class MultiSiteScraper:
         seen_links = set()
 
         try:
-            # Fetch the page
-            response = requests.get(site_url, headers=self.headers, timeout=self.timeout)
-            response.raise_for_status()
+            # Check if multi-view scraping is enabled
+            if multi_view and views:
+                logger.info(f"  Multi-view scraping enabled with {len(views)} views")
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+                for view_name, view_param in views.items():
+                    view_url = site_url + view_param
+                    logger.info(f"  Scraping '{view_name}' view: {view_url}")
 
-            # Try each selector method
-            for idx, selector in enumerate(selectors, 1):
-                logger.debug(f"Trying selector {idx}/{len(selectors)} for {site_name}")
+                    try:
+                        # Fetch the view page
+                        response = requests.get(view_url, headers=self.headers, timeout=self.timeout)
+                        response.raise_for_status()
+                        soup = BeautifulSoup(response.text, 'html.parser')
 
-                articles = self.extract_articles_from_selector(soup, selector, site_name)
+                        view_articles = []
+                        # Try each selector method
+                        for idx, selector in enumerate(selectors, 1):
+                            articles = self.extract_articles_from_selector(soup, selector, site_name)
 
-                # Remove duplicates based on link
-                for article in articles:
-                    link = article.get('link', '')
-                    if link and link not in seen_links:
-                        seen_links.add(link)
-                        all_articles.append(article)
+                            # Remove duplicates based on link
+                            for article in articles:
+                                link = article.get('link', '')
+                                if link and link not in seen_links:
+                                    seen_links.add(link)
+                                    article['view'] = view_name  # Tag which view it came from
+                                    all_articles.append(article)
+                                    view_articles.append(article)
+
+                        logger.info(f"    '{view_name}' view: {len(view_articles)} new articles")
+
+                        # Delay between views
+                        if view_name != list(views.keys())[-1]:  # Don't delay after last view
+                            time.sleep(2)
+
+                    except Exception as e:
+                        logger.error(f"    Error scraping '{view_name}' view: {e}")
+                        continue
+            else:
+                # Standard single-page scraping
+                response = requests.get(site_url, headers=self.headers, timeout=self.timeout)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, 'html.parser')
+
+                # Try each selector method
+                for idx, selector in enumerate(selectors, 1):
+                    logger.debug(f"Trying selector {idx}/{len(selectors)} for {site_name}")
+
+                    articles = self.extract_articles_from_selector(soup, selector, site_name)
+
+                    # Remove duplicates based on link
+                    for article in articles:
+                        link = article.get('link', '')
+                        if link and link not in seen_links:
+                            seen_links.add(link)
+                            all_articles.append(article)
 
             logger.info(f"[OK] {site_name}: Found {len(all_articles)} unique articles")
             return all_articles
@@ -310,6 +393,29 @@ class MultiSiteScraper:
             # Save to file
             self._update_status(95, "Saving data...")
             filepath = self.save_to_file(all_articles)
+
+            # Log sample headlines from this scrape run
+            if all_articles:
+                logger.info("")
+                logger.info("SAMPLE HEADLINES FROM THIS SCRAPE:")
+                logger.info("-" * 80)
+                for i, article in enumerate(all_articles[:10], 1):  # Log first 10 headlines
+                    headline = article.get('headline', article.get('title', 'No headline'))[:70]
+                    source = article.get('source', 'unknown')
+                    publisher = article.get('publisher', '')
+                    view = article.get('view', '')
+
+                    if view:
+                        logger.info(f"  {i:2d}. [{source}/{view}] {headline}")
+                    else:
+                        logger.info(f"  {i:2d}. [{source}] {headline}")
+
+                    if publisher and publisher != source:
+                        logger.info(f"      Publisher: {publisher}")
+
+                if len(all_articles) > 10:
+                    logger.info(f"  ... and {len(all_articles) - 10} more articles")
+                logger.info("-" * 80)
 
             # Complete
             self.status.complete(len(all_articles))
