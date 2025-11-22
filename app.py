@@ -11,7 +11,7 @@ import glob
 import threading
 import time
 
-# Translation
+# Translation - Legacy (keeping for fallback)
 from deep_translator import GoogleTranslator
 
 # Import modules
@@ -24,6 +24,9 @@ from core.scheduler import get_scheduler
 from core.enhancer import ContentEnhancer, enhance_translation
 from core.prompts import get_format_config
 from config.settings import AI_CONFIG
+
+# NEW: OpenAI Translation
+from core.translator import OpenAITranslator, translate_webpage
 
 logger = get_webapp_logger()
 
@@ -100,6 +103,10 @@ if 'translations' not in st.session_state:
     st.session_state.translations = []
 if 'target_lang' not in st.session_state:
     st.session_state.target_lang = TRANSLATION_CONFIG['default_language']
+if 'translation_method' not in st.session_state:
+    st.session_state.translation_method = 'openai'  # 'openai' or 'google'
+if 'translation_tokens' not in st.session_state:
+    st.session_state.translation_tokens = 0
 # Pagination and filters
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 1
@@ -160,24 +167,67 @@ def load_articles(json_file=None):
         logger.error(f"Error loading articles: {e}")
         return []
 
-def translate_text(text, target_lang):
-    """Translate text"""
+def translate_text_google(text, target_lang):
+    """Translate text using Google Translate (Legacy method)"""
     try:
         translator = GoogleTranslator(source='auto', target=target_lang)
         max_length = TRANSLATION_CONFIG['chunk_size']
-        
+
         if len(text) <= max_length:
             translated = translator.translate(text)
         else:
             chunks = [text[i:i+max_length] for i in range(0, len(text), max_length)]
             translated_chunks = [translator.translate(chunk) for chunk in chunks]
             translated = ' '.join(translated_chunks)
-        
-        logger.info(f"Translation completed: {len(text)} -> {len(translated)} chars")
-        return translated
+
+        logger.info(f"Google translation completed: {len(text)} -> {len(translated)} chars")
+        return translated, 0  # Return tokens=0 for Google Translate
     except Exception as e:
-        logger.error(f"Translation error: {e}")
-        return f"Translation error: {e}"
+        logger.error(f"Google translation error: {e}")
+        return f"Translation error: {e}", 0
+
+
+def translate_text_openai(pasted_content):
+    """Translate text using OpenAI (Smart extraction + translation)"""
+    try:
+        logger.info(f"Starting OpenAI translation: {len(pasted_content)} chars")
+
+        # Use OpenAI translator
+        translator = OpenAITranslator(
+            provider_name=AI_CONFIG['provider'],
+            model=AI_CONFIG['model']
+        )
+
+        result = translator.extract_and_translate(pasted_content, target_lang='bn')
+
+        if result['success']:
+            logger.info(f"OpenAI translation successful: {result['tokens_used']} tokens")
+            return result['translated_text'], result['tokens_used']
+        else:
+            logger.error(f"OpenAI translation failed: {result['error']}")
+            return f"Translation error: {result['error']}", 0
+
+    except Exception as e:
+        logger.error(f"OpenAI translation error: {e}")
+        return f"Translation error: {e}", 0
+
+
+def translate_text(text, target_lang, method='openai'):
+    """
+    Main translation function - routes to OpenAI or Google
+
+    Args:
+        text: Text to translate
+        target_lang: Target language code
+        method: 'openai' or 'google'
+
+    Returns:
+        tuple: (translated_text, tokens_used)
+    """
+    if method == 'openai':
+        return translate_text_openai(text)
+    else:
+        return translate_text_google(text, target_lang)
 
 def save_translation(original, translated, article_info):
     """Save translation to file"""
@@ -631,35 +681,78 @@ with tab2:
             st.markdown(f"[🔗 Open in Browser]({article['article_url']})")
         
         st.divider()
-        
+
+        # Translation method selector
+        st.subheader("🤖 Translation Method")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.session_state.translation_method = st.radio(
+                "Choose translation engine:",
+                options=['openai', 'google'],
+                format_func=lambda x: '🤖 OpenAI (Smart)' if x == 'openai' else '🌐 Google Translate (Basic)',
+                horizontal=True,
+                help="OpenAI: Intelligently extracts article and translates naturally\nGoogle: Fast but basic word-by-word translation"
+            )
+
+        with col2:
+            if st.session_state.translation_method == 'openai':
+                st.info("✨ AI will extract article from page and translate intelligently")
+            else:
+                st.info("⚡ Fast translation but less context-aware")
+
+        st.divider()
+
         st.subheader("📝 Paste Article Content")
+
+        if st.session_state.translation_method == 'openai':
+            st.markdown("**Instructions:**")
+            st.markdown("1. Open the article in your browser")
+            st.markdown("2. Press `Ctrl+A` (Select All)")
+            st.markdown("3. Press `Ctrl+C` (Copy)")
+            st.markdown("4. Paste below - AI will extract the article automatically!")
+        else:
+            st.markdown("**Instructions:** Copy just the article text and paste below")
+
         original_text = st.text_area(
             "Paste content here:",
             height=300,
-            placeholder="Copy the article and paste here..."
+            placeholder="Paste entire webpage here (Ctrl+A → Ctrl+C → Ctrl+V)..." if st.session_state.translation_method == 'openai' else "Paste article text here..."
         )
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             translate_btn = st.button("🔄 Translate", use_container_width=True, type="primary")
-        
+
         with col2:
             clear_btn = st.button("🗑️ Clear", use_container_width=True)
-        
+
         if clear_btn:
             st.session_state.current_original = ''
             st.session_state.current_translated = ''
+            st.session_state.translation_tokens = 0
             st.rerun()
-        
+
         if translate_btn:
             if not original_text.strip():
                 st.error("❌ Paste some text first")
             else:
-                with st.spinner(f"🔄 Translating to {TRANSLATION_CONFIG['available_languages'][st.session_state.target_lang]}..."):
-                    translated = translate_text(original_text, st.session_state.target_lang)
+                method_name = "🤖 OpenAI (Smart Translation)" if st.session_state.translation_method == 'openai' else "🌐 Google Translate"
+                with st.spinner(f"🔄 Translating with {method_name}..."):
+                    translated, tokens = translate_text(
+                        original_text,
+                        st.session_state.target_lang,
+                        method=st.session_state.translation_method
+                    )
                     st.session_state.current_original = original_text
                     st.session_state.current_translated = translated
+                    st.session_state.translation_tokens = tokens
+
+                    if st.session_state.translation_method == 'openai':
+                        st.success(f"✅ Translated! (Used {tokens} tokens)")
+                    else:
+                        st.success("✅ Translated!")
         
         if st.session_state.current_translated:
             st.divider()
