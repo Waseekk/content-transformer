@@ -194,8 +194,8 @@ def translate_text_openai(pasted_content):
 
         # Use OpenAI translator
         translator = OpenAITranslator(
-            provider_name=AI_CONFIG['provider'],
-            model=AI_CONFIG['model']
+            provider_name=AI_CONFIG['default_provider'],
+            model=AI_CONFIG['default_openai_model']
         )
 
         result = translator.extract_and_translate(pasted_content, target_lang='bn')
