@@ -60,14 +60,14 @@ async def health_check():
 
 
 # Register API routers
-from app.api import auth
+from app.api import auth, scraper, translation, enhancement, articles
 
 app.include_router(auth.router, prefix=f"{settings.API_PREFIX}/auth", tags=["Authentication"])
+app.include_router(scraper.router, prefix=f"{settings.API_PREFIX}/scraper", tags=["Scraper"])
+app.include_router(translation.router, prefix=f"{settings.API_PREFIX}/translate", tags=["Translation"])
+app.include_router(enhancement.router, prefix=f"{settings.API_PREFIX}/enhance", tags=["Enhancement"])
+app.include_router(articles.router, prefix=f"{settings.API_PREFIX}/articles", tags=["Articles"])
 
-# TODO: Add remaining routers
-# from app.api import scraper, translator, enhancer, articles, admin
-# app.include_router(scraper.router, prefix=f"{settings.API_PREFIX}/scraper", tags=["scraper"])
-# app.include_router(translator.router, prefix=f"{settings.API_PREFIX}/translate", tags=["translate"])
-# app.include_router(enhancer.router, prefix=f"{settings.API_PREFIX}/enhance", tags=["enhance"])
-# app.include_router(articles.router, prefix=f"{settings.API_PREFIX}/articles", tags=["articles"])
-# app.include_router(admin.router, prefix=f"{settings.API_PREFIX}/admin", tags=["admin"])
+# TODO: Add admin router in Phase 4
+# from app.api import admin
+# app.include_router(admin.router, prefix=f"{settings.API_PREFIX}/admin", tags=["Admin"])
