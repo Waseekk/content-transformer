@@ -10,9 +10,9 @@ import json
 # Import modules
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-from core.ai_providers import get_provider
-from core.prompts import get_format_config, get_user_prompt
-from utils.logger import LoggerManager
+from app.core.ai_providers import get_provider
+from app.core.prompts import get_format_config, get_user_prompt
+from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('enhancer')
 

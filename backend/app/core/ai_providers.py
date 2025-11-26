@@ -14,7 +14,7 @@ load_dotenv()
 # Import logger
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-from utils.logger import LoggerManager
+from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('ai_providers')
 
@@ -44,23 +44,25 @@ class AIProvider:
 
 class OpenAIProvider(AIProvider):
     """OpenAI API Provider"""
-    
+
     MODELS = {
         'gpt-4': 'gpt-4',
         'gpt-4-turbo': 'gpt-4-turbo-preview',
+        'gpt-4o': 'gpt-4o',
+        'gpt-4o-mini': 'gpt-4o-mini',
         'gpt-3.5-turbo': 'gpt-3.5-turbo'
     }
-    
-    def __init__(self, model='gpt-4-turbo'):
+
+    def __init__(self, model='gpt-4o-mini'):
         super().__init__()
-        
+
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
-        
+
         self.client = OpenAI(api_key=api_key)
         self.model = self.MODELS.get(model, model)
-        
+
         logger.info(f"OpenAI provider initialized with model: {self.model}")
     
     def generate(self, system_prompt, user_prompt, temperature=0.7, max_tokens=2000):
@@ -219,7 +221,7 @@ if __name__ == "__main__":
     
     # Test OpenAI
     try:
-        provider = OpenAIProvider(model='gpt-3.5-turbo')
+        provider = OpenAIProvider(model='gpt-4o-mini')
         text, tokens = provider.generate(
             system_prompt="You are a helpful assistant.",
             user_prompt="Say hello in Bengali.",

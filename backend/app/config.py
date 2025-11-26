@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # Base paths
     BASE_DIR: Path = Path(__file__).parent.parent.parent
     BACKEND_DIR: Path = BASE_DIR / "backend"
-    DATA_DIR: Path = BASE_DIR / "data"
+    DATA_DIR: Path = BACKEND_DIR / "data"
 
     # Application
     APP_NAME: str = "Travel News SaaS"
@@ -79,11 +79,22 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
-    LOG_DIR: Path = BASE_DIR / "logs"
+    LOG_DIR: Path = BACKEND_DIR / "logs"
 
     # Scraper Config
-    SITES_CONFIG_PATH: Path = BASE_DIR / "config" / "sites_config.json"
-    FORMATS_CONFIG_PATH: Path = BASE_DIR / "config" / "formats" / "bengali_news_styles.json"
+    SITES_CONFIG_PATH: Path = BACKEND_DIR / "config" / "sites_config.json"
+    FORMATS_CONFIG_PATH: Path = BACKEND_DIR / "config" / "formats" / "bengali_news_styles.json"
+
+    SCRAPER_CONFIG: dict = {
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+        },
+        'timeout': 15,
+        'delay_between_requests': 2,  # seconds
+    }
 
     class Config:
         env_file = ".env"
