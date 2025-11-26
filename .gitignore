@@ -98,5 +98,12 @@ bengali_news_output.json
 
 # Claude Code
 .claude/
-
 app_copy.py
+
+# Documentation and Setup Files 
+.md
+.bat
+
+# Backend folder (only for local development, not for Streamlit Cloud)
+# Uncomment the line below when deploying to Streamlit Cloud
+# backend/
