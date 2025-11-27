@@ -95,5 +95,54 @@
         "flag_class": "article-card__flag-inner"
       }
     ]
+  },
+  {
+    "name": "prothom_alo",
+    "url": "https://www.prothomalo.com/",
+    "use_selenium": true,
+    "description": "Prothom Alo - Leading Bengali newspaper",
+    "language": "bn",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "story",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "daily_star",
+    "url": "https://www.thedailystar.net/",
+    "use_selenium": true,
+    "description": "The Daily Star - English news from Bangladesh",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "container_class": "news-item",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "story-card",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
   }
 ]

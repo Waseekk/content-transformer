@@ -28,6 +28,9 @@ from config.settings import AI_CONFIG
 # NEW: OpenAI Translation
 from core.translator import OpenAITranslator, translate_webpage
 
+# NEW: Review Agent for Quality Checking
+from core.review_agent import ReviewAgent
+
 logger = get_webapp_logger()
 
 # ============================================================================
@@ -868,28 +871,32 @@ TRANSLATION
 
                 st.write("")
                 st.write("**📝 Select Output Formats**")
+                st.info("🎯 Professional journalism formats only")
 
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
 
                 selected_formats = []
 
                 with col1:
-                    if st.checkbox("📰 Newspaper", value=True, key='format_newspaper_translate'):
-                        selected_formats.append('newspaper')
-                    if st.checkbox("📝 Blog", value=True, key='format_blog_translate'):
-                        selected_formats.append('blog')
-
-                with col2:
-                    if st.checkbox("📱 Facebook", value=True, key='format_facebook_translate'):
-                        selected_formats.append('facebook')
-                    if st.checkbox("📸 Instagram", value=True, key='format_instagram_translate'):
-                        selected_formats.append('instagram')
-
-                with col3:
                     if st.checkbox("📄 Hard News", value=True, key='format_hard_news_translate'):
                         selected_formats.append('hard_news')
+
+                with col2:
                     if st.checkbox("✍️ Soft News", value=True, key='format_soft_news_translate'):
                         selected_formats.append('soft_news')
+
+                # Commented out - not needed for newspaper-focused workflow
+                # with col1:
+                #     if st.checkbox("📰 Newspaper", value=True, key='format_newspaper_translate'):
+                #         selected_formats.append('newspaper')
+                #     if st.checkbox("📝 Blog", value=True, key='format_blog_translate'):
+                #         selected_formats.append('blog')
+                #
+                # with col2:
+                #     if st.checkbox("📱 Facebook", value=True, key='format_facebook_translate'):
+                #         selected_formats.append('facebook')
+                #     if st.checkbox("📸 Instagram", value=True, key='format_instagram_translate'):
+                #         selected_formats.append('instagram')
 
                 if not selected_formats:
                     st.warning("⚠️ Please select at least one format")
@@ -933,16 +940,43 @@ TRANSLATION
                             progress_callback=progress_callback
                         )
 
-                        st.session_state.enhancement_results = results
+                        # Review content with review agent
+                        status_text.text("🔍 Reviewing content quality...")
+                        progress_bar.progress(80)
+
+                        review_agent = ReviewAgent(
+                            provider_name=st.session_state.ai_provider,
+                            model=st.session_state.ai_model
+                        )
+
+                        # Review each format
+                        reviewed_results = {}
+                        total_review_tokens = 0
+                        for format_type, result in results.items():
+                            review_result = review_agent.review_content(
+                                content=result.content,
+                                format_type=format_type
+                            )
+
+                            if review_result['success']:
+                                # Update result with reviewed content
+                                result.content = review_result['reviewed_content']
+                                total_review_tokens += review_result['tokens_used']
+                                logger.info(f"Review completed for {format_type}: {review_result['improvements_made']} improvements")
+
+                            reviewed_results[format_type] = result
+
+                        st.session_state.enhancement_results = reviewed_results
                         st.session_state.enhancement_in_progress = False
 
                         # Complete
                         progress_bar.progress(100)
-                        status_text.text("✅ Enhancement completed!")
+                        status_text.text("✅ Enhancement & review completed!")
 
                         # Show summary
                         summary = enhancer.get_summary()
-                        st.success(f"✅ Generated {summary['successful']} formats using {summary['total_tokens']} tokens")
+                        total_tokens_with_review = summary['total_tokens'] + total_review_tokens
+                        st.success(f"✅ Generated {summary['successful']} formats | Enhancement: {summary['total_tokens']} tokens | Review: {total_review_tokens} tokens | Total: {total_tokens_with_review} tokens")
 
                         # Save to history
                         st.session_state.enhanced_articles.append({
@@ -966,20 +1000,47 @@ TRANSLATION
             if st.session_state.enhancement_results:
                 st.divider()
                 st.subheader("✨ Enhanced Versions")
+                st.info("💡 Edit the content below, then copy or download")
 
                 for format_type, result in st.session_state.enhancement_results.items():
                     config = get_format_config(format_type)
 
                     with st.expander(f"{config['icon']} {config['name']}", expanded=True):
-                        st.markdown(result.content)
-
-                        # Download button for each format
-                        st.download_button(
-                            f"📥 Download {config['name']}",
-                            result.content,
-                            file_name=f"{format_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                            key=f"download_{format_type}_translate"
+                        # Editable markdown text area
+                        edited_content = st.text_area(
+                            "Edit content:",
+                            value=result.content,
+                            height=400,
+                            key=f"edit_{format_type}_translate",
+                            help="You can edit this content before copying or downloading"
                         )
+
+                        # Show markdown preview
+                        with st.expander("👁️ Preview", expanded=False):
+                            st.markdown(edited_content)
+
+                        # Buttons row
+                        col1, col2, col3 = st.columns([1, 1, 2])
+
+                        with col1:
+                            # Copy button (using Streamlit's native functionality)
+                            if st.button(f"📋 Copy", key=f"copy_{format_type}_translate", use_container_width=True):
+                                st.code(edited_content, language=None)
+                                st.success("✅ Content ready to copy! Select and Ctrl+C")
+
+                        with col2:
+                            # Download button
+                            st.download_button(
+                                f"📥 Download",
+                                edited_content,
+                                file_name=f"{format_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                                key=f"download_{format_type}_translate",
+                                use_container_width=True
+                            )
+
+                        with col3:
+                            # Token usage info
+                            st.caption(f"🪙 Tokens used: {result.tokens_used}")
 
 
 
