@@ -1015,20 +1015,20 @@ TRANSLATION
                             help="You can edit this content before copying or downloading"
                         )
 
-                        # Show markdown preview
-                        with st.expander("👁️ Preview", expanded=False):
-                            st.markdown(edited_content)
-
                         # Buttons row
-                        col1, col2, col3 = st.columns([1, 1, 2])
+                        col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
 
                         with col1:
+                            # Preview toggle
+                            show_preview = st.checkbox("👁️ Preview", key=f"preview_{format_type}_translate")
+
+                        with col2:
                             # Copy button (using Streamlit's native functionality)
                             if st.button(f"📋 Copy", key=f"copy_{format_type}_translate", use_container_width=True):
                                 st.code(edited_content, language=None)
-                                st.success("✅ Content ready to copy! Select and Ctrl+C")
+                                st.success("✅ Ready to copy!")
 
-                        with col2:
+                        with col3:
                             # Download button
                             st.download_button(
                                 f"📥 Download",
@@ -1038,9 +1038,15 @@ TRANSLATION
                                 use_container_width=True
                             )
 
-                        with col3:
+                        with col4:
                             # Token usage info
-                            st.caption(f"🪙 Tokens used: {result.tokens_used}")
+                            st.caption(f"🪙 Tokens: {result.tokens_used}")
+
+                        # Show markdown preview if checkbox is checked
+                        if show_preview:
+                            st.markdown("---")
+                            st.markdown("**Preview:**")
+                            st.markdown(edited_content)
 
 
 
