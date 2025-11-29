@@ -813,86 +813,45 @@ TRANSLATION
             st.subheader("✨ AI-Powered Enhancement")
 
             with st.expander("🤖 Enhance Translation with AI", expanded=False):
-                # AI Provider Selection
-                col1, col2 = st.columns(2)
+                # Simplified AI Model Selection (client-friendly)
+                st.write("**🎯 AI Model Selection**")
 
-                with col1:
-                    st.write("**🤖 AI Provider**")
+                # Model mapping: Simple names → Actual models
+                model_options = {
+                    "Model 1 (Fast & Economical)": ("openai", "gpt-3.5-turbo"),
+                    "Model 2 (Advanced & Precise)": ("openai", "gpt-4-turbo")
+                }
 
-                    provider_options = list(AI_CONFIG['providers'].keys())
-                    provider_labels = [
-                        f"{AI_CONFIG['providers'][p]['icon']} {AI_CONFIG['providers'][p]['name']}"
-                        for p in provider_options
-                    ]
+                selected_model_name = st.selectbox(
+                    "Choose AI Model",
+                    options=list(model_options.keys()),
+                    index=1,  # Default to Model 2 (gpt-4-turbo)
+                    key='simple_model_select',
+                    help="Model 1: Faster, lower cost | Model 2: Higher quality, better accuracy"
+                )
 
-                    selected_provider_idx = st.selectbox(
-                        "Provider",
-                        options=range(len(provider_options)),
-                        format_func=lambda x: provider_labels[x],
-                        index=provider_options.index(st.session_state.ai_provider),
-                        key='provider_select_translate',
-                        label_visibility="collapsed"
-                    )
-
-                    st.session_state.ai_provider = provider_options[selected_provider_idx]
-
-                with col2:
-                    st.write("**🎯 Model**")
-
-                    # Get models for selected provider
-                    models = AI_CONFIG['providers'][st.session_state.ai_provider]['models']
-                    model_keys = list(models.keys())
-                    model_labels = list(models.values())
-
-                    # Default model
-                    if st.session_state.ai_provider == 'openai':
-                        default_model = AI_CONFIG['default_openai_model']
-                    else:
-                        default_model = AI_CONFIG['default_groq_model']
-
-                    try:
-                        default_idx = model_keys.index(default_model)
-                    except:
-                        default_idx = 0
-
-                    selected_model_idx = st.selectbox(
-                        "Model",
-                        options=range(len(model_keys)),
-                        format_func=lambda x: model_labels[x],
-                        index=default_idx,
-                        key='model_select_translate',
-                        label_visibility="collapsed"
-                    )
-
-                    st.session_state.ai_model = model_keys[selected_model_idx]
+                # Set provider and model in session state (hidden from user)
+                st.session_state.ai_provider, st.session_state.ai_model = model_options[selected_model_name]
 
                 st.write("")
-                st.write("**📝 Select Output Formats**")
+                st.write("**📝 Output Format**")
 
-                col1, col2, col3 = st.columns(3)
+                # Format selection as dropdown
+                format_options = {
+                    "Hard News Only": ['hard_news'],
+                    "Soft News Only": ['soft_news'],
+                    "Both (Hard + Soft News)": ['hard_news', 'soft_news']
+                }
 
-                selected_formats = []
+                selected_format_option = st.selectbox(
+                    "Choose format type",
+                    options=list(format_options.keys()),
+                    index=2,  # Default to "Both"
+                    key='format_dropdown',
+                    help="Hard News: Professional factual reporting | Soft News: Literary travel feature"
+                )
 
-                with col1:
-                    if st.checkbox("📰 Newspaper", value=True, key='format_newspaper_translate'):
-                        selected_formats.append('newspaper')
-                    if st.checkbox("📝 Blog", value=True, key='format_blog_translate'):
-                        selected_formats.append('blog')
-
-                with col2:
-                    if st.checkbox("📱 Facebook", value=True, key='format_facebook_translate'):
-                        selected_formats.append('facebook')
-                    if st.checkbox("📸 Instagram", value=True, key='format_instagram_translate'):
-                        selected_formats.append('instagram')
-
-                with col3:
-                    if st.checkbox("📄 Hard News", value=True, key='format_hard_news_translate'):
-                        selected_formats.append('hard_news')
-                    if st.checkbox("✍️ Soft News", value=True, key='format_soft_news_translate'):
-                        selected_formats.append('soft_news')
-
-                if not selected_formats:
-                    st.warning("⚠️ Please select at least one format")
+                selected_formats = format_options[selected_format_option]
 
                 st.write("")
 
@@ -933,6 +892,7 @@ TRANSLATION
                             progress_callback=progress_callback
                         )
 
+                        # Store results without auto-review
                         st.session_state.enhancement_results = results
                         st.session_state.enhancement_in_progress = False
 
@@ -942,7 +902,7 @@ TRANSLATION
 
                         # Show summary
                         summary = enhancer.get_summary()
-                        st.success(f"✅ Generated {summary['successful']} formats using {summary['total_tokens']} tokens")
+                        st.success(f"✅ Generated {summary['successful']} formats | Tokens used: {summary['total_tokens']}")
 
                         # Save to history
                         st.session_state.enhanced_articles.append({
@@ -966,6 +926,37 @@ TRANSLATION
             if st.session_state.enhancement_results:
                 st.divider()
                 st.subheader("✨ Enhanced Versions")
+<<<<<<< HEAD
+=======
+
+                # Optional AI Review Button (after generation)
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.info("💡 Edit the content below, then copy or download")
+                with col2:
+                    if st.button("🔍 AI Review & Improve", use_container_width=True, help="Use AI to review and improve grammar, coherence, and tone"):
+                        with st.spinner("Reviewing content..."):
+                            review_agent = ReviewAgent(
+                                provider_name=st.session_state.ai_provider,
+                                model=st.session_state.ai_model
+                            )
+
+                            total_review_tokens = 0
+                            for format_type, result in st.session_state.enhancement_results.items():
+                                review_result = review_agent.review_content(
+                                    content=result.content,
+                                    format_type=format_type
+                                )
+
+                                if review_result['success']:
+                                    result.content = review_result['reviewed_content']
+                                    total_review_tokens += review_result['tokens_used']
+
+                            st.success(f"✅ Review completed! Tokens used: {total_review_tokens}")
+                            st.rerun()
+
+                st.write("")
+>>>>>>> bf9c5c2 (refactor: streamline UI and focus on newspaper-only formats)
 
                 for format_type, result in st.session_state.enhancement_results.items():
                     config = get_format_config(format_type)
