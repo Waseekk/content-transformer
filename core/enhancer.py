@@ -90,16 +90,25 @@ class ContentEnhancer:
                 temperature=config['temperature'],
                 max_tokens=config['max_tokens']
             )
-            
+
+            # Validate markdown formatting for hard_news
+            if format_type == 'hard_news' and not content.strip().startswith('**'):
+                logger.warning(f"Content missing markdown formatting for {format_type}")
+                logger.warning("Hard news content should start with **শিরোনাম-")
+
+            # Validate markdown formatting for soft_news (should have headline but may not start with **)
+            if format_type == 'soft_news' and 'শিরোনাম-' not in content[:200]:
+                logger.warning(f"Content may be missing proper headline format for {format_type}")
+
             # Create result
             result = EnhancementResult(
                 format_type=format_type,
                 content=content.strip(),
                 tokens_used=tokens
             )
-            
+
             self.total_tokens += tokens
-            
+
             logger.info(f"{format_type} generated: {len(content)} chars, {tokens} tokens")
             
             return result

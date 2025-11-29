@@ -309,7 +309,8 @@ FORMAT_CONFIG = {
 
 def get_format_config(format_type):
     """Get configuration for a specific format"""
-    return FORMAT_CONFIG.get(format_type, FORMAT_CONFIG['newspaper'])
+    # Use hard_news as fallback instead of archived 'newspaper'
+    return FORMAT_CONFIG.get(format_type, FORMAT_CONFIG['hard_news'])
 
 
 # Test
