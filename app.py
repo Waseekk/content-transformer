@@ -24,6 +24,7 @@ from core.scheduler import get_scheduler
 from core.enhancer import ContentEnhancer, enhance_translation
 from core.prompts import get_format_config
 from config.settings import AI_CONFIG
+from core.review_agent import ReviewAgent
 
 # NEW: OpenAI Translation
 from core.translator import OpenAITranslator, translate_webpage
@@ -926,8 +927,6 @@ TRANSLATION
             if st.session_state.enhancement_results:
                 st.divider()
                 st.subheader("✨ Enhanced Versions")
-<<<<<<< HEAD
-=======
 
                 # Optional AI Review Button (after generation)
                 col1, col2 = st.columns([3, 1])
@@ -956,7 +955,6 @@ TRANSLATION
                             st.rerun()
 
                 st.write("")
->>>>>>> bf9c5c2 (refactor: streamline UI and focus on newspaper-only formats)
 
                 for format_type, result in st.session_state.enhancement_results.items():
                     config = get_format_config(format_type)
