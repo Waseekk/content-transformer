@@ -95,5 +95,218 @@
         "flag_class": "article-card__flag-inner"
       }
     ]
+  },
+  {
+    "name": "prothom_alo",
+    "url": "https://www.prothomalo.com/",
+    "use_selenium": true,
+    "description": "Prothom Alo - Leading Bengali newspaper",
+    "language": "bn",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "story",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "daily_star",
+    "url": "https://www.thedailystar.net/",
+    "use_selenium": true,
+    "description": "The Daily Star - English news from Bangladesh",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "container_class": "news-item",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "story-card",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "skift",
+    "url": "https://skift.com/",
+    "use_selenium": false,
+    "description": "Skift - Global travel industry news",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "post",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "unwto",
+    "url": "https://www.unwto.org/news",
+    "use_selenium": false,
+    "description": "UNWTO - United Nations World Tourism Organization",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "item-list",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "phocuswire",
+    "url": "https://www.phocuswire.com/",
+    "use_selenium": false,
+    "description": "PhocusWire - Travel tech and innovation news",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "bbc_travel",
+    "url": "http://www.bbc.com/travel",
+    "use_selenium": false,
+    "description": "BBC Travel - Stories from around the world",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "gel-layout__item",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "cnn_travel",
+    "url": "https://edition.cnn.com/travel",
+    "use_selenium": false,
+    "description": "CNN Travel - International travel news",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "container__headline",
+        "title_tag": "span",
+        "link_tag": "a",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "travel_weekly",
+    "url": "https://www.travelweekly.com/",
+    "use_selenium": false,
+    "description": "Travel Weekly - Travel agent and industry news",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "article",
+        "container_class": "article-card",
+        "title_tag": "h3",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "guardian_travel",
+    "url": "https://www.theguardian.com/uk/travel",
+    "use_selenium": false,
+    "description": "The Guardian Travel - UK travel news and features",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "fc-item__container",
+        "title_tag": "span",
+        "title_class": "js-headline-text",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
+  },
+  {
+    "name": "dailymail_travel",
+    "url": "https://www.dailymail.co.uk/travel/index.html",
+    "use_selenium": false,
+    "description": "Daily Mail Travel - UK travel news",
+    "language": "en",
+    "selectors": [
+      {
+        "method": "standard",
+        "container_tag": "div",
+        "container_class": "article",
+        "title_tag": "h2",
+        "link_tag": "a",
+        "link_attribute": "href"
+      }
+    ]
   }
 ]

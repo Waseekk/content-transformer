@@ -104,6 +104,7 @@ app_copy.py
 .md
 .bat
 
+
 # Backend folder (only for local development, not for Streamlit Cloud)
 # Uncomment the line below when deploying to Streamlit Cloud
 # backend/
