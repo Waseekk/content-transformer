@@ -41,6 +41,57 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ============================================================================
+# AUTHENTICATION - Password Protection
+# ============================================================================
+import os
+
+# Initialize authentication state
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+# Get password from environment variable (set in Streamlit Cloud Secrets)
+APP_PASSWORD = os.getenv('APP_PASSWORD', 'demo2024')  # Default password for local dev
+
+if not st.session_state.authenticated:
+    st.markdown("<h1 style='text-align: center; color: #1E88E5;'>🔒 Travel News Translator</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Please login to continue</h3>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col2:
+        st.write("")
+        st.write("")
+
+        password = st.text_input("🔑 Enter Password:", type="password", key="login_password")
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("🚀 Login", use_container_width=True, type="primary"):
+                if password == APP_PASSWORD:
+                    st.session_state.authenticated = True
+                    logger.info("User authenticated successfully")
+                    st.success("✅ Login successful!")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error("❌ Incorrect password")
+                    logger.warning("Failed login attempt")
+
+        with col_b:
+            if st.button("ℹ️ Contact Admin", use_container_width=True):
+                st.info("📧 Contact: your-email@example.com")
+
+        st.write("")
+        st.write("")
+        st.markdown("---")
+        st.caption("🔐 Secure access to Travel News Translation System")
+        st.caption("💡 For demo access, please contact the administrator")
+
+    st.stop()  # Stop execution here if not authenticated
+
+# If authenticated, show logout button in sidebar (will be added later in sidebar section)
+
 # Custom CSS
 st.markdown("""
 <style>
@@ -279,7 +330,18 @@ st.markdown('<h1 class="main-header">✈️ Travel News Translator 🌍</h1>', u
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Control Panel")
-    
+
+    # ========================================================================
+    # AUTHENTICATION STATUS & LOGOUT
+    # ========================================================================
+    st.success("✅ Logged in")
+    if st.button("🚪 Logout", use_container_width=True):
+        st.session_state.authenticated = False
+        logger.info("User logged out")
+        st.rerun()
+
+    st.divider()
+
     # ========================================================================
     # SCRAPER CONTROL
     # ========================================================================
