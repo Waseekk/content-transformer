@@ -57,93 +57,559 @@ if 'authenticated' not in st.session_state:
 APP_PASSWORD = os.getenv('APP_PASSWORD', 'demo1_2025')  # Default password for local dev
 
 if not st.session_state.authenticated:
-    st.markdown("<h1 style='text-align: center; color: #1E88E5;'>🔒 Travel News Translator</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>Please login to continue</h3>", unsafe_allow_html=True)
+    # Professional Login Page
+    st.markdown("""
+    <div style='text-align: center; padding: 3rem 0 2rem 0;'>
+        <h1 style='font-family: Inter, sans-serif; font-size: 2.5rem; font-weight: 700;
+                   color: #2c3e50; margin-bottom: 0.5rem; letter-spacing: -0.5px;'>
+            Data Insightopia
+        </h1>
+        <p style='color: #607080; font-size: 1.1rem; font-weight: 600; margin-top: 0;'>
+            Sub Editor Assistant
+        </p>
+        <p style='color: #8895a7; font-size: 0.9rem; font-weight: 400; margin-top: 0.5rem;'>
+            Professional News Translation Platform
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
-        st.write("")
-        st.write("")
+        st.markdown("""
+        <div style='background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px); border-radius: 20px;
+                    border: 1px solid rgba(255, 255, 255, 0.2); padding: 3rem 2.5rem;
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);'>
+            <h3 style='color: #ffffff; text-align: center; margin-bottom: 2rem; font-weight: 600;'>
+                Secure Login
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-        password = st.text_input("🔑 Enter Password:", type="password", key="login_password")
+        st.write("")
+        password = st.text_input("Password", type="password", key="login_password",
+                                placeholder="Enter your password")
+        st.write("")
 
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("🚀 Login", use_container_width=True, type="primary"):
+            if st.button("Login", use_container_width=True, type="primary"):
                 if password == APP_PASSWORD:
                     st.session_state.authenticated = True
                     logger.info("User authenticated successfully")
-                    st.success("✅ Login successful!")
+                    st.success("Login successful!")
                     time.sleep(0.5)
                     st.rerun()
                 else:
-                    st.error("❌ Incorrect password")
+                    st.error("Incorrect password")
                     logger.warning("Failed login attempt")
 
         with col_b:
-            if st.button("ℹ️ Contact Admin", use_container_width=True):
-                st.info("📧 Contact: your-email@example.com")
+            if st.button("Contact Admin", use_container_width=True):
+                st.info("Contact: admin@example.com")
 
         st.write("")
-        st.write("")
         st.markdown("---")
-        st.caption("🔐 Secure access to Travel News Translation System")
-        st.caption("💡 For demo access, please contact the administrator")
+        st.caption("🔒 Secure access • For demo access, contact administrator")
 
     st.stop()  # Stop execution here if not authenticated
 
 # If authenticated, show logout button in sidebar (will be added later in sidebar section)
 
-# Custom CSS
+# ============================================================================
+# PROFESSIONAL NEWS PLATFORM - CUSTOM CSS SYSTEM
+# Data Insightopia Sub Editor Assistant
+# ============================================================================
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 3rem;
-        color: #1E88E5;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .article-card {
-        background-color: #f0f2f6;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-        border-left: 5px solid #1E88E5;
-    }
-    .article-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #1E88E5;
-        margin-bottom: 0.5rem;
-    }
-    .article-meta {
-        font-size: 0.9rem;
-        color: #666;
-    }
-    .translation-box {
-        background-color: #e3f2fd;
-        padding: 2rem;
-        border-radius: 10px;
-        border: 2px solid #1E88E5;
-    }
-    .status-box {
-        background-color: #fff3cd;
-        padding: 1rem;
-        border-radius: 5px;
-        border-left: 5px solid #ffc107;
-        margin: 1rem 0;
-    }
-    .success-box {
-        background-color: #d4edda;
-        padding: 1rem;
-        border-radius: 5px;
-        border-left: 5px solid #28a745;
-        margin: 1rem 0;
-    }
-    .stButton > button {
-        width: 100%;
-    }
+/* ===== PROFESSIONAL COLOR PALETTE ===== */
+:root {
+    /* Primary Brand Colors */
+    --primary-dark: #1a1d29;
+    --primary-navy: #2c3e50;
+    --primary-slate: #34495e;
+
+    /* Accent Colors */
+    --accent-teal: #16a085;
+    --accent-gold: #f39c12;
+    --accent-blue: #3498db;
+
+    /* Neutral Grays */
+    --gray-900: #1a1d29;
+    --gray-800: #2c3e50;
+    --gray-700: #445566;
+    --gray-600: #607080;
+    --gray-500: #8895a7;
+    --gray-400: #b4bcc8;
+    --gray-300: #d1d8df;
+    --gray-200: #e8ecef;
+    --gray-100: #f4f6f8;
+
+    /* Semantic Colors */
+    --success-green: #27ae60;
+    --warning-orange: #e67e22;
+    --error-red: #e74c3c;
+    --info-blue: #3498db;
+
+    /* Surface Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e8ecef;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+/* ===== GOOGLE FONTS ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* ===== HIDE STREAMLIT BRANDING ===== */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* ===== MAIN APP BACKGROUND ===== */
+.stApp {
+    background: var(--bg-secondary);
+    font-family: 'Inter', sans-serif;
+}
+
+/* ===== MAIN CONTENT CONTAINER ===== */
+.main .block-container {
+    padding: 40px;
+    max-width: 1200px;
+    background: var(--bg-primary);
+    margin: 0 auto;
+}
+
+/* ===== PROFESSIONAL HEADER ===== */
+.main-header {
+    font-family: 'Inter', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary-navy);
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 16px;
+    color: var(--gray-600);
+    margin-bottom: 32px;
+    font-weight: 400;
+}
+
+/* ===== SIDEBAR PROFESSIONAL DESIGN ===== */
+section[data-testid="stSidebar"] {
+    background: var(--primary-navy);
+    border-right: none;
+}
+
+section[data-testid="stSidebar"] > div {
+    background: var(--primary-navy);
+    padding: 24px 16px;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent-teal);
+}
+
+/* ===== PROFESSIONAL ARTICLE CARDS ===== */
+.article-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.article-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--accent-teal);
+    border-radius: 8px 0 0 8px;
+}
+
+.article-card:hover {
+    border-color: var(--accent-teal);
+    box-shadow: var(--shadow-md);
+}
+
+.article-title {
+    font-family: 'Merriweather', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 12px;
+    line-height: 1.4;
+    padding-left: 16px;
+}
+
+.article-meta {
+    font-size: 13px;
+    color: var(--gray-600);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-left: 16px;
+    font-weight: 500;
+}
+
+/* ===== TRANSLATION BOX ===== */
+.translation-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--gray-300);
+    border-left: 4px solid var(--accent-teal);
+    border-radius: 8px;
+    padding: 32px;
+    color: var(--gray-900);
+    font-family: 'Merriweather', serif;
+    font-size: 17px;
+    line-height: 1.75;
+}
+
+/* ===== STATUS BOXES ===== */
+.status-box {
+    background: #fff4e5;
+    border-left: 4px solid var(--warning-orange);
+    padding: 16px;
+    border-radius: 8px;
+    margin: 16px 0;
+    color: #a04000;
+    box-shadow: var(--shadow-sm);
+}
+
+.success-box {
+    background: #d5f4e6;
+    border-left: 4px solid var(--success-green);
+    padding: 16px;
+    border-radius: 8px;
+    margin: 16px 0;
+    color: #1e7e34;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ===== PROFESSIONAL BUTTONS ===== */
+.stButton > button {
+    background: var(--accent-teal);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 15px;
+    transition: background 0.2s ease;
+    box-shadow: none;
+}
+
+.stButton > button:hover {
+    background: #138d75;
+    transform: none;
+}
+
+.stButton > button[kind="primary"] {
+    background: var(--accent-teal);
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: #138d75;
+}
+
+.stButton > button[kind="secondary"] {
+    background: var(--bg-primary);
+    color: var(--primary-navy);
+    border: 1px solid var(--gray-300);
+}
+
+.stButton > button[kind="secondary"]:hover {
+    background: var(--bg-secondary);
+    border-color: var(--gray-400);
+}
+
+/* ===== PROFESSIONAL INPUTS ===== */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > select {
+    background: var(--bg-primary);
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    color: var(--gray-900);
+    padding: 12px 16px;
+    font-size: 15px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 3px rgba(22, 160, 133, 0.1);
+    outline: none;
+}
+
+.stTextInput > div > div > input::placeholder,
+.stTextArea > div > div > textarea::placeholder {
+    color: var(--gray-500);
+}
+
+/* ===== TABS STYLING ===== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-300);
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent;
+    border-radius: 6px;
+    color: var(--gray-700);
+    padding: 12px 20px;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.2s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: var(--bg-primary);
+    color: var(--gray-900);
+}
+
+.stTabs [aria-selected="true"] {
+    background: var(--accent-teal);
+    color: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ===== METRICS STYLING ===== */
+[data-testid="stMetricValue"] {
+    color: var(--primary-navy);
+    font-size: 28px;
+    font-weight: 700;
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--gray-600);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* ===== EXPANDER STYLING ===== */
+.streamlit-expanderHeader {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    color: var(--gray-900);
+    font-weight: 600;
+    border: 1px solid var(--gray-300);
+    transition: all 0.2s ease;
+}
+
+.streamlit-expanderHeader:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--gray-400);
+}
+
+/* ===== DIVIDER ===== */
+hr {
+    border: none;
+    height: 1px;
+    background: var(--gray-300);
+    margin: 32px 0;
+}
+
+/* ===== PROFESSIONAL SCROLLBAR ===== */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* ===== PROGRESS BAR ===== */
+.stProgress > div > div > div {
+    background: var(--accent-teal);
+    border-radius: 4px;
+}
+
+/* ===== ALERTS ===== */
+.stAlert {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-900);
+    padding: 16px 20px;
+}
+
+/* ===== CODE BLOCKS ===== */
+.stCodeBlock {
+    background: var(--gray-900);
+    border-radius: 8px;
+    border: 1px solid var(--gray-800);
+}
+
+/* ===== DATAFRAME STYLING ===== */
+.dataframe {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-900);
+}
+
+/* ===== FIX ALL TEXT VISIBILITY ===== */
+/* Force dark text for all Streamlit elements */
+.main * {
+    color: var(--gray-900) !important;
+}
+
+/* Specific overrides for readability */
+.main p, .main div, .main span, .main label {
+    color: var(--gray-900) !important;
+}
+
+.main h1, .main h2, .main h3, .main h4, .main h5, .main h6 {
+    color: var(--primary-navy) !important;
+}
+
+/* Markdown text */
+.main .stMarkdown {
+    color: var(--gray-900) !important;
+}
+
+/* Regular text elements */
+.main [data-testid="stText"] {
+    color: var(--gray-900) !important;
+}
+
+/* Captions */
+.main .stCaption, .main [data-testid="stCaption"] {
+    color: var(--gray-600) !important;
+}
+
+/* Info/Warning/Error boxes - keep their colors */
+.main .stAlert * {
+    color: inherit !important;
+}
+
+/* Success/Status boxes - keep their colors */
+.main .success-box *, .main .status-box * {
+    color: inherit !important;
+}
+
+/* Sidebar text should stay white */
+section[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
+/* Button text */
+.stButton > button {
+    color: #ffffff !important;
+}
+
+/* Form labels */
+.main label {
+    color: var(--gray-900) !important;
+    font-weight: 500;
+}
+
+/* Select box text */
+.main .stSelectbox label {
+    color: var(--gray-900) !important;
+}
+
+/* Code text */
+.main code {
+    color: var(--primary-navy) !important;
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* Links */
+.main a {
+    color: var(--accent-teal) !important;
+    text-decoration: none;
+}
+
+.main a:hover {
+    text-decoration: underline;
+}
+
+/* Tab text when not selected */
+.stTabs [data-baseweb="tab"] {
+    color: var(--gray-700) !important;
+}
+
+/* Tab text when selected */
+.stTabs [aria-selected="true"] {
+    color: #ffffff !important;
+}
+
+/* Ensure white background for main content */
+.main {
+    background: #ffffff !important;
+}
+
+/* Write/text output */
+.main .element-container {
+    color: var(--gray-900) !important;
+}
+
+/* ===== SPECIFIC FIXES ===== */
+/* Max Results number input - white text */
+.main .stNumberInput input {
+    color: #ffffff !important;
+    background: var(--primary-navy);
+    font-weight: 600;
+}
+
+/* Sidebar info boxes - black text */
+section[data-testid="stSidebar"] .stAlert {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+section[data-testid="stSidebar"] .stAlert * {
+    color: #1a1d29 !important;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -337,18 +803,58 @@ def run_scraper_async(scraper):
 # MAIN APP
 # ============================================================================
 
-# Header
-st.markdown('<h1 class="main-header">✈️ Travel News Translator 🌍</h1>', unsafe_allow_html=True)
+# ============================================================================
+# PROFESSIONAL HEADER & HERO SECTION
+# ============================================================================
+st.markdown("""
+<div style='text-align: center; padding: 1rem 0 2rem 0;'>
+    <h1 class='main-header'>Data Insightopia Sub Editor Assistant</h1>
+    <p class='subtitle'>AI-Powered Translation • Multi-Format Content Generation • News Scraping</p>
+</div>
+""", unsafe_allow_html=True)
 
-# Sidebar
+# Stats Dashboard
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("Articles", len(st.session_state.articles), delta=None)
+with col2:
+    st.metric("Translations", len(st.session_state.translations), delta=None)
+with col3:
+    scheduler = st.session_state.scheduler
+    scheduler_status = scheduler.get_status()
+    status_text = "Active" if scheduler_status['is_running'] else "Idle"
+    st.metric("Scheduler", status_text, delta=None)
+with col4:
+    enhanced_count = len(st.session_state.enhanced_articles) if hasattr(st.session_state, 'enhanced_articles') else 0
+    st.metric("Enhanced", enhanced_count, delta=None)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ============================================================================
+# MODERN SIDEBAR
+# ============================================================================
 with st.sidebar:
-    st.header("⚙️ Control Panel")
+    # Sidebar Header
+    st.markdown("""
+    <div style='text-align: center; padding: 1rem 0 2rem 0;'>
+        <h2 style='color: #ffffff; font-weight: 700; margin: 0;'>Control Panel</h2>
+        <p style='color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; margin-top: 0.5rem;'>
+            Manage your workflow
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ========================================================================
     # AUTHENTICATION STATUS & LOGOUT
     # ========================================================================
-    st.success("✅ Logged in")
-    if st.button("🚪 Logout", use_container_width=True):
+    st.markdown("""
+    <div style='background: rgba(76, 175, 80, 0.2); padding: 0.8rem; border-radius: 10px;
+                border: 1px solid rgba(76, 175, 80, 0.3); text-align: center; margin-bottom: 1.5rem;'>
+        <span style='color: #ffffff; font-weight: 600;'>● Authenticated</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("Logout", use_container_width=True):
         st.session_state.authenticated = False
         logger.info("User logged out")
         st.rerun()
@@ -358,18 +864,19 @@ with st.sidebar:
     # ========================================================================
     # SCRAPER CONTROL
     # ========================================================================
-    st.subheader("🕷️ Scraper Control")
+    st.markdown("### Scraper Control")
+    st.caption("Scrape travel news from multiple sources")
     
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        if st.button("▶️ Start Scraping", use_container_width=True, type="primary"):
+        if st.button("Start Scraping", use_container_width=True, type="primary"):
             scraper = TravelNewsScraper()
-            
+
             # Run in background thread
             thread = threading.Thread(target=run_scraper_async, args=(scraper,))
             thread.start()
-            
+
             st.session_state.scraper_status = scraper.status
             st.session_state.is_polling = True  # Enable polling
             st.session_state.notification_shown = False  # Reset notification flag
@@ -377,12 +884,12 @@ with st.sidebar:
             logger.info("Manual scraping started")
             time.sleep(0.5)
             st.rerun()
-    
+
     with col2:
-        if st.button("🔄 Load Latest", use_container_width=True):
+        if st.button("Load Latest", use_container_width=True):
             st.session_state.articles = load_articles()
             if st.session_state.articles:
-                st.success(f"✅ Loaded {len(st.session_state.articles)} articles!")
+                st.success(f"Loaded {len(st.session_state.articles)} articles!")
             else:
                 st.warning("No data found. Run scraper first!")
     
@@ -449,11 +956,12 @@ with st.sidebar:
             st.session_state.is_polling = False
     
     st.divider()
-    
+
     # ========================================================================
     # SCHEDULER CONTROL
     # ========================================================================
-    st.subheader("⏰ Automated Scheduling")
+    st.markdown("### Automated Scheduling")
+    st.caption("Schedule periodic scraping tasks")
     
     scheduler = st.session_state.scheduler
     scheduler_status = scheduler.get_status()
@@ -467,18 +975,18 @@ with st.sidebar:
     )
     
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        if st.button("▶️ Start Schedule", use_container_width=True):
+        if st.button("Start Schedule", use_container_width=True):
             if scheduler.start(interval_hours=interval):
-                st.success(f"✅ Scheduler started! Interval: {interval}h")
+                st.success(f"Scheduler started! Interval: {interval}h")
                 logger.info(f"Scheduler started with interval: {interval}h")
                 st.rerun()
-    
+
     with col2:
-        if st.button("⏸️ Stop Schedule", use_container_width=True):
+        if st.button("Stop Schedule", use_container_width=True):
             if scheduler.stop():
-                st.success("⏸️ Scheduler stopped")
+                st.success("Scheduler stopped")
                 logger.info("Scheduler stopped")
                 st.rerun()
     
@@ -486,7 +994,7 @@ with st.sidebar:
     if scheduler_status['is_running']:
         st.markdown(f"""
         <div class="success-box">
-            <strong>✅ Scheduler Active</strong><br>
+            <strong>Scheduler Active</strong><br>
             Interval: {scheduler_status['interval_hours']}h<br>
             Next run: {scheduler_status['time_until_next']}<br>
             Total runs: {scheduler_status['run_count']}
@@ -494,13 +1002,14 @@ with st.sidebar:
         """, unsafe_allow_html=True)
     else:
         st.info("Scheduler is idle")
-    
+
     st.divider()
-    
+
     # ========================================================================
     # TRANSLATION SETTINGS
     # ========================================================================
-    st.subheader("🌐 Translation")
+    st.markdown("### Translation Settings")
+    st.caption("Configure translation language")
     
     st.session_state.target_lang = st.selectbox(
         "Target Language",
@@ -510,23 +1019,23 @@ with st.sidebar:
     )
     
     st.divider()
-    
+
     # ========================================================================
     # STATISTICS
     # ========================================================================
-    st.subheader("📊 Statistics")
+    st.markdown("### Quick Statistics")
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.metric("Articles", len(st.session_state.articles))
-    
+
     with col2:
         st.metric("Translations", len(st.session_state.translations))
-    
+
     st.divider()
-    
+
     # Info
-    with st.expander("ℹ️ About"):
+    with st.expander("About"):
         st.markdown("""
         ### How to Use
         1. **Start Scraper** - Scrape travel news
@@ -541,25 +1050,25 @@ with st.sidebar:
         - **Logs**: `logs/`
         """)
 
-# Main content area
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📰 Articles", "🔄 Translate", "🔍 Search", "🚀 Future Enhancement", "⚙️ Settings"])
+# Main content area - Modern Professional Tabs
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Articles", "Translate", "Search", "Web Extraction", "Settings"])
 
 # ============================================================================
 # TAB 1: ARTICLES
 # ============================================================================
 with tab1:
-    st.header("📰 Available Travel Articles")
-
-    # (Removed top-level notification - now showing inline below Select buttons)
+    st.markdown("## Available Travel Articles")
+    st.caption("Browse and select articles from your scraped data")
 
     if not st.session_state.articles:
-        st.info("👆 Click 'Load Latest' or 'Start Scraping' in the sidebar")
+        st.info("Click 'Load Latest' or 'Start Scraping' in the sidebar to get started")
     else:
         # Get unique sources
         all_sources = sorted(list(set([a.get('publisher', 'Unknown') for a in st.session_state.articles])))
 
         # Filters Section
-        st.subheader("🔍 Filters")
+        st.markdown("### Filters")
+        st.caption("Refine your article search")
         col1, col2 = st.columns([3, 1])
 
         with col1:
@@ -577,7 +1086,7 @@ with tab1:
 
         # Website filter
         selected_sources = st.multiselect(
-            "🌐 Filter by Website",
+            "Filter by Website",
             options=all_sources,
             default=all_sources,
             help="Select websites to display articles from"
@@ -627,7 +1136,7 @@ with tab1:
                 source_counts[source] = source_counts.get(source, 0) + 1
 
             breakdown_text = " | ".join([f"{src}: {count}" for src, count in sorted(source_counts.items())])
-            st.info(f"📊 {breakdown_text}")
+            st.info(f"By Source: {breakdown_text}")
 
         st.write(f"Showing {start_idx + 1}-{end_idx} of {total_articles} articles (Page {st.session_state.current_page}/{total_pages})")
 
@@ -636,12 +1145,12 @@ with tab1:
             col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
 
             with col1:
-                if st.button("⏮️ First", disabled=(st.session_state.current_page == 1)):
+                if st.button("First", disabled=(st.session_state.current_page == 1)):
                     st.session_state.current_page = 1
                     st.rerun()
 
             with col2:
-                if st.button("◀️ Prev", disabled=(st.session_state.current_page == 1)):
+                if st.button("Previous", disabled=(st.session_state.current_page == 1)):
                     st.session_state.current_page -= 1
                     st.rerun()
 
@@ -658,12 +1167,12 @@ with tab1:
                     st.rerun()
 
             with col4:
-                if st.button("Next ▶️", disabled=(st.session_state.current_page == total_pages)):
+                if st.button("Next", disabled=(st.session_state.current_page == total_pages)):
                     st.session_state.current_page += 1
                     st.rerun()
 
             with col5:
-                if st.button("Last ⏭️", disabled=(st.session_state.current_page == total_pages)):
+                if st.button("Last", disabled=(st.session_state.current_page == total_pages)):
                     st.session_state.current_page = total_pages
                     st.rerun()
 
@@ -708,12 +1217,12 @@ with tab1:
             col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
 
             with col1:
-                if st.button("⏮️ First", key="first_bottom", disabled=(st.session_state.current_page == 1)):
+                if st.button("First", key="first_bottom", disabled=(st.session_state.current_page == 1)):
                     st.session_state.current_page = 1
                     st.rerun()
 
             with col2:
-                if st.button("◀️ Prev", key="prev_bottom", disabled=(st.session_state.current_page == 1)):
+                if st.button("Previous", key="prev_bottom", disabled=(st.session_state.current_page == 1)):
                     st.session_state.current_page -= 1
                     st.rerun()
 
@@ -730,12 +1239,12 @@ with tab1:
                     st.rerun()
 
             with col4:
-                if st.button("Next ▶️", key="next_bottom", disabled=(st.session_state.current_page == total_pages)):
+                if st.button("Next", key="next_bottom", disabled=(st.session_state.current_page == total_pages)):
                     st.session_state.current_page += 1
                     st.rerun()
 
             with col5:
-                if st.button("Last ⏭️", key="last_bottom", disabled=(st.session_state.current_page == total_pages)):
+                if st.button("Last", key="last_bottom", disabled=(st.session_state.current_page == total_pages)):
                     st.session_state.current_page = total_pages
                     st.rerun()
 
@@ -743,13 +1252,14 @@ with tab1:
 # TAB 2: TRANSLATE
 # ============================================================================
 with tab2:
-    st.header("🔄 Translate Article")
+    st.markdown("## Translate Article")
+    st.caption("AI-powered translation with content extraction")
 
     # Show selected article info if available
     if st.session_state.selected_article:
         article = st.session_state.selected_article
 
-        st.success("✅ Selected Article:")
+        st.success("Selected Article:")
         st.markdown(f"""
         <div class="article-card">
             <div class="article-title">{article.get('headline', 'No title')}</div>
@@ -761,18 +1271,19 @@ with tab2:
         """, unsafe_allow_html=True)
 
         if article.get('article_url'):
-            st.markdown(f"[🔗 Open in Browser]({article['article_url']})")
+            st.markdown(f"[Open Article in Browser]({article['article_url']})")
 
         st.divider()
 
     # Always show paste option
     # Always use AI translation (best quality)
     st.session_state.translation_method = 'openai'
-    st.info("✨ **Smart AI Translation** - Automatically extracts and translates articles to Bengali")
+    st.info("**Smart AI Translation** - Automatically extracts and translates articles to Bengali")
 
     st.divider()
 
-    st.subheader("📝 Paste Article Content")
+    st.markdown("### Paste Article Content")
+    st.caption("Copy the full webpage and paste it here")
 
     st.markdown("""
     **Instructions:**
@@ -791,10 +1302,10 @@ with tab2:
     col1, col2 = st.columns(2)
 
     with col1:
-        translate_btn = st.button("🔄 Translate", use_container_width=True, type="primary")
+        translate_btn = st.button("Translate", use_container_width=True, type="primary")
 
     with col2:
-        clear_btn = st.button("🗑️ Clear", use_container_width=True)
+        clear_btn = st.button("Clear", use_container_width=True)
 
     if clear_btn:
         st.session_state.current_original = ''
@@ -804,9 +1315,9 @@ with tab2:
 
     if translate_btn:
         if not original_text.strip():
-            st.error("❌ Paste some text first")
+            st.error("Please paste some text first")
         else:
-            with st.spinner("🔄 Translating to Bengali..."):
+            with st.spinner("Translating to Bengali..."):
                 translated, tokens = translate_text(
                     original_text,
                     st.session_state.target_lang,
@@ -816,11 +1327,11 @@ with tab2:
                 st.session_state.current_translated = translated
                 st.session_state.translation_tokens = tokens
 
-                st.success("✅ Translation Complete!")
+                st.success("Translation Complete!")
 
     if st.session_state.current_translated:
         st.divider()
-        st.subheader("✨ Translation")
+        st.markdown("### Translation Result")
         st.markdown(f"""
         <div class="translation-box">
             {st.session_state.current_translated}
@@ -830,7 +1341,7 @@ with tab2:
         col1, col2 = st.columns(2)
 
         with col1:
-            if st.button("💾 Save", use_container_width=True):
+            if st.button("Save Translation", use_container_width=True):
                 # Create article object if not exists
                 article = st.session_state.selected_article if st.session_state.selected_article else {
                     'headline': 'Direct Paste',
@@ -843,7 +1354,7 @@ with tab2:
                     article
                 )
                 if filepath:
-                    st.success(f"✅ Saved!")
+                    st.success("Saved successfully!")
                     st.session_state.translations.append({
                         'article': article,
                         'original': st.session_state.current_original,
@@ -874,7 +1385,7 @@ TRANSLATION
 {st.session_state.current_translated}
 """
             st.download_button(
-                "📥 Download",
+                "Download Translation",
                 download_content,
                 file_name=f"translation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 use_container_width=True
@@ -884,11 +1395,12 @@ TRANSLATION
         # AI ENHANCEMENT SECTION (Integrated)
         # ========================================================================
         st.divider()
-        st.subheader("✨ AI-Powered Enhancement")
+        st.markdown("### AI-Powered Enhancement")
+        st.caption("Generate professional content in multiple formats")
 
-        with st.expander("🤖 Enhance Translation with AI", expanded=False):
+        with st.expander("Enhance Translation with AI", expanded=False):
             # Simplified AI Model Selection (client-friendly)
-            st.write("**🎯 AI Model Selection**")
+            st.markdown("**AI Model Selection**")
 
             # Model mapping: Simple names → Actual models
             model_options = {
@@ -908,7 +1420,7 @@ TRANSLATION
             st.session_state.ai_provider, st.session_state.ai_model = model_options[selected_model_name]
 
             st.write("")
-            st.write("**📝 Output Format**")
+            st.markdown("**Output Format**")
 
             # Format selection as dropdown
             format_options = {
@@ -931,7 +1443,7 @@ TRANSLATION
 
             # Generate Button
             enhance_btn = st.button(
-                "🚀 Generate Enhanced Content",
+                "Generate Enhanced Content",
                 use_container_width=True,
                 type="primary",
                 disabled=st.session_state.enhancement_in_progress or not selected_formats,
@@ -948,13 +1460,13 @@ TRANSLATION
                 status_text = st.empty()
 
                 try:
-                    status_text.text("🚀 Initializing AI provider...")
+                    status_text.text("Initializing AI provider...")
 
                     # Progress callback
                     def progress_callback(format_type, progress, result):
                         progress_bar.progress(progress)
                         config = get_format_config(format_type)
-                        status_text.text(f"✨ Generating {config['name']}... ({progress}%)")
+                        status_text.text(f"Generating {config['name']}... ({progress}%)")
 
                     # Get article info
                     article = st.session_state.selected_article if st.session_state.selected_article else {
@@ -979,11 +1491,11 @@ TRANSLATION
 
                     # Complete
                     progress_bar.progress(100)
-                    status_text.text("✅ Enhancement completed!")
+                    status_text.text("Enhancement completed!")
 
                     # Show summary
                     summary = enhancer.get_summary()
-                    st.success(f"✅ Generated {summary['successful']} formats | Tokens used: {summary['total_tokens']}")
+                    st.success(f"Generated {summary['successful']} formats | Tokens used: {summary['total_tokens']}")
 
                     # Save to history
                     st.session_state.enhanced_articles.append({
@@ -1000,20 +1512,20 @@ TRANSLATION
 
                 except Exception as e:
                     st.session_state.enhancement_in_progress = False
-                    st.error(f"❌ Error: {str(e)}")
+                    st.error(f"Error: {str(e)}")
                     logger.error(f"Enhancement failed: {e}")
 
         # Display Enhancement Results (if any)
         if st.session_state.enhancement_results:
             st.divider()
-            st.subheader("✨ Enhanced Versions")
+            st.markdown("### Enhanced Versions")
 
             # Optional AI Review Button (after generation)
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.info("💡 Edit the content below, then copy or download")
+                st.info("Edit the content below, then copy or download")
             with col2:
-                if st.button("🔍 AI Review & Improve", use_container_width=True, help="Use AI to review and improve grammar, coherence, and tone"):
+                if st.button("AI Review & Improve", use_container_width=True, help="Use AI to review and improve grammar, coherence, and tone"):
                     with st.spinner("Reviewing content..."):
                         review_agent = ReviewAgent(
                             provider_name=st.session_state.ai_provider,
@@ -1031,7 +1543,7 @@ TRANSLATION
                                 result.content = review_result['reviewed_content']
                                 total_review_tokens += review_result['tokens_used']
 
-                        st.success(f"✅ Review completed! Tokens used: {total_review_tokens}")
+                        st.success(f"Review completed! Tokens used: {total_review_tokens}")
                         st.rerun()
 
             st.write("")
@@ -1054,18 +1566,18 @@ TRANSLATION
 
                     with col1:
                         # Preview toggle
-                        show_preview = st.checkbox("👁️ Preview", key=f"preview_{format_type}_translate")
+                        show_preview = st.checkbox("Preview", key=f"preview_{format_type}_translate")
 
                     with col2:
                         # Copy button (using Streamlit's native functionality)
-                        if st.button(f"📋 Copy", key=f"copy_{format_type}_translate", use_container_width=True):
+                        if st.button("Copy", key=f"copy_{format_type}_translate", use_container_width=True):
                             st.code(edited_content, language=None)
-                            st.success("✅ Ready to copy!")
+                            st.success("Ready to copy!")
 
                     with col3:
                         # Download button
                         st.download_button(
-                            f"📥 Download",
+                            "Download",
                             edited_content,
                             file_name=f"{format_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                             key=f"download_{format_type}_translate",
@@ -1090,12 +1602,13 @@ TRANSLATION
 
 
 # ============================================================================
-# TAB 4: FUTURE ENHANCEMENT (Playwright Web Content Extractor)
+# TAB 4: WEB EXTRACTION (Playwright Web Content Extractor)
 # ============================================================================
 with tab4:
-    st.header("🚀 Future Enhancement - Web Content Extractor")
+    st.markdown("## Web Content Extractor")
+    st.caption("Extract complete content from any website using browser automation")
 
-    st.info("💡 **Feature**: Extract complete content from any website using Playwright browser automation")
+    st.info("**Feature**: Extract complete content from any website using Playwright browser automation")
 
     # Initialize session state for extraction
     if 'extraction_result' not in st.session_state:
@@ -1118,7 +1631,7 @@ with tab4:
         st.write("")
         st.write("")
         extract_btn = st.button(
-            "🔍 Extract Content",
+            "Extract Content",
             use_container_width=True,
             type="primary",
             disabled=st.session_state.extraction_in_progress or not website_url
@@ -1133,7 +1646,7 @@ with tab4:
         status_placeholder = st.empty()
 
         try:
-            progress_placeholder.info("🌐 Starting browser automation...")
+            progress_placeholder.info("Starting browser automation...")
 
             # Import required libraries
             import subprocess
@@ -1446,21 +1959,23 @@ except Exception as e:
 # TAB 5: SETTINGS (History, Files, Logs, App Settings)
 # ============================================================================
 with tab5:
-    st.header("⚙️ Settings & Management")
+    st.markdown("## Settings & Management")
+    st.caption("Manage your data, history, and application settings")
 
     # Sub-tabs within Settings
     settings_tab1, settings_tab2, settings_tab3, settings_tab4 = st.tabs([
-        "📚 Translation History",
-        "📁 Files",
-        "📋 Logs",
-        "⚙️ App Settings"
+        "Translation History",
+        "Files",
+        "Logs",
+        "App Settings"
     ])
 
     # ========================================================================
     # SETTINGS SUB-TAB 1: TRANSLATION HISTORY
     # ========================================================================
     with settings_tab1:
-        st.subheader("📚 Translation History")
+        st.markdown("### Translation History")
+        st.caption("View and manage your translation history")
 
         if not st.session_state.translations:
             st.info("No translations yet")
@@ -1483,10 +1998,11 @@ with tab5:
     # SETTINGS SUB-TAB 2: FILES
     # ========================================================================
     with settings_tab2:
-        st.subheader("📁 Data Files")
+        st.markdown("### Data Files")
+        st.caption("View and manage scraped data and translations")
 
         # Scraped files
-        st.markdown("### 🕷️ Scraped Data")
+        st.markdown("**Scraped Data**")
         json_files = sorted(RAW_DATA_DIR.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)
 
         if json_files:
@@ -1510,7 +2026,7 @@ with tab5:
         st.divider()
 
         # Translation files
-        st.markdown("### 📝 Translations")
+        st.markdown("**Translations**")
         trans_files = sorted(TRANSLATIONS_DIR.glob('*.txt'), key=lambda p: p.stat().st_mtime, reverse=True)
 
         if trans_files:
@@ -1524,7 +2040,8 @@ with tab5:
     # SETTINGS SUB-TAB 3: LOGS
     # ========================================================================
     with settings_tab3:
-        st.subheader("📋 Application Logs")
+        st.markdown("### Application Logs")
+        st.caption("View and filter application logs")
 
         # Get log files
         from config.settings import LOGS_DIR
@@ -1538,10 +2055,10 @@ with tab5:
 
             with col1:
                 log_types = {
-                    'scraper': '🕷️ Scraper Logs',
-                    'webapp': '🌐 Web App Logs',
-                    'scheduler': '⏰ Scheduler Logs',
-                    'enhancer': '✨ AI Enhancer Logs'
+                    'scraper': 'Scraper Logs',
+                    'webapp': 'Web App Logs',
+                    'scheduler': 'Scheduler Logs',
+                    'enhancer': 'AI Enhancer Logs'
                 }
 
                 selected_log_type = st.selectbox(
@@ -1642,9 +2159,10 @@ with tab5:
     # SETTINGS SUB-TAB 4: APP SETTINGS
     # ========================================================================
     with settings_tab4:
-        st.subheader("⚙️ Application Settings")
+        st.markdown("### Application Settings")
+        st.caption("Configure AI models, search settings, and view system information")
 
-        st.markdown("### 🤖 AI Configuration")
+        st.markdown("**AI Configuration**")
 
         col1, col2 = st.columns(2)
 
@@ -1660,7 +2178,7 @@ with tab5:
 
         st.divider()
 
-        st.markdown("### 🔍 Search Settings")
+        st.markdown("**Search Settings**")
 
         col1, col2 = st.columns(2)
 
@@ -1690,7 +2208,7 @@ with tab5:
 
         st.divider()
 
-        st.markdown("### 📊 System Information")
+        st.markdown("**System Information**")
 
         info_col1, info_col2 = st.columns(2)
 
@@ -1707,7 +2225,7 @@ with tab5:
 
         st.divider()
 
-        st.markdown("### 🗂️ Data Directories")
+        st.markdown("**Data Directories**")
         st.code(f"""
 Raw Data:        {RAW_DATA_DIR}
 Translations:    {TRANSLATIONS_DIR}
@@ -1719,9 +2237,8 @@ Logs:            {LOGS_DIR}
 # TAB 3: SEARCH
 # ============================================================================
 with tab3:
-    st.header("🔍 Search Articles")
-
-    # (Removed top-level notification - now showing inline below Select buttons)
+    st.markdown("## Search Articles")
+    st.caption("Search the web for news articles using keywords")
 
     # Search Input Section
     col1, col2, col3 = st.columns([3, 1, 1])
@@ -1751,7 +2268,7 @@ with tab3:
     with col3:
         st.write("")  # Spacing
         search_btn = st.button(
-            "🔍 Search",
+            "Search",
             use_container_width=True,
             type="primary",
             disabled=not keyword or st.session_state.search_in_progress
@@ -1762,7 +2279,7 @@ with tab3:
         st.session_state.search_in_progress = True
         st.session_state.search_keyword = keyword
 
-        with st.spinner(f"🌐 Searching for '{keyword}'..."):
+        with st.spinner(f"Searching for '{keyword}'..."):
             try:
                 from core.keyword_search import KeywordSearcher
                 searcher = KeywordSearcher()
@@ -1775,12 +2292,12 @@ with tab3:
                 st.session_state.search_in_progress = False
 
                 if articles:
-                    st.success(f"✅ Found {len(articles)} articles")
+                    st.success(f"Found {len(articles)} articles")
                 else:
                     st.warning("No results found")
 
             except Exception as e:
-                st.error(f"❌ Search failed: {str(e)}")
+                st.error(f"Search failed: {str(e)}")
                 logger.error(f"Keyword search error: {e}")
                 st.session_state.search_in_progress = False
 
@@ -1792,8 +2309,8 @@ with tab3:
         articles = results.get('web_search', [])
 
         if articles:
-            st.subheader(f"📋 Search Results ({len(articles)})")
-            st.info("💡 Click 'Select' to open the article in the Translate tab")
+            st.markdown(f"### Search Results ({len(articles)})")
+            st.info("Click 'Select' to open the article in the Translate tab")
 
             # Display search results in a simple list
             for idx, article in enumerate(articles):
@@ -1835,12 +2352,24 @@ with tab3:
 
                     st.divider()
 
-# Footer
+# ============================================================================
+# PROFESSIONAL FOOTER
+# ============================================================================
 st.divider()
 st.markdown("""
-<div style='text-align: center; color: #666; padding: 1rem;'>
-    ✈️ Travel News Translator | Built with Streamlit<br>
-    📝 Data: <code>data/</code> | Translations: <code>translations/</code> | Logs: <code>logs/</code>
+<div style='text-align: center; padding: 2rem 0 1rem 0; background: var(--bg-secondary);
+            border-top: 1px solid var(--gray-300); margin-top: 2rem;'>
+    <div style='max-width: 800px; margin: 0 auto; padding: 0 1rem;'>
+        <p style='color: var(--primary-navy); font-size: 1rem; font-weight: 700; margin: 0 0 0.5rem 0;'>
+            Data Insightopia Sub Editor Assistant
+        </p>
+        <p style='color: var(--gray-600); font-size: 0.85rem; margin: 0 0 0.8rem 0;'>
+            Powered by AI • OpenAI GPT-4 • Multi-Format Content Generation
+        </p>
+        <p style='color: var(--gray-500); font-size: 0.75rem; margin: 0;'>
+            Professional News Translation Platform for Sub-Editors
+        </p>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
