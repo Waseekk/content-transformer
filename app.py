@@ -32,7 +32,17 @@ from core.translator import OpenAITranslator, translate_webpage
 # NEW: Review Agent for Quality Checking
 from core.review_agent import ReviewAgent
 
+# Environment Detection
+from utils.environment import is_playwright_available, is_streamlit_cloud, get_recommended_extraction_method
+
 logger = get_webapp_logger()
+
+# Check environment and available features
+PLAYWRIGHT_AVAILABLE = is_playwright_available()
+IS_STREAMLIT_CLOUD = is_streamlit_cloud()
+RECOMMENDED_EXTRACTION = get_recommended_extraction_method()
+
+logger.info(f"Environment: Streamlit Cloud={IS_STREAMLIT_CLOUD}, Playwright={PLAYWRIGHT_AVAILABLE}, Recommended Extraction={RECOMMENDED_EXTRACTION}")
 
 # ============================================================================
 # PAGE CONFIGURATION
@@ -1051,7 +1061,12 @@ with st.sidebar:
         """)
 
 # Main content area - Modern Professional Tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Articles", "Translate", "Search", "Web Extraction", "Settings"])
+# Conditionally include Web Extraction tab based on Playwright availability
+if PLAYWRIGHT_AVAILABLE:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Articles", "Translate", "Search", "Web Extraction", "Settings"])
+else:
+    tab1, tab2, tab3, tab5 = st.tabs(["Articles", "Translate", "Search", "Settings"])
+    tab4 = None  # No Web Extraction tab
 
 # ============================================================================
 # TAB 1: ARTICLES
@@ -1604,59 +1619,60 @@ TRANSLATION
 # ============================================================================
 # TAB 4: WEB EXTRACTION (Playwright Web Content Extractor)
 # ============================================================================
-with tab4:
-    st.markdown("## Web Content Extractor")
-    st.caption("Extract complete content from any website using browser automation")
+if tab4 is not None:  # Only show if Playwright is available
+    with tab4:
+        st.markdown("## Web Content Extractor")
+        st.caption("Extract complete content from any website using browser automation")
 
-    st.info("**Feature**: Extract complete content from any website using Playwright browser automation")
+        st.info("**Feature**: Extract complete content from any website using Playwright browser automation")
 
-    # Initialize session state for extraction
-    if 'extraction_result' not in st.session_state:
-        st.session_state.extraction_result = None
-    if 'extraction_in_progress' not in st.session_state:
-        st.session_state.extraction_in_progress = False
+        # Initialize session state for extraction
+        if 'extraction_result' not in st.session_state:
+            st.session_state.extraction_result = None
+        if 'extraction_in_progress' not in st.session_state:
+            st.session_state.extraction_in_progress = False
 
-    # URL Input
-    col1, col2 = st.columns([3, 1])
+        # URL Input
+        col1, col2 = st.columns([3, 1])
 
-    with col1:
-        website_url = st.text_input(
-            "Website URL",
-            placeholder="https://example.com/article",
-            help="Enter the full URL of the website you want to extract content from",
-            key="website_url_input"
-        )
+        with col1:
+            website_url = st.text_input(
+                "Website URL",
+                placeholder="https://example.com/article",
+                help="Enter the full URL of the website you want to extract content from",
+                key="website_url_input"
+            )
 
-    with col2:
-        st.write("")
-        st.write("")
-        extract_btn = st.button(
-            "Extract Content",
-            use_container_width=True,
-            type="primary",
-            disabled=st.session_state.extraction_in_progress or not website_url
-        )
+        with col2:
+            st.write("")
+            st.write("")
+            extract_btn = st.button(
+                "Extract Content",
+                use_container_width=True,
+                type="primary",
+                disabled=st.session_state.extraction_in_progress or not website_url
+            )
 
-    # Extract button action
-    if extract_btn and website_url:
-        st.session_state.extraction_in_progress = True
-        st.session_state.extraction_result = None
+        # Extract button action
+        if extract_btn and website_url:
+            st.session_state.extraction_in_progress = True
+            st.session_state.extraction_result = None
 
-        progress_placeholder = st.empty()
-        status_placeholder = st.empty()
+            progress_placeholder = st.empty()
+            status_placeholder = st.empty()
 
-        try:
-            progress_placeholder.info("Starting browser automation...")
+            try:
+                progress_placeholder.info("Starting browser automation...")
 
-            # Import required libraries
-            import subprocess
-            import json
-            import tempfile
+                # Import required libraries
+                import subprocess
+                import json
+                import tempfile
 
-            logger.info(f"Starting content extraction from: {website_url}")
+                logger.info(f"Starting content extraction from: {website_url}")
 
-            # Create a temporary Python script to run Playwright
-            extraction_script = f"""
+                # Create a temporary Python script to run Playwright
+                extraction_script = f"""
 import sys
 import json
 from playwright.sync_api import sync_playwright
@@ -1730,230 +1746,230 @@ except Exception as e:
     sys.exit(1)
 """
 
-            # Write script to temp file
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
-                temp_script = f.name
-                f.write(extraction_script)
+                # Write script to temp file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+                    temp_script = f.name
+                    f.write(extraction_script)
 
-            status_placeholder.info("📡 Navigating to website...")
+                status_placeholder.info("📡 Navigating to website...")
 
-            # Run the script in a subprocess
-            result = subprocess.run(
-                [sys.executable, temp_script],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+                # Run the script in a subprocess
+                result = subprocess.run(
+                    [sys.executable, temp_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
 
-            # Clean up temp file
-            import os
-            try:
-                os.unlink(temp_script)
-            except:
-                pass
-
-            if result.returncode == 0:
-                # Parse JSON output
+                # Clean up temp file
+                import os
                 try:
-                    output = json.loads(result.stdout)
+                    os.unlink(temp_script)
+                except:
+                    pass
 
-                    if output['success']:
-                        extraction_data = output['data']
+                if result.returncode == 0:
+                    # Parse JSON output
+                    try:
+                        output = json.loads(result.stdout)
 
-                        # Store result
-                        st.session_state.extraction_result = {
-                            'url': website_url,
-                            'data': extraction_data,
-                            'timestamp': datetime.now().isoformat()
-                        }
+                        if output['success']:
+                            extraction_data = output['data']
 
-                        logger.info(f"Extraction completed: {len(extraction_data['fullText'])} characters extracted")
-                        progress_placeholder.empty()
-                        status_placeholder.success(f"✅ Successfully extracted content from {website_url}")
-                    else:
-                        raise Exception(output['error'])
-                except json.JSONDecodeError as e:
-                    # Show raw output if JSON parsing fails
-                    logger.error(f"JSON decode error. Stdout: {result.stdout}")
+                            # Store result
+                            st.session_state.extraction_result = {
+                                'url': website_url,
+                                'data': extraction_data,
+                                'timestamp': datetime.now().isoformat()
+                            }
+
+                            logger.info(f"Extraction completed: {len(extraction_data['fullText'])} characters extracted")
+                            progress_placeholder.empty()
+                            status_placeholder.success(f"✅ Successfully extracted content from {website_url}")
+                        else:
+                            raise Exception(output['error'])
+                    except json.JSONDecodeError as e:
+                        # Show raw output if JSON parsing fails
+                        logger.error(f"JSON decode error. Stdout: {result.stdout}")
+                        logger.error(f"Stderr: {result.stderr}")
+                        raise Exception(f"Failed to parse extraction output. Stdout: {result.stdout[:500]}, Stderr: {result.stderr[:500]}")
+                else:
+                    # Show detailed error information
+                    error_msg = f"Subprocess failed with return code {result.returncode}"
+                    logger.error(f"Stdout: {result.stdout}")
                     logger.error(f"Stderr: {result.stderr}")
-                    raise Exception(f"Failed to parse extraction output. Stdout: {result.stdout[:500]}, Stderr: {result.stderr[:500]}")
-            else:
-                # Show detailed error information
-                error_msg = f"Subprocess failed with return code {result.returncode}"
-                logger.error(f"Stdout: {result.stdout}")
-                logger.error(f"Stderr: {result.stderr}")
-                raise Exception(f"{error_msg}\n\nStderr: {result.stderr}\n\nStdout: {result.stdout}")
+                    raise Exception(f"{error_msg}\n\nStderr: {result.stderr}\n\nStdout: {result.stdout}")
 
-        except subprocess.TimeoutExpired:
-            logger.error("Extraction timeout")
-            progress_placeholder.empty()
-            status_placeholder.error("❌ Extraction timed out (120 seconds). The website may be too slow or unresponsive.")
-        except Exception as e:
-            logger.error(f"Extraction error: {e}")
-            progress_placeholder.empty()
-            status_placeholder.error(f"❌ Extraction failed: {str(e)}")
-            st.info("💡 Make sure Playwright is installed: `pip install playwright && playwright install chromium`")
-        finally:
-            st.session_state.extraction_in_progress = False
-            if st.session_state.extraction_result:
-                st.rerun()
+            except subprocess.TimeoutExpired:
+                logger.error("Extraction timeout")
+                progress_placeholder.empty()
+                status_placeholder.error("❌ Extraction timed out (120 seconds). The website may be too slow or unresponsive.")
+            except Exception as e:
+                logger.error(f"Extraction error: {e}")
+                progress_placeholder.empty()
+                status_placeholder.error(f"❌ Extraction failed: {str(e)}")
+                st.info("💡 Make sure Playwright is installed: `pip install playwright && playwright install chromium`")
+            finally:
+                st.session_state.extraction_in_progress = False
+                if st.session_state.extraction_result:
+                    st.rerun()
 
-    # Display extraction results
-    if st.session_state.extraction_result:
-        result = st.session_state.extraction_result
-        data = result['data']
+        # Display extraction results
+        if st.session_state.extraction_result:
+            result = st.session_state.extraction_result
+            data = result['data']
 
-        st.divider()
-        st.subheader("📊 Extraction Results")
+            st.divider()
+            st.subheader("📊 Extraction Results")
 
-        # Metadata
-        with st.expander("📋 Page Metadata", expanded=True):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Characters", f"{data['metadata']['characterCount']:,}")
-            with col2:
-                st.metric("Total Links", len(data['links']))
-            with col3:
-                st.metric("Total Images", len(data['images']))
+            # Metadata
+            with st.expander("📋 Page Metadata", expanded=True):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Characters", f"{data['metadata']['characterCount']:,}")
+                with col2:
+                    st.metric("Total Links", len(data['links']))
+                with col3:
+                    st.metric("Total Images", len(data['images']))
 
-            st.write("**Page Title:**", data['metadata']['title'])
-            if data['metadata']['description']:
-                st.write("**Description:**", data['metadata']['description'])
-            st.write("**URL:**", data['metadata']['url'])
+                st.write("**Page Title:**", data['metadata']['title'])
+                if data['metadata']['description']:
+                    st.write("**Description:**", data['metadata']['description'])
+                st.write("**URL:**", data['metadata']['url'])
 
-        # Tabs for different content types
-        content_tab1, content_tab2, content_tab3, content_tab4, content_tab5, content_tab6 = st.tabs([
-            "📄 Full Text",
-            "🔗 Links",
-            "📝 Headings",
-            "📋 Lists",
-            "🖼️ Images",
-            "💾 Actions"
-        ])
+            # Tabs for different content types
+            content_tab1, content_tab2, content_tab3, content_tab4, content_tab5, content_tab6 = st.tabs([
+                "📄 Full Text",
+                "🔗 Links",
+                "📝 Headings",
+                "📋 Lists",
+                "🖼️ Images",
+                "💾 Actions"
+            ])
 
-        with content_tab1:
-            st.subheader("📄 Complete Text Content")
-            st.text_area(
-                "Full Text",
-                value=data['fullText'],
-                height=400,
-                key="extracted_full_text"
-            )
-            if st.button("📋 Copy Full Text", key="copy_fulltext"):
-                st.code(data['fullText'], language=None)
+            with content_tab1:
+                st.subheader("📄 Complete Text Content")
+                st.text_area(
+                    "Full Text",
+                    value=data['fullText'],
+                    height=400,
+                    key="extracted_full_text"
+                )
+                if st.button("📋 Copy Full Text", key="copy_fulltext"):
+                    st.code(data['fullText'], language=None)
 
-        with content_tab2:
-            st.subheader(f"🔗 All Links ({len(data['links'])})")
-            if data['links']:
-                # Filter options
-                link_filter = st.text_input("Filter links", placeholder="Search links...", key="link_filter")
+            with content_tab2:
+                st.subheader(f"🔗 All Links ({len(data['links'])})")
+                if data['links']:
+                    # Filter options
+                    link_filter = st.text_input("Filter links", placeholder="Search links...", key="link_filter")
 
-                filtered_links = [
-                    link for link in data['links']
-                    if not link_filter or link_filter.lower() in link['text'].lower() or link_filter.lower() in link['href'].lower()
-                ]
+                    filtered_links = [
+                        link for link in data['links']
+                        if not link_filter or link_filter.lower() in link['text'].lower() or link_filter.lower() in link['href'].lower()
+                    ]
 
-                st.write(f"Showing {len(filtered_links)} of {len(data['links'])} links")
+                    st.write(f"Showing {len(filtered_links)} of {len(data['links'])} links")
 
-                for idx, link in enumerate(filtered_links[:100]):  # Limit to first 100
-                    with st.container():
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.markdown(f"**{idx+1}. {link['text'][:100]}**")
-                            st.caption(f"🔗 {link['href']}")
-                        with col2:
-                            if st.button("Open", key=f"open_link_{idx}"):
-                                st.write(f"[Open Link]({link['href']})")
-                        st.divider()
+                    for idx, link in enumerate(filtered_links[:100]):  # Limit to first 100
+                        with st.container():
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.markdown(f"**{idx+1}. {link['text'][:100]}**")
+                                st.caption(f"🔗 {link['href']}")
+                            with col2:
+                                if st.button("Open", key=f"open_link_{idx}"):
+                                    st.write(f"[Open Link]({link['href']})")
+                            st.divider()
 
-                if len(filtered_links) > 100:
-                    st.info(f"Showing first 100 links. Total: {len(filtered_links)}")
-            else:
-                st.info("No links found on this page")
+                    if len(filtered_links) > 100:
+                        st.info(f"Showing first 100 links. Total: {len(filtered_links)}")
+                else:
+                    st.info("No links found on this page")
 
-        with content_tab3:
-            st.subheader(f"📝 Headings ({len(data['headings'])})")
-            if data['headings']:
-                for heading in data['headings']:
-                    level = int(heading['level'][1])  # Extract number from 'H1', 'H2', etc.
-                    indent = "  " * (level - 1)
-                    st.markdown(f"{indent}**{heading['level']}:** {heading['text']}")
-            else:
-                st.info("No headings found on this page")
+            with content_tab3:
+                st.subheader(f"📝 Headings ({len(data['headings'])})")
+                if data['headings']:
+                    for heading in data['headings']:
+                        level = int(heading['level'][1])  # Extract number from 'H1', 'H2', etc.
+                        indent = "  " * (level - 1)
+                        st.markdown(f"{indent}**{heading['level']}:** {heading['text']}")
+                else:
+                    st.info("No headings found on this page")
 
-        with content_tab4:
-            st.subheader(f"📋 Lists ({len(data['lists'])})")
-            if data['lists']:
-                for idx, list_data in enumerate(data['lists']):
-                    with st.expander(f"{list_data['type']} - {len(list_data['items'])} items", expanded=idx==0):
-                        for item in list_data['items']:
-                            st.write(f"• {item}")
-            else:
-                st.info("No lists found on this page")
+            with content_tab4:
+                st.subheader(f"📋 Lists ({len(data['lists'])})")
+                if data['lists']:
+                    for idx, list_data in enumerate(data['lists']):
+                        with st.expander(f"{list_data['type']} - {len(list_data['items'])} items", expanded=idx==0):
+                            for item in list_data['items']:
+                                st.write(f"• {item}")
+                else:
+                    st.info("No lists found on this page")
 
-        with content_tab5:
-            st.subheader(f"🖼️ Images ({len(data['images'])})")
-            if data['images']:
-                cols = st.columns(3)
-                for idx, img in enumerate(data['images'][:30]):  # Limit to first 30
-                    with cols[idx % 3]:
-                        try:
-                            st.image(img['src'], caption=img['alt'] or img['title'] or f"Image {idx+1}", use_column_width=True)
-                        except:
-                            # Fallback if image fails to load
-                            st.caption(f"🖼️ Image {idx+1}")
-                        st.caption(f"🔗 {img['src'][:50]}...")
+            with content_tab5:
+                st.subheader(f"🖼️ Images ({len(data['images'])})")
+                if data['images']:
+                    cols = st.columns(3)
+                    for idx, img in enumerate(data['images'][:30]):  # Limit to first 30
+                        with cols[idx % 3]:
+                            try:
+                                st.image(img['src'], caption=img['alt'] or img['title'] or f"Image {idx+1}", use_column_width=True)
+                            except:
+                                # Fallback if image fails to load
+                                st.caption(f"🖼️ Image {idx+1}")
+                            st.caption(f"🔗 {img['src'][:50]}...")
 
-                if len(data['images']) > 30:
-                    st.info(f"Showing first 30 images. Total: {len(data['images'])}")
-            else:
-                st.info("No images found on this page")
+                    if len(data['images']) > 30:
+                        st.info(f"Showing first 30 images. Total: {len(data['images'])}")
+                else:
+                    st.info("No images found on this page")
 
-        with content_tab6:
-            st.subheader("💾 Save & Export Options")
+            with content_tab6:
+                st.subheader("💾 Save & Export Options")
 
-            col1, col2, col3 = st.columns(3)
+                col1, col2, col3 = st.columns(3)
 
-            with col1:
-                # Save full text
-                if st.button("💾 Save Full Text", use_container_width=True):
-                    filename = f"extracted_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                    filepath = TRANSLATIONS_DIR / filename
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        f.write(f"URL: {result['url']}\n")
-                        f.write(f"Extracted: {result['timestamp']}\n")
-                        f.write(f"Title: {data['metadata']['title']}\n\n")
-                        f.write("="*80 + "\n\n")
-                        f.write(data['fullText'])
-                    st.success(f"✅ Saved to: {filepath}")
+                with col1:
+                    # Save full text
+                    if st.button("💾 Save Full Text", use_container_width=True):
+                        filename = f"extracted_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                        filepath = TRANSLATIONS_DIR / filename
+                        with open(filepath, 'w', encoding='utf-8') as f:
+                            f.write(f"URL: {result['url']}\n")
+                            f.write(f"Extracted: {result['timestamp']}\n")
+                            f.write(f"Title: {data['metadata']['title']}\n\n")
+                            f.write("="*80 + "\n\n")
+                            f.write(data['fullText'])
+                        st.success(f"✅ Saved to: {filepath}")
 
-            with col2:
-                # Save links as CSV
-                if st.button("💾 Save Links as CSV", use_container_width=True):
-                    import csv
-                    filename = f"extracted_links_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                    filepath = TRANSLATIONS_DIR / filename
-                    with open(filepath, 'w', encoding='utf-8', newline='') as f:
-                        writer = csv.DictWriter(f, fieldnames=['text', 'href', 'title'])
-                        writer.writeheader()
-                        writer.writerows(data['links'])
-                    st.success(f"✅ Saved to: {filepath}")
+                with col2:
+                    # Save links as CSV
+                    if st.button("💾 Save Links as CSV", use_container_width=True):
+                        import csv
+                        filename = f"extracted_links_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                        filepath = TRANSLATIONS_DIR / filename
+                        with open(filepath, 'w', encoding='utf-8', newline='') as f:
+                            writer = csv.DictWriter(f, fieldnames=['text', 'href', 'title'])
+                            writer.writeheader()
+                            writer.writerows(data['links'])
+                        st.success(f"✅ Saved to: {filepath}")
 
-            with col3:
-                # Send to Translation tab
-                if st.button("🔄 Send to Translation", use_container_width=True):
-                    # Create article object for translation
-                    st.session_state.selected_article = {
-                        'headline': data['metadata']['title'],
-                        'article_url': result['url'],
-                        'publisher': 'Web Extract',
-                        'country': 'Web',
-                        'source': 'Playwright Extraction',
-                        'extracted_content': data['fullText']
-                    }
-                    st.session_state.selected_article_id = f"extract_{datetime.now().timestamp()}"
-                    st.success("✅ Content sent to Translation tab! Go to the 'Translate' tab to translate.")
-                    logger.info(f"Extracted content sent to translation: {data['metadata']['title']}")
+                with col3:
+                    # Send to Translation tab
+                    if st.button("🔄 Send to Translation", use_container_width=True):
+                        # Create article object for translation
+                        st.session_state.selected_article = {
+                            'headline': data['metadata']['title'],
+                            'article_url': result['url'],
+                            'publisher': 'Web Extract',
+                            'country': 'Web',
+                            'source': 'Playwright Extraction',
+                            'extracted_content': data['fullText']
+                        }
+                        st.session_state.selected_article_id = f"extract_{datetime.now().timestamp()}"
+                        st.success("✅ Content sent to Translation tab! Go to the 'Translate' tab to translate.")
+                        logger.info(f"Extracted content sent to translation: {data['metadata']['title']}")
 
 # ============================================================================
 # TAB 5: SETTINGS (History, Files, Logs, App Settings)
@@ -2222,6 +2238,49 @@ with tab5:
             trans_files = list(TRANSLATIONS_DIR.glob('*.txt'))
             st.metric("Scraped Data Files", len(json_files))
             st.metric("Translation Files", len(trans_files))
+
+        st.divider()
+
+        st.markdown("**Environment & Features**")
+
+        env_col1, env_col2, env_col3 = st.columns(3)
+
+        with env_col1:
+            env_status = "☁️ Streamlit Cloud" if IS_STREAMLIT_CLOUD else "💻 Local Development"
+            st.info(f"**Environment**\n\n{env_status}")
+
+        with env_col2:
+            playwright_status = "✅ Available" if PLAYWRIGHT_AVAILABLE else "❌ Not Available"
+            playwright_color = "normal" if PLAYWRIGHT_AVAILABLE else "off"
+            st.info(f"**Playwright**\n\n{playwright_status}")
+            if not PLAYWRIGHT_AVAILABLE and not IS_STREAMLIT_CLOUD:
+                st.caption("Run: `playwright install chromium`")
+
+        with env_col3:
+            st.info(f"**Extraction Method**\n\n{RECOMMENDED_EXTRACTION.title()}")
+            if not PLAYWRIGHT_AVAILABLE:
+                st.caption("Using fallback methods")
+
+        # Show available extraction libraries
+        with st.expander("📚 Available Libraries", expanded=False):
+            from utils.environment import is_newspaper_available, is_trafilatura_available
+
+            libs_status = []
+            libs_status.append(("✅" if PLAYWRIGHT_AVAILABLE else "❌") + " Playwright (browser automation)")
+            libs_status.append(("✅" if is_newspaper_available() else "❌") + " newspaper3k (article extraction)")
+            libs_status.append(("✅" if is_trafilatura_available() else "❌") + " trafilatura (article extraction)")
+
+            try:
+                from ddgs import DDGS
+                libs_status.append("✅ ddgs (web search)")
+            except:
+                libs_status.append("❌ ddgs (web search)")
+
+            for status in libs_status:
+                st.write(status)
+
+            if not PLAYWRIGHT_AVAILABLE:
+                st.info("💡 **Streamlit Cloud Note:** Playwright is not supported on Streamlit Cloud. The app automatically uses fallback extraction methods (newspaper3k/trafilatura) which work great for most news websites!")
 
         st.divider()
 
