@@ -1,0 +1,93 @@
+{
+  "news_styles": {
+    "hard_news": {
+      "description": "Objective, fact-based news reporting with inverted pyramid structure. Outputs in the same language as input (Bengali or English).",
+      "structure": {
+        "headline": {
+          "format": "BOLD, ALL CAPS or Title Case",
+          "style": "Direct, factual, attention-grabbing",
+          "length": "5-10 words",
+          "example_bengali": "**সুন্দরবনে পর্যটক সংখ্যা ৫০% বৃদ্ধি**"
+        },
+        "lead_paragraph": {
+          "format": "BOLD, single paragraph",
+          "style": "Answers: Who, What, When, Where, Why, How",
+          "length": "25-40 words",
+          "example_bengali": "**ঢাকা - বাংলাদেশ পর্যটন কর্পোরেশন বৃহস্পতিবার জানিয়েছে যে এই বছর সুন্দরবনে পর্যটক সংখ্যা গত বছরের তুলনায় ৫০% বৃদ্ধি পেয়ে ৩ লাখে পৌঁছেছে।**"
+        },
+        "body_structure": {
+          "format": "No subtitles, continuous paragraphs",
+          "paragraph_length": "2-4 sentences each",
+          "no_bold_in_body": true
+        }
+      },
+      "writing_rules": [
+        "Use past tense for completed actions",
+        "Include direct quotes with attribution",
+        "Provide context in second/third paragraph",
+        "Add background information in later paragraphs",
+        "No first-person or subjective opinions",
+        "Include official sources and data",
+        "Keep paragraphs short (40-60 words max)",
+        "No bold text except headline and lead"
+      ]
+    },
+    "soft_news": {
+      "description": "Feature-style, narrative journalism focused on human interest and storytelling. Outputs in the same language as input (Bengali or English).",
+      "structure": {
+        "headline": {
+          "format": "BOLD, ALL CAPS or Title Case",
+          "style": "Creative, evocative, may use wordplay",
+          "length": "5-12 words",
+          "example_bengali": "**সুন্দরবন: প্রকৃতির রহস্যময় রাজ্য**"
+        },
+        "introduction_paragraph": {
+          "format": "BOLD, 2-4 sentences",
+          "style": "Sets scene, provides context, emotionally engaging",
+          "length": "40-80 words",
+          "example_bengali": "**বঙ্গোপসাগরের কোলে, যেখানে নদী আর সমুদ্র মিলিত হয়ে তৈরি করেছে পৃথিবীর বৃহত্তম ম্যানগ্রোভ বন, সেখানে সুন্দরবন দাঁড়িয়ে আছে প্রকৃতির এক অপরূপ নিদর্শন হয়ে।**"
+        },
+        "body_structure": {
+          "format": "Multiple bold subtitles with descriptive content",
+          "subtitle_format": "BOLD, descriptive, often poetic",
+          "paragraph_length": "3-7 sentences each",
+          "example_subtitle_bengali": "**বাঘের রাজ্য: বিপদ আর সৌন্দর্যের সংমিশ্রণ**"
+        }
+      },
+      "writing_rules": [
+        "Use descriptive, evocative language",
+        "Include sensory details (colors, sounds, textures, smells)",
+        "Employ metaphors and literary devices",
+        "Build narrative arc across sections",
+        "Use present tense for timeless descriptions",
+        "Include historical context as storytelling",
+        "Bold each subtitle",
+        "Longer paragraphs allowed (100-150 words)",
+        "Engage emotions and imagination",
+        "Use vivid adjectives and imagery"
+      ]
+    }
+  },
+  "system_prompt": {
+    "instruction": "Detect the input language automatically. If input is in Bengali (বাংলা) or contains Bengali text, generate the entire article in Bengali. If input is purely in English, generate in English. Maintain the same language throughout the article.",
+    "hard_news": "You are an experienced news editor writing objective, fact-based news articles in hard news style. IMPORTANT: Write the article in the SAME LANGUAGE as the input. If input has Bengali text, write the ENTIRE article in Bengali. Structure: 1) BOLD headline (all caps, 5-10 words, direct and factual), 2) BOLD lead paragraph (25-40 words answering who, what, when, where, why, how), 3) Body paragraphs (2-4 sentences each, inverted pyramid, most to least important). Use past tense, include direct quotes, provide statistics, maintain objectivity. No subtitles, no metaphors, no bold text except headline and lead.",
+    "soft_news": "You are a feature writer creating engaging, narrative-driven articles in soft news style. IMPORTANT: Write the article in the SAME LANGUAGE as the input. If input has Bengali text, write the ENTIRE article in Bengali. Structure: 1) BOLD headline (all caps, creative and evocative), 2) BOLD introduction paragraph (40-80 words, sets scene with descriptive language), 3) Multiple sections with BOLD subtitles (descriptive, often including colons), 4) Body paragraphs (3-7 sentences, narrative prose with sensory details). Use vivid imagery, metaphors, present tense for descriptions, engage emotions, include historical context as storytelling."
+  },
+  "temperature": {
+    "hard_news": 0.3,
+    "soft_news": 0.7
+  },
+  "formatting": {
+    "hard_news": {
+      "headline": "**HEADLINE**",
+      "lead": "**Lead paragraph.**",
+      "body": "Regular text, no bold."
+    },
+    "soft_news": {
+      "headline": "**HEADLINE**",
+      "introduction": "**Introduction paragraph.**",
+      "subtitles": "**Subtitle: Description**",
+      "body": "Regular text with descriptions."
+    }
+  }
+}

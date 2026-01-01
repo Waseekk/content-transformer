@@ -1,0 +1,59 @@
+{
+  "branches": {
+    "master": {
+      "description": "Production Streamlit app - stable release version. currently working on next version on swiftor branch",
+      "purpose": "Production-ready code for deployment",
+      "merge_target": null,
+      "protected": true
+    },
+    "streamlit-cloud": {
+      "description": "Streamlit Cloud deployment optimizations",
+      "purpose": "Cloud-specific configurations and deployment fixes",
+      "merge_target": "master",
+      "protected": false
+    },
+    "base-model": {
+      "description": "Saves current workflow with enhancement options",
+      "purpose": "Backup/snapshot of current working state",
+      "merge_target": "master",
+      "protected": false
+    },
+    "swiftor": {
+      "description": "Active development branch (Swiftor app)",
+      "purpose": "Main development branch for next version",
+      "merge_target": "master",
+      "protected": false
+    }
+  },
+  "workflow": {
+    "structure": "All branches are direct children of master",
+    "branches": {
+      "swiftor": "swiftor → master (active development)",
+      "base-model": "base-model → master (current workflow backup)",
+      "streamlit-cloud": "streamlit-cloud → master (deployment fixes)"
+    },
+    "notes": [
+      "All branches merge directly to master",
+      "swiftor is the active development branch for next version",
+      "base-model saves the current workflow state",
+      "streamlit-cloud is for deployment-specific changes",
+      "master is production-ready code only"
+    ]
+  },
+  "conventions": {
+    "commit_format": "type: description",
+    "commit_types": [
+      "feat: new feature",
+      "fix: bug fix",
+      "refactor: code restructuring",
+      "docs: documentation changes",
+      "test: test additions/changes",
+      "chore: maintenance tasks",
+      "perf: performance improvements",
+      "style: code formatting"
+    ],
+    "no_emojis": true,
+    "no_ai_mentions": true,
+    "style": "formal and concise"
+  }
+}

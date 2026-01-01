@@ -96,15 +96,42 @@ read_docx.py
 groq_test.py
 bengali_news_output.json
 
-# Claude Code
-.claude/
+# Backup files
 app_copy.py
+professional_styles.css
 
-# Documentation and Setup Files 
-.md
-.bat
+# Backend-specific
+backend/.env
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/app.db
+backend/test_fresh.db
+backend/logs/
+backend/data/raw/
+backend/data/enhanced/
+backend/data/archive/
+backend/translations/
+backend/nul
 
+# Frontend-specific
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/dist/
+frontend/build/
+frontend/node_modules/
+frontend/package-lock.json
 
-# Backend folder (only for local development, not for Streamlit Cloud)
-# Uncomment the line below when deploying to Streamlit Cloud
-# backend/
+# Claude Code - Keep .claude directory but ignore local settings
+.claude/settings.local.json
+# Keep .claude/agents/ tracked for version control
+
+# Session notes and temporary docs (keep important docs like CLAUDE.md, README.md)
+*_PROGRESS.md
+*_COMPLETE.md
+*_STATUS.md
+*_SUMMARY.md
+FIXES_*.md
+SESSION_*.md
+TESTING_*.md
