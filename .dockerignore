@@ -1,0 +1,44 @@
+# Backend
+backend/__pycache__
+backend/**/__pycache__
+backend/*.pyc
+backend/.env
+backend/venv
+backend/env
+backend/.venv
+backend/*.db
+backend/logs/*.log
+backend/.pytest_cache
+backend/.coverage
+backend/htmlcov
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md

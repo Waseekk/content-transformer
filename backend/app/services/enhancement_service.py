@@ -16,8 +16,8 @@ from app.models.enhancement import Enhancement
 from app.models.job import Job
 from app.models.token_usage import TokenUsage
 from app.models.user_config import UserConfig
-from app.core.enhancer import ContentEnhancer
-from app.config import get_settings
+from shared.core.enhancer import ContentEnhancer
+from app.config import get_settings  # Backend-specific Pydantic settings
 
 settings = get_settings()
 

@@ -1,0 +1,75 @@
+import axios from './axios';
+
+export interface ScraperSite {
+  id: number;
+  name: string;
+  url: string;
+  enabled: boolean;
+}
+
+export interface ScraperJob {
+  job_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress?: number;
+  current_site?: string;
+  articles_scraped?: number;
+  sites_completed?: number;
+  total_sites?: number;
+  error?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface ScraperResult {
+  total_articles: number;
+  sites_scraped: number;
+  new_articles: number;
+  articles: any[];
+}
+
+// Start scraper job
+export const startScraper = async (
+  sites?: string[],
+  views?: string[]
+): Promise<ScraperJob> => {
+  const response = await axios.post('/api/scraper/run', {
+    sites,
+    views,
+  });
+  return response.data;
+};
+
+// Get scraper job status
+export const getScraperStatus = async (jobId: string): Promise<ScraperJob> => {
+  const response = await axios.get(`/api/scraper/status/${jobId}`);
+  return response.data;
+};
+
+// Get scraper job result
+export const getScraperResult = async (jobId: string): Promise<ScraperResult> => {
+  const response = await axios.get(`/api/scraper/result/${jobId}`);
+  return response.data;
+};
+
+// Get available sites
+export const getScraperSites = async (): Promise<ScraperSite[]> => {
+  const response = await axios.get('/api/scraper/sites');
+  return response.data.sites;
+};
+
+// Get scraper job history
+export const getScraperJobs = async (
+  page: number = 1,
+  size: number = 10
+): Promise<{
+  items: ScraperJob[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}> => {
+  const response = await axios.get('/api/scraper/jobs', {
+    params: { skip: (page - 1) * size, limit: size },
+  });
+  return response.data;
+};
