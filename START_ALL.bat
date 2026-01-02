@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo   Travel News SaaS - Start All Services
+echo   SWIFTOR - Start All Services
 echo ========================================
 echo.
 
@@ -19,7 +19,7 @@ timeout /t 8 /nobreak > nul
 
 echo.
 echo ========================================
-echo   All Servers Started!
+echo   SWIFTOR - All Servers Started!
 echo ========================================
 echo.
 echo   Backend:  http://localhost:8000

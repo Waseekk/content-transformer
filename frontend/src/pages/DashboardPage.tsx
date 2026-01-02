@@ -57,7 +57,7 @@ export const DashboardPage = () => {
           📊 Dashboard
         </h1>
         <p className="text-gray-600">
-          Welcome to Travel News Translator - Your content workflow hub
+          Welcome to Swiftor - Hard News & Soft News Platform
         </p>
       </div>
 

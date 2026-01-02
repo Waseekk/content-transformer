@@ -1,6 +1,6 @@
 """
 FastAPI Application Entry Point
-Travel News SaaS Backend API
+Swiftor - Hard News & Soft News Backend API
 """
 
 from fastapi import FastAPI
@@ -10,8 +10,8 @@ from app.api import scraper, articles, auth, translation, enhancement, scheduler
 
 # Create FastAPI application
 app = FastAPI(
-    title="Travel News API",
-    description="Multi-user travel news scraping, translation, and content enhancement API",
+    title="Swiftor API",
+    description="Hard News & Soft News - Translation and Content Enhancement API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -39,7 +39,7 @@ app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
 async def root():
     """Health check endpoint"""
     return {
-        "message": "Travel News API is running",
+        "message": "Swiftor API is running",
         "status": "healthy",
         "version": "1.0.0"
     }
@@ -63,7 +63,7 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
-    print(">>> Travel News API starting up...")
+    print(">>> Swiftor API starting up...")
 
     # Create database tables
     from app.database import engine, Base
@@ -81,6 +81,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    print(">>> Travel News API shutting down...")
+    print(">>> Swiftor API shutting down...")
     # TODO: Close database connections
     # TODO: Close Redis connections

@@ -54,13 +54,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-xl font-bold">TN</span>
+                <span className="text-white text-xl font-bold">S</span>
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">
-                  Travel News Translator
+                  Swiftor
                 </h1>
-                <p className="text-xs text-gray-600">Content Workflow Platform</p>
+                <p className="text-xs text-gray-600">Hard News & Soft News</p>
               </div>
             </Link>
 
@@ -144,8 +144,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="text-center text-gray-600 text-sm">
             <p>
-              Travel News Translator &copy; {new Date().getFullYear()} - Built
-              with React, FastAPI, and OpenAI
+              Swiftor &copy; {new Date().getFullYear()} - Hard News & Soft News Platform
             </p>
           </div>
         </div>

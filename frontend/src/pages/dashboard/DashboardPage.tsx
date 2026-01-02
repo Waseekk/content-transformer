@@ -44,7 +44,7 @@ export function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Travel News SaaS</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Swiftor</h1>
               <p className="text-sm text-gray-600">AI-powered translation & content enhancement</p>
             </div>
             <Button variant="secondary" onClick={logout} size="sm">

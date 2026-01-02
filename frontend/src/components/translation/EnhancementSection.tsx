@@ -53,7 +53,7 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
     try {
       const response = await enhance.mutateAsync({
         text: translatedText,
-        headline: 'Travel News Article',
+        headline: 'News Article',
         formats: selectedFormats,
       });
 
