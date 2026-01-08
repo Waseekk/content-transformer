@@ -3,20 +3,13 @@ Scheduler Service
 Manages automated scraping schedule using APScheduler
 """
 
-import sys
-from pathlib import Path
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import logging
 
-# Add parent directory to Python path to access core modules
-parent_dir = Path(__file__).parent.parent.parent.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
-
-from shared.core.scraper import MultiSiteScraper
+from app.core.scraper import MultiSiteScraper
 
 logger = logging.getLogger(__name__)
 

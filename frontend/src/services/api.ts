@@ -14,6 +14,8 @@ export const articlesApi = {
     sources?: string[];
     page?: number;
     limit?: number;
+    latest_only?: boolean;
+    job_id?: number;
   }) => {
     const response = await axios.get('/api/articles/', { params });
     return response.data;
@@ -28,6 +30,15 @@ export const articlesApi = {
     const response = await axios.get('/api/articles/sources/list');
     return response.data;
   },
+
+  getScrapingSessions: async (params?: {
+    days?: number;
+    page?: number;
+    limit?: number;
+  }) => {
+    const response = await axios.get('/api/articles/history/sessions', { params });
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -36,7 +47,7 @@ export const articlesApi = {
 
 export const scraperApi = {
   start: async () => {
-    const response = await axios.post('/api/scraper/run');
+    const response = await axios.post('/api/scraper/run', {});
     return response.data;
   },
 

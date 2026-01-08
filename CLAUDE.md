@@ -110,3 +110,51 @@ Located in `.claude/agents/`:
 - `news-scraper.md` - Web scraping agent
 - `code-reviewer-optimizer.md` - Code review agent
 - `ux-design-advisor.md` - UX design agent
+
+---
+
+## TODO List (Last Updated: 2026-01-08)
+
+### Critical Security Fixes (Before Production)
+
+- [ ] **Fix OAuth tokens in URL** - `backend/app/api/oauth.py:126`
+  - Use HTTP-only cookies instead of query parameters
+  - Tokens currently exposed in browser history/logs
+
+- [ ] **Fix database session management** - `backend/app/api/oauth.py:81`
+  - Replace `SessionLocal()` with `db: Session = Depends(get_db)`
+  - Prevents connection leaks
+
+- [ ] **Add OAuth CSRF protection** - `backend/app/api/oauth.py`
+  - Implement state parameter validation in OAuth flow
+
+- [ ] **Fix empty password for OAuth users** - `backend/app/api/oauth.py:102`
+  - Use secure random hash or special marker instead of empty string
+
+### Performance Optimizations
+
+- [ ] **Fix N+1 query in session history** - `backend/app/api/articles.py:361-366`
+  - Use single GROUP BY query instead of separate query per job
+
+- [ ] **Remove duplicate database query** - `backend/app/api/articles.py:74-78, 108-113`
+  - Store "latest job" query result and reuse
+
+### Code Cleanup
+
+- [ ] Remove console.log statements from frontend files:
+  - `frontend/src/api/auth.ts`
+  - `frontend/src/api/axios.ts`
+  - `frontend/src/services/api.ts`
+  - `frontend/src/services/axios.ts`
+  - `frontend/src/hooks/useArticles.ts`
+  - `frontend/src/pages/ArticlesPage.tsx`
+
+- [ ] Add loading states to `SearchableMultiSelect` component
+
+- [ ] Improve exception handling (avoid exposing error details to clients)
+
+### Future Improvements
+
+- [ ] Set up Alembic for proper database migrations
+- [ ] Add unit/integration tests
+- [ ] Add monitoring and logging

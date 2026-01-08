@@ -9,7 +9,7 @@ from newspaper import Article
 from typing import Dict, Optional
 from datetime import datetime
 
-from shared.utils.logger import LoggerManager
+from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('content_extraction')
 

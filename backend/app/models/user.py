@@ -28,6 +28,11 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+
+    # OAuth
+    google_id = Column(String(255), unique=True, nullable=True, index=True)
+    avatar_url = Column(String(500), nullable=True)
 
     # Token management
     tokens_remaining = Column(Integer, default=settings.DEFAULT_MONTHLY_TOKENS, nullable=False)

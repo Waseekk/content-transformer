@@ -7,12 +7,22 @@ import { useArticles, useArticleSources } from '../hooks/useArticles';
 import { useStartScraper } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
 import { ArticleCard } from '../components/common/ArticleCard';
-import { useNavigate } from 'react-router-dom';
+import { SearchableMultiSelect } from '../components/common/SearchableMultiSelect';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export const ArticlesPage = () => {
   const navigate = useNavigate();
-  const { data: articlesData, isLoading, refetch } = useArticles();
+  const [searchParams] = useSearchParams();
+  const jobIdParam = searchParams.get('job_id');
+  const jobId = jobIdParam ? parseInt(jobIdParam) : undefined;
+
+  // If job_id is provided, show articles from that session (history mode)
+  // Otherwise show articles from latest session (default)
+  const { data: articlesData, isLoading, refetch } = useArticles({
+    latestOnly: !jobId, // Only filter by latest if no job_id specified
+    jobId: jobId,
+  });
   const { data: sourcesData } = useArticleSources();
   const startScraper = useStartScraper();
 
@@ -59,8 +69,25 @@ export const ArticlesPage = () => {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Travel Articles</h1>
-        <p className="text-gray-600">Browse and select articles for translation</p>
+        <div className="flex items-center gap-4 mb-2">
+          {jobId && (
+            <button
+              onClick={() => navigate('/articles')}
+              className="text-teal-600 hover:text-teal-700"
+            >
+              ← Back to Latest
+            </button>
+          )}
+          <h1 className="text-3xl font-bold text-gray-900">
+            {jobId ? 'Historical Articles' : 'Travel Articles'}
+          </h1>
+        </div>
+        <p className="text-gray-600">
+          {jobId
+            ? 'Viewing articles from a past scraping session'
+            : 'Browse and select articles for translation'
+          }
+        </p>
       </div>
 
       {/* Actions Bar */}
@@ -111,24 +138,17 @@ export const ArticlesPage = () => {
 
           {/* Sources */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sources ({filters.sources.length} selected)
-            </label>
-            <select
-              multiple
-              value={filters.sources}
-              onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions, option => option.value);
-                setFilters({ sources: selected });
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent h-24"
-            >
-              {sources.map((sourceInfo: any) => (
-                <option key={sourceInfo.source} value={sourceInfo.source}>
-                  {sourceInfo.source} ({sourceInfo.count})
-                </option>
-              ))}
-            </select>
+            <SearchableMultiSelect
+              label="Sources"
+              placeholder="All sources"
+              options={sources.map((s: any) => ({
+                value: s.source,
+                label: s.source,
+                count: s.count,
+              }))}
+              selected={filters.sources}
+              onChange={(selected) => setFilters({ sources: selected, page: 1 })}
+            />
           </div>
 
           {/* Page Size */}
@@ -157,9 +177,49 @@ export const ArticlesPage = () => {
         </button>
       </div>
 
+      {/* Current Session Info - only show when viewing latest */}
+      {!jobId && articlesData?.current_job && (
+        <div className="mb-6 bg-teal-50 border border-teal-200 rounded-lg px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-teal-600 font-medium">Latest Scraping Session</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-gray-600">
+                {new Date(articlesData.current_job.completed_at).toLocaleString()}
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/scheduler')}
+              className="text-teal-600 hover:text-teal-700 text-sm font-medium"
+            >
+              View All History →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Historical Session Info - only show when viewing history */}
+      {jobId && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-700 font-medium">Historical Session</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-gray-600">Session ID: {jobId}</span>
+            </div>
+            <button
+              onClick={() => navigate('/scheduler')}
+              className="text-amber-700 hover:text-amber-800 text-sm font-medium"
+            >
+              Back to History →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="mb-6 text-gray-600">
-        Showing {articles.length} of {total} articles
+        Showing {articles.length} of {total} articles{!jobId && ' from latest session'}
         {filters.search && ` • Filtered by: "${filters.search}"`}
       </div>
 

@@ -4,12 +4,12 @@ import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../types
 export const authApi = {
   // Login user
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    // Backend expects form data, not JSON
-    const formData = new FormData();
-    formData.append('username', data.username);
-    formData.append('password', data.password);
+    // Backend expects x-www-form-urlencoded, use URLSearchParams
+    const params = new URLSearchParams();
+    params.append('username', data.username);
+    params.append('password', data.password);
 
-    const response = await api.post<AuthResponse>('/api/auth/login', formData, {
+    const response = await api.post<AuthResponse>('/api/auth/login', params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },

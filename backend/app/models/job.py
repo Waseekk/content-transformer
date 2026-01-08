@@ -45,6 +45,7 @@ class Job(Base):
 
     # Relationships
     user = relationship("User", back_populates="jobs")
+    articles = relationship("Article", back_populates="job")
 
     def __repr__(self):
         return f"<Job(id={self.id}, type={self.job_type}, status={self.status}, progress={self.progress}%)>"

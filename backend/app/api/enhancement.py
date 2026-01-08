@@ -15,7 +15,7 @@ from app.models.enhancement import Enhancement
 from app.models.translation import Translation
 from app.models.user_config import UserConfig
 from app.middleware.auth import get_current_active_user
-from shared.core.enhancer import ContentEnhancer, EnhancementResult
+from app.core.enhancer import ContentEnhancer, EnhancementResult
 
 router = APIRouter()
 

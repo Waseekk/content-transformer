@@ -13,6 +13,10 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Serialize arrays as repeated params (sources=a&sources=b) for FastAPI
+  paramsSerializer: {
+    indexes: null, // This removes the brackets from array params
+  },
 });
 
 // Request interceptor - Add JWT token to requests

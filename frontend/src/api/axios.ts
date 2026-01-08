@@ -31,8 +31,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 Unauthorized (token expired)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip 401 handling for login endpoint (let it show the error message)
+    const isLoginRequest = originalRequest?.url?.includes('/api/auth/login');
+
+    // Handle 401 Unauthorized (token expired) - but NOT for login requests
+    if (error.response?.status === 401 && !originalRequest._retry && !isLoginRequest) {
       originalRequest._retry = true;
 
       // Try to refresh token (if refresh endpoint exists)

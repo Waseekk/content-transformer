@@ -4,8 +4,6 @@ User-specific scraping with job tracking and database storage
 """
 
 import json
-import sys
-from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Callable
 from sqlalchemy.orm import Session
@@ -16,12 +14,8 @@ from app.models.job import Job
 from app.models.user_config import UserConfig
 from app.config import get_settings  # Backend-specific Pydantic settings
 
-# Add parent directory to Python path to access core modules
-parent_dir = Path(__file__).parent.parent.parent.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
-
-from shared.core.scraper import MultiSiteScraper
+# Import scraper from backend's core module
+from app.core.scraper import MultiSiteScraper
 
 settings = get_settings()
 
@@ -171,6 +165,7 @@ class ScraperService:
             for article_data in filtered_articles:
                 article = Article(
                     user_id=user.id,
+                    job_id=job.id,  # Link article to this scraping job
                     source=article_data.get('source'),
                     publisher=article_data.get('publisher'),
                     headline=article_data.get('headline', article_data.get('title')),

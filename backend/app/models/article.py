@@ -18,8 +18,9 @@ class Article(Base):
     # Primary key
     id = Column(Integer, primary_key=True, index=True)
 
-    # Foreign key
+    # Foreign keys
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Article metadata
     source = Column(String(255), nullable=False, index=True)  # e.g., "BBC Travel", "CNN Travel"
@@ -46,6 +47,7 @@ class Article(Base):
 
     # Relationships
     user = relationship("User", back_populates="articles")
+    job = relationship("Job", back_populates="articles")
     translations = relationship("Translation", back_populates="article", cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -56,6 +58,7 @@ class Article(Base):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "job_id": self.job_id,
             "source": self.source,
             "publisher": self.publisher,
             "headline": self.headline,

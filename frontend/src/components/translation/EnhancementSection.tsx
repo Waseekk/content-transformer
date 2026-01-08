@@ -133,9 +133,9 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
         </div>
       </div>
 
-      {/* Format Cards Grid */}
+      {/* Format Cards - Vertical Stack */}
       {selectedFormats.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-6">
           {selectedFormats.map((formatId) => {
             const format = formats.find((f) => f.id === formatId);
             if (!format) return null;

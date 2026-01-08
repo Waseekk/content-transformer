@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.translation import Translation
 from app.middleware.auth import get_current_active_user
 from app.services.content_extraction import ContentExtractor, ExtractionError
-from shared.core.translator import OpenAITranslator
+from app.core.translator import OpenAITranslator
 
 router = APIRouter()
 

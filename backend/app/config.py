@@ -37,8 +37,14 @@ class Settings(BaseSettings):
     # AI Providers
     OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Optional[str] = Field(default=None, env="GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None, env="GOOGLE_CLIENT_SECRET")
+    FRONTEND_URL: str = Field(default="http://localhost:5173", env="FRONTEND_URL")
+
     # Paths
     BASE_DIR: Path = Path(__file__).parent.parent
+    PROJECT_ROOT: Path = BASE_DIR.parent  # Root project directory (contains backend/, frontend/, config/)
     DATA_DIR: Path = BASE_DIR / 'data'
     RAW_DATA_DIR: Path = BASE_DIR / 'data' / 'raw'
     PROCESSED_DATA_DIR: Path = BASE_DIR / 'data' / 'processed'
@@ -46,7 +52,7 @@ class Settings(BaseSettings):
     ENHANCED_DATA_DIR: Path = BASE_DIR / 'data' / 'enhanced'
     TRANSLATIONS_DIR: Path = BASE_DIR / 'translations'
     LOGS_DIR: Path = BASE_DIR / 'logs'
-    CONFIG_DIR: Path = BASE_DIR / 'config'
+    CONFIG_DIR: Path = PROJECT_ROOT / 'config'  # Config is in project root, not backend
 
     # Configuration files
     SITES_CONFIG_PATH: Path = CONFIG_DIR / 'sites_config.json'
