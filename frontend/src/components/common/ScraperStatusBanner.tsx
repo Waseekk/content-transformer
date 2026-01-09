@@ -10,10 +10,12 @@ interface ScraperStatus {
   status: string;
   progress: number;
   status_message: string;
+  current_site: string;
   articles_count: number | null;
   articles_saved: number | null;
   sites_completed: number;
   total_sites: number;
+  site_stats: Record<string, number>;
   started_at: string | null;
   completed_at: string | null;
   error: string | null;

@@ -299,7 +299,18 @@ async def stream_scraper_status(
 
                 # Parse result for additional info
                 result = job.result or {}
-                articles_by_site = result.get('articles_by_site', {})
+
+                # Get real-time stats (updated during scraping)
+                sites_completed = result.get('sites_completed', 0)
+                site_stats = result.get('site_stats', {})
+                current_site = result.get('current_site', '')
+                articles_count = result.get('articles_count', 0)
+
+                # After completion, use final stats
+                if job.status == 'completed':
+                    articles_by_site = result.get('articles_by_site', site_stats)
+                    sites_completed = len(articles_by_site)
+                    articles_count = result.get('total_articles', articles_count)
 
                 # Build status data
                 status_data = {
@@ -307,10 +318,12 @@ async def stream_scraper_status(
                     "status": job.status,
                     "progress": job.progress,
                     "status_message": job.status_message,
-                    "articles_count": result.get('total_articles'),
+                    "current_site": current_site,
+                    "articles_count": articles_count,
                     "articles_saved": result.get('articles_saved'),
-                    "sites_completed": len(articles_by_site),
+                    "sites_completed": sites_completed,
                     "total_sites": len(result.get('sites', [])),
+                    "site_stats": site_stats,
                     "started_at": job.started_at.isoformat() if job.started_at else None,
                     "completed_at": job.completed_at.isoformat() if job.completed_at else None,
                     "error": job.error

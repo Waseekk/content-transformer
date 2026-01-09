@@ -136,12 +136,19 @@ class ScraperService:
             # Create status callback to update job progress
             def status_callback(status_obj):
                 """Update job progress from scraper status"""
-                ScraperService.update_job_status(
-                    db, job,
-                    "running",
-                    status_obj.progress,
-                    status_obj.status_message
-                )
+                # Update job with current progress and site stats
+                job.progress = status_obj.progress
+                job.status_message = status_obj.status_message
+
+                # Store real-time stats in result for SSE to read
+                current_result = job.result or {}
+                current_result['current_site'] = status_obj.current_site
+                current_result['articles_count'] = status_obj.articles_count
+                current_result['site_stats'] = status_obj.site_stats
+                current_result['sites_completed'] = len(status_obj.site_stats)
+                job.result = current_result
+
+                db.commit()
 
             # Initialize scraper with status callback and enabled sites filter
             scraper = MultiSiteScraper(
