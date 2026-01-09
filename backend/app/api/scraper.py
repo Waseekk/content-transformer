@@ -3,7 +3,10 @@ Scraper API Routes
 Endpoints for news scraping operations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+import asyncio
+import json
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -226,3 +229,115 @@ async def get_scraper_jobs(
         )
         for job in jobs
     ]
+
+
+@router.get("/status/{job_id}/stream")
+async def stream_scraper_status(
+    job_id: int,
+    request: Request,
+    token: str = None,
+):
+    """
+    Server-Sent Events (SSE) endpoint for real-time scraper status updates.
+
+    Streams status updates until the job completes or fails.
+    Client should connect using EventSource API.
+
+    Note: Token must be passed as query parameter since EventSource doesn't support headers.
+    """
+    from app.middleware.auth import decode_token
+
+    # Validate token from query param (SSE doesn't support Authorization header)
+    if not token:
+        async def error_gen():
+            yield f"data: {json.dumps({'error': 'Authentication required'})}\n\n"
+        return StreamingResponse(error_gen(), media_type="text/event-stream")
+
+    try:
+        payload = decode_token(token)
+        user_email = payload.get("sub")
+    except Exception:
+        async def error_gen():
+            yield f"data: {json.dumps({'error': 'Invalid token'})}\n\n"
+        return StreamingResponse(error_gen(), media_type="text/event-stream")
+
+    # Get user_id from email
+    db_init = SessionLocal()
+    try:
+        user = db_init.query(User).filter(User.email == user_email).first()
+        if not user:
+            async def error_gen():
+                yield f"data: {json.dumps({'error': 'User not found'})}\n\n"
+            return StreamingResponse(error_gen(), media_type="text/event-stream")
+        user_id = user.id
+    finally:
+        db_init.close()
+
+    async def event_generator():
+        """Generate SSE events for job status updates"""
+        last_status = None
+        last_progress = -1
+
+        while True:
+            # Check if client disconnected
+            if await request.is_disconnected():
+                break
+
+            # Create a new db session for each check
+            db = SessionLocal()
+            try:
+                from app.models.job import Job
+                job = db.query(Job).filter(
+                    Job.id == job_id,
+                    Job.user_id == user_id
+                ).first()
+
+                if not job:
+                    # Job not found - send error and close
+                    yield f"data: {json.dumps({'error': 'Job not found'})}\n\n"
+                    break
+
+                # Parse result for additional info
+                result = job.result or {}
+                articles_by_site = result.get('articles_by_site', {})
+
+                # Build status data
+                status_data = {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "progress": job.progress,
+                    "status_message": job.status_message,
+                    "articles_count": result.get('total_articles'),
+                    "articles_saved": result.get('articles_saved'),
+                    "sites_completed": len(articles_by_site),
+                    "total_sites": len(result.get('sites', [])),
+                    "started_at": job.started_at.isoformat() if job.started_at else None,
+                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                    "error": job.error
+                }
+
+                # Only send update if status or progress changed
+                if job.status != last_status or job.progress != last_progress:
+                    yield f"data: {json.dumps(status_data)}\n\n"
+                    last_status = job.status
+                    last_progress = job.progress
+
+                # If job is done (completed or failed), send final update and close
+                if job.status in ["completed", "failed"]:
+                    break
+
+            finally:
+                db.close()
+
+            # Wait before next check (500ms for responsive updates)
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )

@@ -100,7 +100,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
             placeholder
           ) : (
             <span className="flex flex-wrap gap-1">
-              {selected.slice(0, 3).map((val, idx) => (
+              {selected.slice(0, 3).map((val) => (
                 <span key={val} className="inline-flex items-center px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full">
                   {val}
                 </span>

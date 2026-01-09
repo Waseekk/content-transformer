@@ -2,7 +2,7 @@
  * Scheduler Page - Modern Scraper & Scheduler Control Center
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   HiPlay,
   HiStop,
@@ -10,9 +10,7 @@ import {
   HiClock,
   HiCalendar,
   HiChartBar,
-  HiCog,
   HiCheckCircle,
-  HiXCircle,
   HiLightningBolt,
 } from 'react-icons/hi';
 import {
@@ -23,6 +21,8 @@ import {
 } from '../hooks/useScheduler';
 import { useStartScraper } from '../hooks/useScraper';
 import { useArticleStats, useScrapingSessions } from '../hooks/useArticles';
+import { useAppStore } from '../store/useAppStore';
+import { ScraperStatusBanner } from '../components/common/ScraperStatusBanner';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -38,13 +38,16 @@ const INTERVAL_PRESETS = [
 
 export const SchedulerPage = () => {
   const navigate = useNavigate();
-  const { data: status, isLoading: statusLoading, refetch: refetchStatus } = useSchedulerStatus();
-  const { data: history } = useSchedulerHistory(10);
-  const { data: stats } = useArticleStats();
-  const { data: scrapingSessions, isLoading: sessionsLoading } = useScrapingSessions({ limit: 20 });
+  const { data: status } = useSchedulerStatus();
+  useSchedulerHistory(10); // Keep the query active for caching
+  const { data: stats, refetch: refetchStats } = useArticleStats();
+  const { data: scrapingSessions, isLoading: sessionsLoading, refetch: refetchSessions } = useScrapingSessions({ limit: 20 });
   const startScheduler = useStartScheduler();
   const stopScheduler = useStopScheduler();
   const startScraper = useStartScraper();
+
+  // Global state for scraper job tracking
+  const { activeScraperJobId, setActiveScraperJobId } = useAppStore();
 
   // Local state
   const [scheduleMode, setScheduleMode] = useState<'preset' | 'custom'>('preset');
@@ -54,6 +57,19 @@ export const SchedulerPage = () => {
   const [activeTab, setActiveTab] = useState<'scheduler' | 'scraper' | 'history'>('scheduler');
 
   const isRunning = status?.is_running || false;
+
+  // Handle scraper completion
+  const handleScraperComplete = useCallback((articlesCount: number) => {
+    toast.success(`Scraping complete! Found ${articlesCount} articles`);
+    setActiveScraperJobId(null);
+    // Refresh stats and sessions
+    refetchStats();
+    refetchSessions();
+  }, [setActiveScraperJobId, refetchStats, refetchSessions]);
+
+  const handleBannerClose = useCallback(() => {
+    setActiveScraperJobId(null);
+  }, [setActiveScraperJobId]);
 
   // Get effective interval in hours
   const getIntervalHours = () => {
@@ -78,7 +94,6 @@ export const SchedulerPage = () => {
 
   const handleRunNow = () => {
     startScraper.mutate();
-    toast.success('Scraper started!');
   };
 
   // Format time until next run
@@ -88,7 +103,15 @@ export const SchedulerPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <>
+      {/* Real-time Scraper Status Banner */}
+      <ScraperStatusBanner
+        jobId={activeScraperJobId}
+        onComplete={handleScraperComplete}
+        onClose={handleBannerClose}
+      />
+
+      <div className={`max-w-7xl mx-auto px-4 py-8 ${activeScraperJobId ? 'pt-20' : ''}`}>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -469,6 +492,7 @@ export const SchedulerPage = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };

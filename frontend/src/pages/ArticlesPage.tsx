@@ -2,12 +2,13 @@
  * Articles Page - Main article listing with filters and selection
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useArticles, useArticleSources } from '../hooks/useArticles';
 import { useStartScraper } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
 import { ArticleCard } from '../components/common/ArticleCard';
 import { SearchableMultiSelect } from '../components/common/SearchableMultiSelect';
+import { ScraperStatusBanner } from '../components/common/ScraperStatusBanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -32,6 +33,8 @@ export const ArticlesPage = () => {
     resetFilters,
     selectedArticle,
     selectArticle,
+    activeScraperJobId,
+    setActiveScraperJobId,
   } = useAppStore();
 
   const [searchInput, setSearchInput] = useState(filters.search);
@@ -65,8 +68,32 @@ export const ArticlesPage = () => {
     startScraper.mutate();
   };
 
+  // Handle scraper completion - auto refresh articles
+  const handleScraperComplete = useCallback((articlesCount: number) => {
+    toast.success(`Scraping complete! Found ${articlesCount} articles`);
+    // Clear the active job ID
+    setActiveScraperJobId(null);
+    // Refresh the articles list
+    setTimeout(() => {
+      refetch();
+    }, 500);
+  }, [setActiveScraperJobId, refetch]);
+
+  // Handle banner close
+  const handleBannerClose = useCallback(() => {
+    setActiveScraperJobId(null);
+  }, [setActiveScraperJobId]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <>
+      {/* Real-time Scraper Status Banner */}
+      <ScraperStatusBanner
+        jobId={activeScraperJobId}
+        onComplete={handleScraperComplete}
+        onClose={handleBannerClose}
+      />
+
+      <div className={`max-w-7xl mx-auto px-4 py-8 ${activeScraperJobId ? 'pt-20' : ''}`}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-2">
@@ -285,9 +312,10 @@ export const ArticlesPage = () => {
           onClick={handleTranslateSelected}
           className="fixed bottom-8 right-8 px-8 py-4 bg-blue-500 text-white rounded-full font-bold shadow-lg hover:bg-blue-600 hover:shadow-xl transition-all transform hover:scale-105"
         >
-          ✨ Translate Selected Article
+          Translate Selected Article
         </button>
       )}
-    </div>
+      </div>
+    </>
   );
 };

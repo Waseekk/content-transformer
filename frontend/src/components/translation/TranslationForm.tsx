@@ -39,8 +39,8 @@ export function TranslationForm({ onTranslationComplete }: TranslationFormProps)
 
       // Map backend response to frontend format
       const mappedResult = {
-        headline: translation.original_title || 'Translation',
-        content: translation.translated_text,
+        headline: translation.headline || 'Translation',
+        content: translation.content,
         tokens_used: translation.tokens_used,
         id: translation.id,
       };

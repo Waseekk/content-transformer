@@ -2,7 +2,7 @@
  * Translation Page - Translate and enhance selected articles
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useTranslate } from '../hooks/useTranslation';
@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 
 export const TranslationPage = () => {
   const navigate = useNavigate();
-  const { selectedArticle, selectArticle, currentTranslation } = useAppStore();
+  const { selectedArticle, selectArticle } = useAppStore();
   const translate = useTranslate();
 
   const [pastedContent, setPastedContent] = useState('');

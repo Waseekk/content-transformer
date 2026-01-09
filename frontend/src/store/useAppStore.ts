@@ -10,7 +10,6 @@ import type {
   ArticleFilters,
   ScraperStatus,
   SchedulerStatus,
-  TranslationData,
 } from '../types';
 
 export interface TranslationResult {
@@ -36,6 +35,7 @@ interface AppState {
 
   // Scraper
   scraperStatus: ScraperStatus | null;
+  activeScraperJobId: number | null;
 
   // Scheduler
   schedulerStatus: SchedulerStatus | null;
@@ -58,6 +58,7 @@ interface AppState {
   resetFilters: () => void;
 
   setScraperStatus: (status: ScraperStatus | null) => void;
+  setActiveScraperJobId: (jobId: number | null) => void;
   setSchedulerStatus: (status: SchedulerStatus | null) => void;
 
   setCurrentTranslation: (translation: TranslationResult | null) => void;
@@ -85,6 +86,7 @@ export const useAppStore = create<AppState>()(
       selectedArticle: null,
       filters: defaultFilters,
       scraperStatus: null,
+      activeScraperJobId: null,
       schedulerStatus: null,
       currentTranslation: null,
       translationHistory: [],
@@ -108,6 +110,8 @@ export const useAppStore = create<AppState>()(
       resetFilters: () => set({ filters: defaultFilters }),
 
       setScraperStatus: (status) => set({ scraperStatus: status }),
+
+      setActiveScraperJobId: (jobId) => set({ activeScraperJobId: jobId }),
 
       setSchedulerStatus: (status) => set({ schedulerStatus: status }),
 

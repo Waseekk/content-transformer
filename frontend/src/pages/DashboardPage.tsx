@@ -2,7 +2,6 @@
  * Dashboard Page - Overview with stats and quick actions
  */
 
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useArticleStats } from '../hooks/useArticles';
 import { useSchedulerStatus } from '../hooks/useScheduler';

@@ -3,10 +3,8 @@
  * Beautiful card design with glass-morphism effect
  */
 
-import React from 'react';
 import type { Article } from '../../types';
 import { HiCheckCircle } from 'react-icons/hi';
-import { format } from 'date-fns';
 
 interface ArticleCardProps {
   article: Article;

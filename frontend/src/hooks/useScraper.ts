@@ -2,19 +2,17 @@
  * Scraper Hooks - React Query hooks for scraper API
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { scraperApi } from '../services/api';
 import { useAppStore } from '../store/useAppStore';
 import toast from 'react-hot-toast';
 
 export const useStartScraper = () => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: scraperApi.start,
     onSuccess: (data) => {
-      toast.success('Scraper started!');
-      // Start polling for status
+      // Set the active job ID to trigger SSE connection
+      useAppStore.getState().setActiveScraperJobId(data.job_id);
       useAppStore.getState().setScraperStatus({
         is_running: true,
         progress: 0,

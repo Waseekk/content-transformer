@@ -46,8 +46,8 @@ export function TranslationPage() {
 
       // Map backend response to frontend format
       const mapped = {
-        headline: result.original_title || 'Translation',
-        content: result.translated_text,
+        headline: result.headline || 'Translation',
+        content: result.content,
         tokens_used: result.tokens_used,
         id: result.id,
       };

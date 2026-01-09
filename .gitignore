@@ -84,6 +84,7 @@ data/raw/
 data/enhanced/
 data/archive/
 data/processed/
+backend/data/
 translations/*.txt
 translations/
 
