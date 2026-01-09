@@ -10,6 +10,7 @@ from typing import Optional, List, Dict
 import logging
 
 from app.core.scraper import MultiSiteScraper
+from app.config import get_current_time, format_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -89,13 +90,13 @@ class SchedulerService:
         """Execute scraper job (called by scheduler)"""
 
         logger.info("Scheduled scraper job started")
-        start_time = datetime.now()
+        start_time = get_current_time()
 
         try:
             scraper = MultiSiteScraper()
             articles = scraper.scrape_all_sites()
 
-            end_time = datetime.now()
+            end_time = get_current_time()
             duration = (end_time - start_time).total_seconds()
 
             self.run_count += 1
@@ -104,7 +105,7 @@ class SchedulerService:
 
             # Add to history
             self.history.insert(0, {
-                "run_time": end_time.isoformat(),
+                "run_time": format_datetime(end_time),
                 "articles_count": len(articles),
                 "duration_seconds": duration,
                 "status": "success",
@@ -118,11 +119,11 @@ class SchedulerService:
         except Exception as e:
             logger.error(f"Scheduled scraper job failed: {e}")
 
-            end_time = datetime.now()
+            end_time = get_current_time()
             duration = (end_time - start_time).total_seconds()
 
             self.history.insert(0, {
-                "run_time": end_time.isoformat(),
+                "run_time": format_datetime(end_time),
                 "articles_count": 0,
                 "duration_seconds": duration,
                 "status": "failed",
@@ -160,7 +161,7 @@ class SchedulerService:
             "next_run_time": next_run_time,
             "time_until_next": time_until_next,
             "run_count": self.run_count,
-            "last_run_time": self.last_run_time.isoformat() if self.last_run_time else None,
+            "last_run_time": format_datetime(self.last_run_time) if self.last_run_time else None,
             "last_run_articles": self.last_run_articles,
         }
 

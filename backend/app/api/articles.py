@@ -34,7 +34,7 @@ class ArticleListResponse:
 async def get_articles(
     search: Optional[str] = Query(None, description="Search in headline"),
     sources: Optional[List[str]] = Query(None, description="Filter by source names"),
-    days: Optional[int] = Query(90, description="Number of days to look back (default: 90)"),
+    days: Optional[int] = Query(7, description="Number of days to look back (default: 7)"),
     latest_only: bool = Query(True, description="Show only articles from latest scraping run"),
     job_id: Optional[int] = Query(None, description="Filter by specific job ID"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -48,7 +48,7 @@ async def get_articles(
     Query Parameters:
     - **search**: Search in headline (optional)
     - **sources**: Filter by source names (optional, multiple allowed)
-    - **days**: Number of days to look back (default: 90, max: 90)
+    - **days**: Number of days to look back (default: 7, max: 7)
     - **latest_only**: Show only articles from latest scraping run (default: True)
     - **job_id**: Filter by specific job ID (optional)
     - **page**: Page number (default: 1)
@@ -58,9 +58,9 @@ async def get_articles(
 
     Requires: Bearer token in Authorization header
     """
-    # Limit days to 90 max
-    if days > 90:
-        days = 90
+    # Limit days to 7 max
+    if days > 7:
+        days = 7
 
     # Calculate date threshold
     date_threshold = datetime.utcnow() - timedelta(days=days)
@@ -320,7 +320,7 @@ async def delete_article(
 
 @router.get("/history/sessions", response_model=dict)
 async def get_scraping_sessions(
-    days: Optional[int] = Query(90, description="Number of days to look back"),
+    days: Optional[int] = Query(7, description="Number of days to look back"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_active_user),
@@ -336,9 +336,9 @@ async def get_scraping_sessions(
     """
     from sqlalchemy import func
 
-    # Limit days to 90 max
-    if days > 90:
-        days = 90
+    # Limit days to 7 max
+    if days > 7:
+        days = 7
 
     # Calculate date threshold
     date_threshold = datetime.utcnow() - timedelta(days=days)

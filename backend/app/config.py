@@ -8,6 +8,25 @@ from pydantic import Field
 from pathlib import Path
 from typing import Optional
 from functools import lru_cache
+from datetime import datetime, timezone, timedelta
+
+# GMT+6 Timezone (Bangladesh Standard Time)
+GMT_PLUS_6 = timezone(timedelta(hours=6))
+
+
+def get_current_time() -> datetime:
+    """Get current time in GMT+6 (Bangladesh timezone)"""
+    return datetime.now(GMT_PLUS_6)
+
+
+def format_datetime(dt: datetime) -> str:
+    """Format datetime for display in GMT+6"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # Assume UTC if no timezone
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(GMT_PLUS_6).strftime('%Y-%m-%d %I:%M:%S %p')
 
 
 class Settings(BaseSettings):
