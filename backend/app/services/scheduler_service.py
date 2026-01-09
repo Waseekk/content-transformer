@@ -34,7 +34,7 @@ class SchedulerService:
 
         self.scheduler = BackgroundScheduler()
         self.is_running = False
-        self.interval_hours: Optional[int] = None
+        self.interval_hours: Optional[float] = None
         self.run_count = 0
         self.last_run_time: Optional[datetime] = None
         self.last_run_articles: Optional[int] = None
@@ -44,7 +44,7 @@ class SchedulerService:
         self._initialized = True
         logger.info("Scheduler service initialized")
 
-    def start(self, interval_hours: int, user_id: int):
+    def start(self, interval_hours: float, user_id: int):
         """Start the scheduler with given interval"""
 
         if self.is_running:
@@ -53,10 +53,15 @@ class SchedulerService:
         self.interval_hours = interval_hours
         self.current_user_id = user_id
 
-        # Add job with interval trigger
+        # Convert hours to minutes for more precision
+        interval_minutes = int(interval_hours * 60)
+        if interval_minutes < 1:
+            interval_minutes = 1  # Minimum 1 minute
+
+        # Add job with interval trigger (use minutes for precision)
         self.scheduler.add_job(
             func=self._run_scraper_job,
-            trigger=IntervalTrigger(hours=interval_hours),
+            trigger=IntervalTrigger(minutes=interval_minutes),
             id='scraper_job',
             replace_existing=True,
             max_instances=1,
@@ -66,7 +71,7 @@ class SchedulerService:
             self.scheduler.start()
 
         self.is_running = True
-        logger.info(f"Scheduler started with interval: {interval_hours}h for user {user_id}")
+        logger.info(f"Scheduler started with interval: {interval_minutes} minutes for user {user_id}")
 
     def stop(self):
         """Stop the scheduler"""

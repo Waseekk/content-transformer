@@ -18,11 +18,11 @@ router = APIRouter()
 
 # Request/Response Models
 class SchedulerStartRequest(BaseModel):
-    interval_hours: int
+    interval_hours: float  # Allow fractional hours (e.g., 0.5 = 30 min)
 
 class SchedulerStatusResponse(BaseModel):
     is_running: bool
-    interval_hours: Optional[int] = None
+    interval_hours: Optional[float] = None
     next_run_time: Optional[str] = None
     time_until_next: Optional[str] = None
     run_count: int
@@ -46,8 +46,8 @@ async def start_scheduler(
 ):
     """Start the automated scraping scheduler"""
 
-    if request.interval_hours < 1 or request.interval_hours > 24:
-        raise HTTPException(status_code=400, detail="Interval must be between 1 and 24 hours")
+    if request.interval_hours < 0.0167 or request.interval_hours > 24:  # Min 1 minute for testing
+        raise HTTPException(status_code=400, detail="Interval must be between 1 minute and 24 hours")
 
     try:
         scheduler_service.start(interval_hours=request.interval_hours, user_id=current_user.id)
