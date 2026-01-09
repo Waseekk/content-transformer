@@ -102,6 +102,17 @@ export const SchedulerPage = () => {
     return timeStr;
   };
 
+  // Format interval hours to readable string (e.g., "2h 30m" or "45m")
+  const formatInterval = (hours: number | null) => {
+    if (!hours) return 'N/A';
+    const totalMinutes = Math.round(hours * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+  };
+
   return (
     <>
       {/* Real-time Scraper Status Banner */}
@@ -231,7 +242,7 @@ export const SchedulerPage = () => {
                   </h3>
                   {isRunning && status && (
                     <p className="text-sm text-gray-600 mt-1">
-                      Running every <span className="font-semibold text-teal-600">{status.interval_hours}h</span>
+                      Running every <span className="font-semibold text-teal-600">{formatInterval(status.interval_hours)}</span>
                       {' | '}Next run in <span className="font-semibold text-teal-600">{formatTimeUntil(status.time_until_next)}</span>
                     </p>
                   )}
@@ -462,6 +473,7 @@ export const SchedulerPage = () => {
                                   day: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit',
+                                  second: '2-digit',
                                 })
                               : 'Unknown date'
                             }
