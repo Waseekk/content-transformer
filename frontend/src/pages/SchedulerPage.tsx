@@ -422,14 +422,14 @@ export const SchedulerPage = () => {
           {/* Info Banner */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> The Articles page shows only the latest scraping session.
-              Past sessions are listed below - click "View Articles" to browse articles from any session.
+              <strong>Note:</strong> All scraping sessions from the last 7 days are shown below.
+              The latest session is marked with a badge. Click "View Articles" to browse any session.
             </p>
           </div>
 
           {/* Scraping Sessions List */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Past Scraping Sessions</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Scraping Sessions</h3>
 
             {sessionsLoading ? (
               <div className="text-center py-12">
@@ -441,26 +441,37 @@ export const SchedulerPage = () => {
                 {scrapingSessions.sessions.map((session: any) => (
                   <div
                     key={session.job_id}
-                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-all"
+                    className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                      session.is_latest
+                        ? 'bg-teal-50 hover:bg-teal-100 border-teal-300'
+                        : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
+                    }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="p-2 bg-green-100 rounded-full">
-                        <HiCheckCircle className="w-5 h-5 text-green-600" />
+                      <div className={`p-2 rounded-full ${session.is_latest ? 'bg-teal-100' : 'bg-green-100'}`}>
+                        <HiCheckCircle className={`w-5 h-5 ${session.is_latest ? 'text-teal-600' : 'text-green-600'}`} />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {session.completed_at
-                            ? new Date(session.completed_at).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'Unknown date'
-                          }
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900">
+                            {session.completed_at
+                              ? new Date(session.completed_at).toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Unknown date'
+                            }
+                          </p>
+                          {session.is_latest && (
+                            <span className="px-2 py-0.5 text-xs font-semibold bg-teal-500 text-white rounded-full">
+                              Latest
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">
                           <span className="font-semibold text-teal-600">{session.article_count}</span> articles scraped
                         </p>
@@ -478,15 +489,15 @@ export const SchedulerPage = () => {
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <HiClock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No past sessions</p>
-                <p className="text-sm mt-1">Run the scraper multiple times to build history</p>
+                <p>No sessions yet</p>
+                <p className="text-sm mt-1">Run the scraper to build history</p>
               </div>
             )}
 
             {/* Pagination info */}
             {scrapingSessions?.total > 0 && (
               <p className="text-sm text-gray-500 mt-4 text-center">
-                Showing {scrapingSessions.sessions.length} of {scrapingSessions.total} past sessions
+                Showing {scrapingSessions.sessions.length} of {scrapingSessions.total} sessions (last 7 days)
               </p>
             )}
           </div>

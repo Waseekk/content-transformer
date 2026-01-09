@@ -343,7 +343,7 @@ async def get_scraping_sessions(
     # Calculate date threshold
     date_threshold = datetime.utcnow() - timedelta(days=days)
 
-    # Get the latest completed job ID (to exclude from history)
+    # Get the latest completed job ID (to mark in response)
     latest_job = db.query(Job).filter(
         Job.user_id == current_user.id,
         Job.job_type == "scrape",
@@ -352,17 +352,13 @@ async def get_scraping_sessions(
 
     latest_job_id = latest_job.id if latest_job else None
 
-    # Query all completed scraping jobs except the latest
+    # Query ALL completed scraping jobs (including the latest)
     jobs_query = db.query(Job).filter(
         Job.user_id == current_user.id,
         Job.job_type == "scrape",
         Job.status == "completed",
         Job.completed_at >= date_threshold
     )
-
-    # Exclude the latest job from history
-    if latest_job_id:
-        jobs_query = jobs_query.filter(Job.id != latest_job_id)
 
     # Get total count
     total = jobs_query.count()
@@ -385,7 +381,8 @@ async def get_scraping_sessions(
             "started_at": job.started_at.isoformat() if job.started_at else None,
             "article_count": article_count or 0,
             "status_message": job.status_message,
-            "result": job.result
+            "result": job.result,
+            "is_latest": job.id == latest_job_id,
         })
 
     # Calculate total pages

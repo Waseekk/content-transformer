@@ -208,7 +208,14 @@ export const ArticlesPage = () => {
               <span className="text-teal-600 font-medium">Latest Scraping Session</span>
               <span className="text-gray-500">•</span>
               <span className="text-gray-600">
-                {new Date(articlesData.current_job.completed_at).toLocaleString()}
+                {new Date(articlesData.current_job.completed_at).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </span>
             </div>
             <button
