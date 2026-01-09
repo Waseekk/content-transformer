@@ -81,8 +81,8 @@ export const SchedulerPage = () => {
 
   const handleStartScheduler = () => {
     const intervalHours = getIntervalHours();
-    if (intervalHours < 0.25) {
-      toast.error('Minimum interval is 15 minutes');
+    if (intervalHours < 0.0167) { // 1 minute minimum for testing
+      toast.error('Minimum interval is 1 minute');
       return;
     }
     startScheduler.mutate(intervalHours);
@@ -320,7 +320,7 @@ export const SchedulerPage = () => {
                 /* Custom Time */
                 <div className="max-w-md">
                   <p className="text-sm text-gray-600 mb-4">
-                    Set a custom interval (minimum 15 minutes)
+                    Set a custom interval (minimum 1 minute)
                   </p>
                   <div className="flex items-center gap-4">
                     <div className="flex-1">
