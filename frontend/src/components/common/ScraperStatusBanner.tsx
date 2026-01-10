@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { HiRefresh, HiCheck, HiX, HiInformationCircle } from 'react-icons/hi';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ScraperStatus {
   job_id: number;
@@ -32,6 +33,7 @@ export const ScraperStatusBanner: React.FC<ScraperStatusBannerProps> = ({
   onComplete,
   onClose,
 }) => {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<ScraperStatus | null>(null);
   const [, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,9 @@ export const ScraperStatusBanner: React.FC<ScraperStatusBannerProps> = ({
         if (data.status === 'completed') {
           eventSource.close();
           setIsConnected(false);
+          // Invalidate sessions cache so History tab shows new session
+          queryClient.invalidateQueries({ queryKey: ['scrapingSessions'] });
+          queryClient.invalidateQueries({ queryKey: ['articleStats'] });
           if (onComplete) {
             onComplete(data.articles_count || data.articles_saved || 0);
           }
@@ -101,7 +106,7 @@ export const ScraperStatusBanner: React.FC<ScraperStatusBannerProps> = ({
     return () => {
       eventSource.close();
     };
-  }, [jobId, onComplete, status?.status]);
+  }, [jobId, onComplete, status?.status, queryClient]);
 
   useEffect(() => {
     if (jobId) {

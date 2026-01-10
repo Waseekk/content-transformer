@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import logging
 
-from app.core.scraper import MultiSiteScraper
 from app.config import get_current_time, format_datetime
+from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ class SchedulerService:
         self.run_count = 0
         self.last_run_time: Optional[datetime] = None
         self.last_run_articles: Optional[int] = None
+        self.last_job_id: Optional[int] = None
         self.history: List[Dict] = []
         self.current_user_id: Optional[int] = None
 
@@ -88,33 +89,57 @@ class SchedulerService:
 
     def _run_scraper_job(self):
         """Execute scraper job (called by scheduler)"""
+        # Import here to avoid circular imports
+        from app.services.scraper_service import ScraperService
+        from app.models.user import User
 
         logger.info("Scheduled scraper job started")
         start_time = get_current_time()
 
+        # Create database session
+        db = SessionLocal()
+
         try:
-            scraper = MultiSiteScraper()
-            articles = scraper.scrape_all_sites()
+            # Get user for this scheduler
+            if not self.current_user_id:
+                logger.error("No user ID set for scheduler")
+                return
+
+            user = db.query(User).filter(User.id == self.current_user_id).first()
+            if not user:
+                logger.error(f"User {self.current_user_id} not found")
+                return
+
+            # Create job in database (this makes it show in history)
+            job = ScraperService.create_scraper_job(db, user)
+            logger.info(f"Created scraper job {job.id} for scheduler")
+
+            # Run scraper through ScraperService (saves to DB)
+            result = ScraperService.run_scraper_sync(db, user, job)
 
             end_time = get_current_time()
             duration = (end_time - start_time).total_seconds()
 
+            articles_count = result.get('articles_saved', 0) if result.get('success') else 0
+
             self.run_count += 1
             self.last_run_time = end_time
-            self.last_run_articles = len(articles)
+            self.last_run_articles = articles_count
+            self.last_job_id = job.id  # Store job ID for reference
 
-            # Add to history
+            # Add to in-memory history (for quick access)
             self.history.insert(0, {
                 "run_time": format_datetime(end_time),
-                "articles_count": len(articles),
+                "articles_count": articles_count,
                 "duration_seconds": duration,
-                "status": "success",
+                "status": "success" if result.get('success') else "failed",
+                "job_id": job.id,
             })
 
             # Keep only last 50 runs in history
             self.history = self.history[:50]
 
-            logger.info(f"Scheduled scraper job completed: {len(articles)} articles in {duration:.1f}s")
+            logger.info(f"Scheduled scraper job {job.id} completed: {articles_count} articles in {duration:.1f}s")
 
         except Exception as e:
             logger.error(f"Scheduled scraper job failed: {e}")
@@ -129,6 +154,9 @@ class SchedulerService:
                 "status": "failed",
                 "error": str(e),
             })
+
+        finally:
+            db.close()
 
     def get_status(self) -> Dict:
         """Get current scheduler status"""
@@ -163,6 +191,7 @@ class SchedulerService:
             "run_count": self.run_count,
             "last_run_time": format_datetime(self.last_run_time) if self.last_run_time else None,
             "last_run_articles": self.last_run_articles,
+            "last_job_id": self.last_job_id,
         }
 
     def get_history(self, limit: int = 10) -> List[Dict]:

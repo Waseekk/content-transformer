@@ -46,7 +46,9 @@ async def start_scheduler(
 ):
     """Start the automated scraping scheduler"""
 
-    if request.interval_hours < 0.0167 or request.interval_hours > 24:  # Min 1 minute for testing
+    # Convert to minutes for validation (avoids floating point precision issues)
+    interval_minutes = round(request.interval_hours * 60)
+    if interval_minutes < 1 or request.interval_hours > 24:  # Min 1 minute for testing
         raise HTTPException(status_code=400, detail="Interval must be between 1 minute and 24 hours")
 
     try:

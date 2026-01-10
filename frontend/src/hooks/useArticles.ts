@@ -43,10 +43,14 @@ export const useArticleSources = () => {
 };
 
 // Get scraping session history (past sessions excluding latest)
-export const useScrapingSessions = (params?: { days?: number; page?: number; limit?: number }) => {
+export const useScrapingSessions = (
+  params?: { days?: number; page?: number; limit?: number },
+  options?: { refetchInterval?: number | false }
+) => {
   return useQuery({
     queryKey: ['scrapingSessions', params],
     queryFn: () => articlesApi.getScrapingSessions(params),
     staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: options?.refetchInterval,
   });
 };

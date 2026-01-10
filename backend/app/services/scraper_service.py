@@ -133,6 +133,24 @@ class ScraperService:
                 )
                 return {"success": False, "error": "No sites enabled"}
 
+            # Initialize scraper first to get actual site count
+            scraper = MultiSiteScraper(
+                status_callback=None,  # Set callback after
+                enabled_sites=user_sites  # Only scrape user's enabled sites
+            )
+
+            # Get actual total sites from scraper config
+            total_sites_count = len(scraper.sites_config)
+
+            # Set initial result with total_sites
+            initial_result = job.result or {}
+            initial_result['sites'] = [s['name'] for s in scraper.sites_config]
+            initial_result['total_sites'] = total_sites_count
+            initial_result['sites_completed'] = 0
+            initial_result['site_stats'] = {}
+            job.result = initial_result
+            db.commit()
+
             # Create status callback to update job progress
             def status_callback(status_obj):
                 """Update job progress from scraper status"""
@@ -146,15 +164,13 @@ class ScraperService:
                 current_result['articles_count'] = status_obj.articles_count
                 current_result['site_stats'] = status_obj.site_stats
                 current_result['sites_completed'] = len(status_obj.site_stats)
+                current_result['total_sites'] = total_sites_count  # Keep total_sites
                 job.result = current_result
 
                 db.commit()
 
-            # Initialize scraper with status callback and enabled sites filter
-            scraper = MultiSiteScraper(
-                status_callback=status_callback,
-                enabled_sites=user_sites  # Only scrape user's enabled sites
-            )
+            # Set the callback on the scraper
+            scraper.status_callback = status_callback
 
             # Run scraping (this will only scrape enabled sites)
             articles_list, filepath = scraper.scrape_all_sites()

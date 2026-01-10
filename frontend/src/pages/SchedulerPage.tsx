@@ -41,7 +41,19 @@ export const SchedulerPage = () => {
   const { data: status } = useSchedulerStatus();
   useSchedulerHistory(10); // Keep the query active for caching
   const { data: stats, refetch: refetchStats } = useArticleStats();
-  const { data: scrapingSessions, isLoading: sessionsLoading, refetch: refetchSessions } = useScrapingSessions({ limit: 20 });
+
+  // Smart polling: only poll when scheduler is running
+  // Interval = scheduler interval + 10 seconds buffer
+  const isSchedulerActive = status?.is_running || false;
+  const schedulerIntervalMs = status?.interval_hours
+    ? (status.interval_hours * 60 * 60 * 1000) + 10000 // interval + 10 sec buffer
+    : false;
+  const smartRefetchInterval = isSchedulerActive ? schedulerIntervalMs : false;
+
+  const { data: scrapingSessions, isLoading: sessionsLoading, refetch: refetchSessions } = useScrapingSessions(
+    { limit: 20 },
+    { refetchInterval: smartRefetchInterval }
+  );
   const startScheduler = useStartScheduler();
   const stopScheduler = useStopScheduler();
   const startScraper = useStartScraper();
@@ -81,7 +93,8 @@ export const SchedulerPage = () => {
 
   const handleStartScheduler = () => {
     const intervalHours = getIntervalHours();
-    if (intervalHours < 0.0167) { // 1 minute minimum for testing
+    const intervalMinutes = Math.round(intervalHours * 60);
+    if (intervalMinutes < 1) { // 1 minute minimum for testing
       toast.error('Minimum interval is 1 minute');
       return;
     }
@@ -465,18 +478,7 @@ export const SchedulerPage = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-gray-900">
-                            {session.completed_at
-                              ? new Date(session.completed_at).toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit',
-                                })
-                              : 'Unknown date'
-                            }
+                            {session.completed_at || 'Unknown date'}
                           </p>
                           {session.is_latest && (
                             <span className="px-2 py-0.5 text-xs font-semibold bg-teal-500 text-white rounded-full">

@@ -16,6 +16,7 @@ from app.models.article import Article
 from app.models.job import Job
 from app.middleware.auth import get_current_active_user
 from app.schemas.scraper import ArticleResponse
+from app.config import format_datetime
 
 router = APIRouter()
 
@@ -116,7 +117,7 @@ async def get_articles(
         if latest_job:
             current_job_info = {
                 "job_id": latest_job.id,
-                "completed_at": latest_job.completed_at.isoformat() if latest_job.completed_at else None,
+                "completed_at": format_datetime(latest_job.completed_at) if latest_job.completed_at else None,
                 "status_message": latest_job.status_message
             }
 
@@ -377,8 +378,8 @@ async def get_scraping_sessions(
 
         sessions.append({
             "job_id": job.id,
-            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": format_datetime(job.completed_at) if job.completed_at else None,
+            "started_at": format_datetime(job.started_at) if job.started_at else None,
             "article_count": article_count or 0,
             "status_message": job.status_message,
             "result": job.result,

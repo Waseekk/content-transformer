@@ -22,6 +22,7 @@ from app.schemas.scraper import (
     ArticleResponse
 )
 from app.services.scraper_service import ScraperService
+from app.config import format_datetime
 
 router = APIRouter()
 
@@ -116,8 +117,8 @@ async def get_scraper_status(
         progress=job.progress,
         status_message=job.status_message,
         articles_count=result.get('total_articles'),
-        sites_completed=len(articles_by_site),
-        total_sites=len(result.get('sites', [])),
+        sites_completed=result.get('sites_completed', len(articles_by_site)),
+        total_sites=result.get('total_sites', len(result.get('sites', []))),
         started_at=job.started_at,
         completed_at=job.completed_at,
         error=job.error
@@ -322,10 +323,10 @@ async def stream_scraper_status(
                     "articles_count": articles_count,
                     "articles_saved": result.get('articles_saved'),
                     "sites_completed": sites_completed,
-                    "total_sites": len(result.get('sites', [])),
+                    "total_sites": result.get('total_sites', len(result.get('sites', []))),
                     "site_stats": site_stats,
-                    "started_at": job.started_at.isoformat() if job.started_at else None,
-                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                    "started_at": format_datetime(job.started_at) if job.started_at else None,
+                    "completed_at": format_datetime(job.completed_at) if job.completed_at else None,
                     "error": job.error
                 }
 

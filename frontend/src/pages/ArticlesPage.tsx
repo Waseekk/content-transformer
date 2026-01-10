@@ -38,6 +38,53 @@ export const ArticlesPage = () => {
   } = useAppStore();
 
   const [searchInput, setSearchInput] = useState(filters.search);
+  const [knownJobId, setKnownJobId] = useState<number | null>(null);
+  const [hasNewArticles, setHasNewArticles] = useState(false);
+
+  // Track the current job ID from loaded data
+  useEffect(() => {
+    const currentJobId = articlesData?.current_job?.job_id;
+    if (currentJobId && !knownJobId) {
+      setKnownJobId(currentJobId);
+    }
+  }, [articlesData?.current_job?.job_id, knownJobId]);
+
+  // Poll for new articles every 30 seconds (only when viewing latest, not history)
+  useEffect(() => {
+    if (jobId || !knownJobId) return; // Don't poll in history mode or before initial load
+
+    const checkForNewArticles = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/articles?latest_only=true&limit=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            },
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const latestJobId = data.current_job?.job_id;
+          if (latestJobId && latestJobId !== knownJobId) {
+            setHasNewArticles(true);
+          }
+        }
+      } catch (error) {
+        // Silently ignore polling errors
+      }
+    };
+
+    const interval = setInterval(checkForNewArticles, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [jobId, knownJobId]);
+
+  // Handle loading new articles
+  const handleLoadNewArticles = useCallback(() => {
+    setHasNewArticles(false);
+    setKnownJobId(null); // Reset so it picks up the new job ID
+    refetch();
+  }, [refetch]);
 
   // Debounced search
   useEffect(() => {
@@ -89,7 +136,25 @@ export const ArticlesPage = () => {
         onClose={handleBannerClose}
       />
 
-      <div className={`max-w-7xl mx-auto px-4 py-8 ${activeScraperJobId ? 'pt-20' : ''}`}>
+      {/* New Articles Available Banner */}
+      {hasNewArticles && (
+        <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">✨</span>
+              <span className="font-medium">New articles available from scheduler!</span>
+            </div>
+            <button
+              onClick={handleLoadNewArticles}
+              className="px-4 py-1.5 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+            >
+              Load New Articles
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`max-w-7xl mx-auto px-4 py-8 ${activeScraperJobId || hasNewArticles ? 'pt-20' : ''}`}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-2">
