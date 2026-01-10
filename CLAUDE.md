@@ -25,7 +25,8 @@ swiftor/
 │   │   ├── core/              # Business logic
 │   │   │   ├── prompts.py     # Hard/Soft news prompts
 │   │   │   ├── enhancer.py    # Content enhancement
-│   │   │   └── translator.py  # Translation logic
+│   │   │   ├── translator.py  # Translation logic
+│   │   │   └── text_processor.py  # Word corrections & validation
 │   │   ├── models/            # Database models
 │   │   └── services/          # Background services
 ├── frontend/                   # React Frontend
@@ -68,15 +69,25 @@ START_FRONTEND.bat
 - Professional newspaper style
 - Inverted pyramid structure
 - 300-500 words
-- Bold headline and lead paragraph
-- Factual, objective tone
+- Bold headline (no prefix), bold intro (2-3 lines)
+- Byline NOT bold: `নিউজ ডেস্ক, বাংলার কলম্বাস`
+- NO subheads allowed
+- Body paragraphs: NOT bold, max 2 lines each
 
 ### Soft News Format
 - Literary travel features
 - Storytelling approach
 - 500-800 words
-- Immersive descriptions
-- Emotional engagement
+- Bold headline (no prefix), bold intro 1 (2-4 lines)
+- Byline NOT bold: `নিউজ ডেস্ক, বাংলার কলম্বাস`
+- Non-bold intro 2 REQUIRED before first subhead
+- Subheads: bold, no brackets
+- Body paragraphs: NOT bold, max 2 lines each
+
+### Word Corrections (Post-Processing)
+- `শীঘ্রই` → `শিগগিরই`
+- `X সহ` → `Xসহ` (joined)
+- Date suffixes removed: `১লা` → `১`
 
 ## API Endpoints
 
@@ -113,7 +124,7 @@ Located in `.claude/agents/`:
 
 ---
 
-## TODO List (Last Updated: 2026-01-08)
+## TODO List (Last Updated: 2026-01-11)
 
 ### Critical Security Fixes (Before Production)
 
