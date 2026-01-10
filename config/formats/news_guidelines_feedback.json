@@ -1,0 +1,254 @@
+{
+  "meta": {
+    "client": "Asad",
+    "project": "Banglar Columbus News Translation",
+    "version": "4.0",
+    "date": "2026-01-10",
+    "notes": "FINAL: Byline NOT bold, includes full English-Bengali examples"
+  },
+  
+  "story_types": {
+    "hard_news": {
+      "description": "Straightforward news reporting - no subheads, simple structure",
+      "structure": [
+        {"element": "headline", "bold": true},
+        {"element": "byline", "bold": false, "format": "নিউজ ডেস্ক, বাংলার কলম্বাস"},
+        {"element": "intro_paragraph", "bold": true, "max_lines": 3},
+        {"element": "body_paragraphs", "bold": false, "max_lines_each": 2}
+      ],
+      "rules": {
+        "intro_max_lines": 3,
+        "intro_min_lines": 2,
+        "body_para_max_lines": 2,
+        "min_total_words": 200,
+        "has_subheads": false
+      }
+    },
+    
+    "soft_news": {
+      "description": "Feature/lifestyle news - has subheads, two intro paragraphs",
+      "structure": [
+        {"element": "headline", "bold": true},
+        {"element": "byline", "bold": false, "format": "নিউজ ডেস্ক, বাংলার কলম্বাস"},
+        {"element": "intro_paragraph_1", "bold": true, "max_lines": 4},
+        {"element": "intro_paragraph_2", "bold": false, "required_before_subhead": true},
+        {"element": "subheading", "bold": true},
+        {"element": "body_paragraph", "bold": false, "max_lines": 2}
+      ],
+      "rules": {
+        "intro_1_max_lines": 4,
+        "body_para_max_lines": 2,
+        "has_subheads": true,
+        "requires_non_bold_para_before_subhead": true
+      }
+    }
+  },
+  
+  "formatting_summary": {
+    "hard_news": [
+      "**HEADLINE** (bold)",
+      "BYLINE (NOT bold)",
+      "**INTRO** (bold, 2-3 lines)",
+      "Body para (not bold, 2 lines max)",
+      "Body para (not bold, 2 lines max)",
+      "... NO SUBHEADS in hard news"
+    ],
+    "soft_news": [
+      "**HEADLINE** (bold)",
+      "BYLINE (NOT bold)",
+      "**INTRO 1** (bold, 2-4 lines)",
+      "Intro 2 (NOT bold) ← REQUIRED before subhead",
+      "**SUBHEAD** (bold)",
+      "Body para (not bold, 2 lines max)",
+      "**SUBHEAD** (bold)",
+      "Body para (not bold, 2 lines max)"
+    ]
+  },
+  
+  "word_corrections": {
+    "spelling": [
+      {"wrong": "শীঘ্রই", "correct": "শিগগিরই"}
+    ],
+    "joining": [
+      {
+        "pattern": "(\\S+)\\s+সহ",
+        "replacement": "$1সহ",
+        "type": "regex",
+        "examples_wrong": ["ফাউন্টেন সহ", "রিসোর্ট সহ"],
+        "examples_correct": ["ফাউন্টেনসহ", "রিসোর্টসহ"]
+      }
+    ],
+    "date_format": {
+      "pattern": "([০-৯]+)[লাইশে]",
+      "replacement": "$1",
+      "type": "regex",
+      "examples_wrong": ["১লা ফেব্রুয়ারি", "১৫ই মার্চ"],
+      "examples_correct": ["১ ফেব্রুয়ারি", "১৫ মার্চ"]
+    },
+    "phrase_order": [
+      {
+        "wrong": "রয়টার্স সংবাদ সংস্থাকে",
+        "correct": "সংবাদ সংস্থা রয়টার্সকে"
+      }
+    ],
+    "quotation_rule": "End paragraph immediately after quotation closes"
+  },
+  
+  "full_examples": {
+    "example_1_trevi_fountain": {
+      "english_source": {
+        "headline": "Tourists to face €2 fee to get near Rome's Trevi Fountain",
+        "content": "Tourists in Italy's capital Rome will soon have to pay a €2 (£1.75; $2.34) entrance fee if they want to see its famed Trevi Fountain up close.\n\nThe new barrier for visitors to view the Baroque monument will come into force from 1 February 2026.\n\nWhile the coins tossed into the fountain are donated to charity, the fees collected will go to the city authority to pay for upkeep and managing visitors. The city expects to raise €6.5m a year from the fountain alone.\n\nAnnouncing the move on Friday, Rome's Mayor Roberto Gualtieri was quoted by news agency Reuters as saying that \"two euros isn't very much ... and it will lead to less chaotic tourist flows\".\n\nThe Trevi levy is part of a new tariff system for certain museums and monuments in the Italian capital.\n\nAccess to a number of sites that currently charge for entry will become free for Rome's residents, such as the Sacred Area of Largo Argentina.\n\nAt the same time, tourists and non-residents will have to pay to see the Trevi fountain and five other attractions including the Napoleonic Museum.\n\nChildren under the age of five, and those with disabilities and an accompanying person, will be exempt from the fees."
+      },
+      "hard_news_bengali": {
+        "format_visual": [
+          "**রোমের ট্রেভি ফাউন্টেন দর্শনে এবার থেকে প্রবেশ ফি** ← BOLD (headline)",
+          "নিউজ ডেস্ক, বাংলার কলম্বাস ← NOT BOLD (byline)",
+          "**রোমের বিখ্যাত ট্রেভি ফাউন্টেন পরিদর্শনের জন্য শিগগিরই পর্যটকদের ২ ইউরো (প্রায় ১.৭৫ পাউন্ড বা ২.৩৪ ডলার) প্রবেশ ফি দিতে হবে। এই নতুন নিয়ম ২০২৬ সালের ১ ফেব্রুয়ারি থেকে কার্যকর হবে। এই বাধা চালু করার পেছনের উদ্দেশ্য হলো স্মারকটির রক্ষণাবেক্ষণ এবং দর্শনার্থীদের ব্যবস্থাপনার জন্য অর্থ সংগ্রহ।** ← BOLD (intro, 3 lines)",
+          "এই সিদ্ধান্তের ঘোষণা করে রোমের মেয়র রবার্তো গুয়াল্তিয়েরি সংবাদ সংস্থা রয়টার্সকে বলেন, \"দুই ইউরো খুব বেশি নয়... এবং এটি পর্যটক প্রবাহকে কম বিশৃঙ্খল করবে।\" ← NOT BOLD (body)",
+          "এই নতুন ট্যারিফ সিস্টেম ইতালির রাজধানীর নির্দিষ্ট জাদুঘর এবং স্মারকগুলির জন্য চালু করা হচ্ছে। ← NOT BOLD (body)",
+          "প্রত্যাশা করা হচ্ছে যে, এই ফি থেকে প্রতিবছর প্রায় ৬.৫ মিলিয়ন ইউরো আয় হবে। ← NOT BOLD (body)",
+          "... more body paragraphs, NO SUBHEADS"
+        ],
+        "corrections_applied": [
+          "শীঘ্রই → শিগগিরই",
+          "১লা ফেব্রুয়ারি → ১ ফেব্রুয়ারি",
+          "রয়টার্স সংবাদ সংস্থাকে → সংবাদ সংস্থা রয়টার্সকে",
+          "ফাউন্টেন সহ → ফাউন্টেনসহ"
+        ]
+      },
+      "soft_news_bengali": {
+        "format_visual": [
+          "**রোমের রূপকথার ঝর্ণায় এক নতুন বাড়তি মূল্য** ← BOLD (headline)",
+          "নিউজ ডেস্ক, বাংলার কলম্বাস ← NOT BOLD (byline)",
+          "**রোমাঞ্চের শহর রোমে ট্রেভি ফাউন্টেনের সামনে দাঁড়িয়ে, শত শত মুদ্রা নিক্ষেপ করার সেই পুরোনো রীতিতে এবার যুক্ত হচ্ছে নতুন এক খরচ।** ← BOLD (intro 1)",
+          "রোম, ইতালির প্রাণভোমরা, যেখানে প্রতিটি রাস্তা ও গলি ইতিহাসের কথা বলে। রোমের অন্যতম আকর্ষণ ট্রেভি ফাউন্টেন, যেখানে এক ইউরো মুদ্রা নিক্ষেপ করে পর্যটকরা পুনরায় রোমে ফেরার কামনা করে থাকেন। ← NOT BOLD (intro 2, REQUIRED before subhead)",
+          "**জাদুকরী ঝর্ণার প্রবেশে অতিরিক্ত খরচ** ← BOLD (subhead)",
+          "২০২৬ সালের ১ ফেব্রুয়ারি থেকে ট্রেভি ফাউন্টেন দর্শন আরও বিশেষ এক অভিজ্ঞতায় পরিণত হবে। ← NOT BOLD (body)",
+          "**ইতিহাস ও সংস্কৃতির মিলনক্ষেত্র** ← BOLD (subhead)",
+          "রোমের মেয়র, রবার্তো গুয়াল্তিয়েরি, সিদ্ধান্তের প্রেক্ষাপট তুলে ধরেছেন। ← NOT BOLD (body)"
+        ],
+        "critical_note": "Notice: There is a NON-BOLD paragraph (intro 2) between the BOLD intro 1 and the first SUBHEAD"
+      }
+    },
+    
+    "example_2_dinosaur": {
+      "english_source": {
+        "headline": "Thousands of dinosaur footprints found on Italian mountain",
+        "content": "Thousands of dinosaur footprints dating back 210 million years have been found in a national park in northern Italy.\n\nThe footprints - some of which are up to 40cm (15in) in diameter - are aligned in parallel rows, and many show clear traces of toes and claws.\n\nIt is thought the dinosaurs were prosauropods - herbivores with long necks, small heads and sharp claws.\n\n\"I never would have imagined I'd come across such a spectacular discovery in the region where I live,\" said Milan-based paleontologist Cristiano Dal Sasso.\n\nLast September a photographer spotted the footprints stretching hundreds of metres on a vertical mountain wall in the Stelvio national park, north-east of Milan.\n\nIn the Triassic period - between about 250 and 201 million years ago - the wall was a tidal flat, which later became part of the Alpine chain.\n\n\"This place was full of dinosaurs; it's an immense scientific treasure,\" Mr Dal Sasso said."
+      },
+      "hard_news_bengali": {
+        "format_visual": [
+          "**ইতালির পাহাড়ে আবিষ্কৃত হলো প্রাচীন ডাইনোসরের পায়ের ছাপ** ← BOLD (headline)",
+          "নিউজ ডেস্ক, বাংলার কলম্বাস ← NOT BOLD (byline)",
+          "**ইতালির উত্তরাঞ্চলের একটি জাতীয় উদ্যানে ২১০ মিলিয়ন বছর পূর্বের হাজার হাজার ডাইনোসরের পায়ের ছাপ আবিষ্কৃত হয়েছে। এই ছাপগুলো, যার মধ্যে কিছুর ব্যাস ৪০ সেন্টিমিটার পর্যন্ত, সমান্তরাল সারিতে সাজানো এবং অনেকগুলোতে আঙ্গুল এবং নখের স্পষ্ট চিহ্ন দেখা গেছে।** ← BOLD (intro, 2-3 lines)",
+          "মিলান-ভিত্তিক প্যালিওন্টোলজিস্ট ক্রিস্টিয়ানো দাল সাসো বলেন, \"আমি কখনো ভাবিনি আমি আমার বাসস্থানের এলাকায় এমন চমকপ্রদ আবিষ্কারের সাক্ষী হব।\" ← NOT BOLD (body)",
+          "গত সেপ্টেম্বরে একজন ফটোগ্রাফার স্টেলভিও জাতীয় উদ্যানের একটি উল্লম্ব পাহাড়ের দেয়ালে এই ছাপগুলো দেখতে পান। ← NOT BOLD (body)",
+          "... NO SUBHEADS in hard news"
+        ]
+      },
+      "soft_news_bengali": {
+        "format_visual": [
+          "**সময়ের আড়ালে ইতালির গুপ্তধন: ডাইনোসরের পায়ের ছাপের মহাকাব্যিক আবিষ্কার** ← BOLD (headline)",
+          "নিউজ ডেস্ক, বাংলার কলম্বাস ← NOT BOLD (byline)",
+          "**আমার চোখের সামনে ইতিহাসের পাতা খুলে গেল। ইতালির উত্তরাঞ্চলের এক জাতীয় উদ্যানে ২১০ মিলিয়ন বছর পূর্বের ডাইনোসরের পায়ের চিহ্নিত ছাপ, যেন প্রাচীন পৃথিবীর এক বিস্ময়কর কাব্য।** ← BOLD (intro 1)",
+          "প্রতিটি পদক্ষেপ যেন এক একটি ইতিহাসের মুহূর্ত। স্তেলভিও জাতীয় উদ্যানের উল্লম্ব পাহাড়ের দেয়ালে এই ছাপগুলোর আবিষ্কার, মানবজাতির জন্য এক অনন্য উপহার। ← NOT BOLD (intro 2, REQUIRED before subhead)",
+          "**এক অসাধারণ আবিষ্কারের গল্প** ← BOLD (subhead)",
+          "এই ছাপগুলোর আবিষ্কার মিলান-ভিত্তিক প্যালিওন্টোলজিস্ট ক্রিস্টিয়ানো দাল সাসোর জন্য ছিল এক অপ্রত্যাশিত আনন্দের উৎস। ← NOT BOLD (body)",
+          "**ডাইনোসরের পায়ের ছাপের রহস্য** ← BOLD (subhead)",
+          "ধারণা করা হচ্ছে এই ডাইনোসরগুলো ছিল প্রোসাউরোপড। ← NOT BOLD (body)"
+        ],
+        "this_is_correct": "Dinosaur soft news in the document follows CORRECT structure - non-bold para before subhead exists"
+      }
+    },
+    
+    "example_3_ski_WRONG": {
+      "description": "This is the WRONG example that Asad flagged in Comment #12 and #14",
+      "english_source": {
+        "headline": "The six best places to ski in 2026",
+        "note": "Ski destinations article"
+      },
+      "soft_news_bengali_WRONG": {
+        "format_visual": [
+          "**২০২৬ সালের তুষারের দেশে: স্কি করার সেরা ছয় স্বপ্নিল গন্তব্য** ← BOLD (headline) ✓",
+          "নিউজ ডেস্ক | বাংলার কলম্বাস ← NOT BOLD (byline) ✓",
+          "**শীত নামলেই তুষারের টানে পাহাড়ের দিকে ছুটে যান অ্যাডভেঞ্চারপ্রেমীরা। স্কি শুধু একটি খেলা নয়—এ এক অনুভূতি, এক রোমাঞ্চকর ভ্রমণ। ২০২৬ সালের শীতকে সামনে রেখে বিশ্বের নানা প্রান্তের স্কি-প্রেমীরা খুঁজছেন এমন কিছু গন্তব্য। ভ্রমণ বিশেষজ্ঞদের মতে, আগামী মৌসুমে স্কিয়াররা পরিচিত গন্তব্যের বাইরে গিয়ে নতুন অভিজ্ঞতা নিতে বেশি আগ্রহী। সেই চাহিদার কথা মাথায় রেখেই তুলে ধরা হলো ২০২৬ সালের স্কি করার জন্য সেরা ছয়টি গন্তব্য।** ← BOLD (intro) ✓",
+          "**আল্তা বাদিয়া, ডোলোমাইটস, ইতালি** ← BOLD (subhead) ✗ ERROR!"
+        ],
+        "error": "MISSING non-bold paragraph between intro and subhead!",
+        "asad_comment": "এখানে পুরোটাই বোল্ড এবং ইন্ট্রোর পরেই নতুন সাবহেড শুরু হইছে। কিন্তু সাবহেডের আগে এবং ইন্ট্রোর পরে বোল্ড ছাড়া রেগুলার একটা প্যারা থাকবে।"
+      },
+      "soft_news_bengali_CORRECTED": {
+        "format_visual": [
+          "**২০২৬ সালের তুষারের দেশে: স্কি করার সেরা ছয় স্বপ্নিল গন্তব্য** ← BOLD (headline)",
+          "নিউজ ডেস্ক | বাংলার কলম্বাস ← NOT BOLD (byline)",
+          "**শীত নামলেই তুষারের টানে পাহাড়ের দিকে ছুটে যান অ্যাডভেঞ্চারপ্রেমীরা। স্কি শুধু একটি খেলা নয়—এ এক অনুভূতি, এক রোমাঞ্চকর ভ্রমণ।** ← BOLD (intro 1, shorter now)",
+          "ভ্রমণ বিশেষজ্ঞদের মতে, আগামী মৌসুমে স্কিয়াররা পরিচিত গন্তব্যের বাইরে গিয়ে নতুন অভিজ্ঞতা নিতে বেশি আগ্রহী। সেই চাহিদার কথা মাথায় রেখেই তুলে ধরা হলো ২০২৬ সালের স্কি করার জন্য সেরা ছয়টি গন্তব্য। ← NOT BOLD (intro 2, NOW EXISTS before subhead)",
+          "**আল্তা বাদিয়া, ডোলোমাইটস, ইতালি** ← BOLD (subhead) ✓ NOW CORRECT",
+          "ইতালির ডোলোমাইট পর্বতমালা দীর্ঘদিন ধরেই ইউরোপের শীতকালীন ক্রীড়ার প্রাণকেন্দ্র। ← NOT BOLD (body)"
+        ],
+        "fix_applied": "Split the long bold intro into: intro 1 (bold) + intro 2 (not bold), so non-bold para exists before subhead"
+      }
+    }
+  },
+  
+  "comments_from_asad": {
+    "C01": {
+      "bn": "কোনো হার্ড স্টোরির ইন্ট্রো দুই থেকে তিন লাইনের বেশি হবে না।",
+      "en": "Hard news intro: 2-3 lines max, BOLD",
+      "applies_to": "hard_news"
+    },
+    "C02": {
+      "bn": "শিগগিরই",
+      "en": "Use 'শিগগিরই' not 'শীঘ্রই'",
+      "applies_to": "all"
+    },
+    "C03": {
+      "bn": "কোটেশন শেষ হলে প্যারাও শেষ হবে। যেকোনো সংবাদের ক্ষেত্রেই",
+      "en": "End paragraph when quotation ends",
+      "applies_to": "all"
+    },
+    "C04": {
+      "bn": "সংবাদ সংস্থা রয়টার্সকে",
+      "en": "Correct format: সংবাদ সংস্থা [agency name]",
+      "applies_to": "all"
+    },
+    "C05": {
+      "bn": "ভেতরের কোনো প্যারাই দুই লাইনের বেশি হবে না। এটা হার্ড সফট দুই নিউজের ক্ষেত্রেই।",
+      "en": "Body paragraphs: 2 lines max",
+      "applies_to": "all"
+    },
+    "C06": {
+      "bn": "সহ শব্দটা সবসময় একসঙ্গে হবে, অর্থাৎ ফাউন্টেনসহ",
+      "en": "সহ joins with previous word",
+      "applies_to": "all"
+    },
+    "C07": {
+      "bn": "সফট স্টোরির ক্ষেত্রে ইন্ট্রো দুই থেকে চার লাইন পর্যন্ত হতে পারে",
+      "en": "Soft news first intro: 2-4 lines",
+      "applies_to": "soft_news"
+    },
+    "C08": {
+      "bn": "তারিখের সঙ্গে লা থাকবে না, ১ ফেব্রুয়ারি হবে",
+      "en": "No date suffix (লা, ই, শে)",
+      "applies_to": "all"
+    },
+    "C09": {
+      "bn": "হার্ড স্টোরি ২০০ শব্দের বেশি হবে।",
+      "en": "Hard news: minimum 200 words",
+      "applies_to": "hard_news"
+    },
+    "C12_C14": {
+      "bn": "এখানে পুরোটাই বোল্ড এবং ইন্ট্রোর পরেই নতুন সাবহেড শুরু হইছে। কিন্তু সাবহেডের আগে এবং ইন্ট্রোর পরে বোল্ড ছাড়া রেগুলার একটা প্যারা থাকবে।",
+      "en": "SOFT NEWS: Must have non-bold paragraph after bold intro, before any subhead",
+      "applies_to": "soft_news",
+      "critical": true
+    }
+  },
+  
+  "prompt_templates": {
+    "hard_news": "Translate this HARD NEWS to Bengali for Banglar Columbus.\n\nSTRUCTURE:\n1. **HEADLINE** (bold)\n2. নিউজ ডেস্ক, বাংলার কলম্বাস (NOT bold)\n3. **INTRO** (bold, 2-3 lines max)\n4. Body paragraphs (NOT bold, 2 lines max each)\n\n⚠️ NO SUBHEADS in hard news\n⚠️ Minimum 200 words\n\nWORD CORRECTIONS:\n- শীঘ্রই → শিগগিরই\n- X সহ → Xসহ (join)\n- ১লা → ১ (no date suffix)\n- সংবাদ সংস্থা [name] format\n- End paragraph after quotation closes",
+    
+    "soft_news": "Translate this SOFT NEWS to Bengali for Banglar Columbus.\n\nSTRUCTURE:\n1. **HEADLINE** (bold)\n2. নিউজ ডেস্ক, বাংলার কলম্বাস (NOT bold)\n3. **INTRO 1** (bold, 2-4 lines max)\n4. Intro 2 (NOT bold) ← CRITICAL: MUST exist before any subhead\n5. **SUBHEAD** (bold)\n6. Body para (NOT bold, 2 lines max)\n7. Continue with more subheads and body...\n\n⚠️ CRITICAL: There MUST be a non-bold paragraph between bold intro and first subhead\n\nWORD CORRECTIONS:\n- শীঘ্রই → শিগগিরই\n- X সহ → Xসহ (join)\n- ১লা → ১ (no date suffix)\n- সংবাদ সংস্থা [name] format\n- End paragraph after quotation closes"
+  }
+}

@@ -19,7 +19,7 @@ EXTRACTION_TRANSLATION_PROMPT = """You are a professional translation assistant 
 
 Your task:
 1. EXTRACT the main article content from the pasted webpage text
-2. TRANSLATE it to natural Bangladeshi Bengali (NOT Indian Bengali)
+2. TRANSLATE it to natural modern Bangladeshi Bengali (NOT Indian Bengali)
 
 What to EXTRACT:
 ✓ Headline/Title
@@ -137,7 +137,7 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
             response, tokens = self.provider.generate(
                 system_prompt=EXTRACTION_TRANSLATION_PROMPT,
                 user_prompt=user_prompt,
-                temperature=0.3,  # Lower temperature for more accurate translation
+                temperature=0.4 ,  # Lower temperature for more accurate translation
                 max_tokens=4000  # Enough for most articles
             )
 
@@ -276,39 +276,3 @@ def translate_text(text, provider='openai', model=None):
     return translator.simple_translate(text)
 
 
-# ============================================================================
-# TESTING
-# ============================================================================
-
-if __name__ == "__main__":
-    print("Testing OpenAI Translator...")
-
-    # Test with sample content
-    test_content = """
-    Travel News Today
-
-    New UNESCO World Heritage Site Announced in Bangladesh
-    By John Smith | March 15, 2024
-
-    The United Nations Educational, Scientific and Cultural Organization (UNESCO)
-    has announced a new World Heritage Site in Bangladesh. The Sundarbans mangrove
-    forest has been recognized for its unique biodiversity.
-
-    Local tourism officials expect this designation to boost visitor numbers
-    significantly in the coming years.
-
-    [Advertisement]
-    [Related Articles]
-    [Comments Section]
-    """
-
-    translator = OpenAITranslator('openai')
-    result = translator.extract_and_translate(test_content)
-
-    if result['success']:
-        print("\n✓ Translation successful!")
-        print(f"Headline: {result['headline']}")
-        print(f"Content length: {len(result['content'])} chars")
-        print(f"Tokens used: {result['tokens_used']}")
-    else:
-        print(f"\n✗ Translation failed: {result['error']}")

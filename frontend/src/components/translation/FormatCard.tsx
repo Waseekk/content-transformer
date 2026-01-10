@@ -1,12 +1,14 @@
 /**
  * Format Card Component - Visual card for each content format
- * Features: Edit mode, Copy All, Markdown rendering, Download
+ * Features: Edit mode, Copy All (rich text), Markdown rendering, Download (TXT, Word)
  */
 
 import React, { useState, useEffect } from 'react';
 import { HiClipboard, HiClipboardCheck, HiDownload, HiPencil, HiCheck, HiX } from 'react-icons/hi';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
+import { saveAs } from 'file-saver';
 
 interface FormatCardProps {
   title: string;
@@ -18,6 +20,83 @@ interface FormatCardProps {
   gradientFrom: string;
   gradientTo: string;
 }
+
+/**
+ * Convert markdown text to HTML string (handles **bold** formatting)
+ */
+const markdownToHtml = (markdown: string): string => {
+  // Convert **text** to <strong>text</strong>
+  let html = markdown.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Convert newlines to paragraphs
+  const paragraphs = html.split(/\n\n+/).filter(p => p.trim());
+  html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+
+  return html;
+};
+
+/**
+ * Convert markdown to plain text (removes ** markers)
+ */
+const markdownToPlainText = (markdown: string): string => {
+  return markdown.replace(/\*\*/g, '');
+};
+
+/**
+ * Parse markdown and create Word document paragraphs
+ */
+const parseMarkdownForWord = (markdown: string): Paragraph[] => {
+  const paragraphs: Paragraph[] = [];
+  const lines = markdown.split(/\n\n+/).filter(line => line.trim());
+
+  for (const line of lines) {
+    const textRuns: TextRun[] = [];
+    let currentIndex = 0;
+    const boldRegex = /\*\*(.+?)\*\*/g;
+    let match;
+
+    while ((match = boldRegex.exec(line)) !== null) {
+      // Add text before the bold part
+      if (match.index > currentIndex) {
+        const beforeText = line.slice(currentIndex, match.index);
+        if (beforeText) {
+          textRuns.push(new TextRun({ text: beforeText, size: 24 }));
+        }
+      }
+
+      // Add bold text
+      textRuns.push(new TextRun({
+        text: match[1],
+        bold: true,
+        size: 24
+      }));
+
+      currentIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last bold
+    if (currentIndex < line.length) {
+      const remainingText = line.slice(currentIndex);
+      if (remainingText) {
+        textRuns.push(new TextRun({ text: remainingText, size: 24 }));
+      }
+    }
+
+    // If no bold markers found, add the whole line
+    if (textRuns.length === 0 && line.trim()) {
+      textRuns.push(new TextRun({ text: line, size: 24 }));
+    }
+
+    if (textRuns.length > 0) {
+      paragraphs.push(new Paragraph({
+        children: textRuns,
+        spacing: { after: 200 },
+      }));
+    }
+  }
+
+  return paragraphs;
+};
 
 export const FormatCard: React.FC<FormatCardProps> = ({
   title,
@@ -40,32 +119,94 @@ export const FormatCard: React.FC<FormatCardProps> = ({
     }
   }, [content]);
 
+  /**
+   * Copy content as rich text (HTML) with bold formatting preserved
+   */
   const handleCopyAll = async () => {
     const textToCopy = isEditing ? editedContent : (content || '');
     if (!textToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      // Convert markdown to HTML for rich text
+      const htmlContent = markdownToHtml(textToCopy);
+      const plainContent = markdownToPlainText(textToCopy);
+
+      // Try to copy as both HTML and plain text
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+        const textBlob = new Blob([plainContent], { type: 'text/plain' });
+
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': htmlBlob,
+            'text/plain': textBlob,
+          }),
+        ]);
+      } else {
+        // Fallback for browsers that don't support ClipboardItem
+        await navigator.clipboard.writeText(plainContent);
+      }
+
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success(`${title} copied to clipboard!`);
+      toast.success(`${title} copied with formatting!`);
     } catch (err) {
-      toast.error('Failed to copy');
+      // Fallback to plain text
+      try {
+        const plainContent = markdownToPlainText(textToCopy);
+        await navigator.clipboard.writeText(plainContent);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast.success(`${title} copied to clipboard!`);
+      } catch {
+        toast.error('Failed to copy');
+      }
     }
   };
 
-  const handleDownload = () => {
+  /**
+   * Download content as plain text (.txt)
+   */
+  const handleDownloadTxt = () => {
     const textToDownload = isEditing ? editedContent : (content || '');
     if (!textToDownload) return;
 
-    const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8' });
+    const plainText = markdownToPlainText(textToDownload);
+    const blob = new Blob([plainText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Downloaded!');
+    toast.success('Downloaded as TXT!');
+  };
+
+  /**
+   * Download content as Word document (.docx) with bold formatting
+   */
+  const handleDownloadWord = async () => {
+    const textToDownload = isEditing ? editedContent : (content || '');
+    if (!textToDownload) return;
+
+    try {
+      const paragraphs = parseMarkdownForWord(textToDownload);
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: paragraphs,
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.docx`;
+      saveAs(blob, filename);
+      toast.success('Downloaded as Word!');
+    } catch (err) {
+      console.error('Word export error:', err);
+      toast.error('Failed to create Word document');
+    }
   };
 
   const handleEditToggle = () => {
@@ -173,6 +314,7 @@ export const FormatCard: React.FC<FormatCardProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Copy All - Rich Text */}
                 <button
                   onClick={handleCopyAll}
                   className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
@@ -190,12 +332,24 @@ export const FormatCard: React.FC<FormatCardProps> = ({
                   )}
                 </button>
 
+                {/* Download TXT */}
                 <button
-                  onClick={handleDownload}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                  onClick={handleDownloadTxt}
+                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors flex items-center gap-1.5"
+                  title="Download as plain text"
                 >
                   <HiDownload className="w-4 h-4" />
-                  Download
+                  TXT
+                </button>
+
+                {/* Download Word */}
+                <button
+                  onClick={handleDownloadWord}
+                  className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-semibold transition-colors flex items-center gap-1.5"
+                  title="Download as Word document"
+                >
+                  <HiDownload className="w-4 h-4" />
+                  Word
                 </button>
               </div>
             </div>

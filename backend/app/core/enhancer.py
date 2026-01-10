@@ -10,6 +10,7 @@ import json
 # Import modules
 from app.core.ai_providers import get_provider
 from app.core.prompts import get_format_config, get_user_prompt
+from app.core.text_processor import process_enhanced_content
 from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('enhancer')
@@ -89,19 +90,21 @@ class ContentEnhancer:
                 max_tokens=config['max_tokens']
             )
 
-            # Validate markdown formatting for hard_news
-            if format_type == 'hard_news' and not content.strip().startswith('**'):
-                logger.warning(f"Content missing markdown formatting for {format_type}")
-                logger.warning("Hard news content should start with **শিরোনাম-")
+            # Apply post-processing (word corrections + structure validation)
+            processed_content, validation = process_enhanced_content(
+                content.strip(),
+                format_type
+            )
 
-            # Validate markdown formatting for soft_news (should have headline but may not start with **)
-            if format_type == 'soft_news' and 'শিরোনাম-' not in content[:200]:
-                logger.warning(f"Content may be missing proper headline format for {format_type}")
+            # Log validation warnings if any
+            if not validation['valid']:
+                for warning in validation['warnings']:
+                    logger.warning(f"Structure warning for {format_type}: {warning}")
 
-            # Create result
+            # Create result with processed content
             result = EnhancementResult(
                 format_type=format_type,
-                content=content.strip(),
+                content=processed_content,
                 tokens_used=tokens
             )
 
