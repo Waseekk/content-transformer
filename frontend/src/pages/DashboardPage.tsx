@@ -2,17 +2,21 @@
  * Dashboard Page - Overview with stats and quick actions
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useArticleStats } from '../hooks/useArticles';
 import { useSchedulerStatus } from '../hooks/useScheduler';
+import { useScraperSites } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
-import { HiNewspaper, HiTranslate, HiClock, HiLightningBolt } from 'react-icons/hi';
+import { HiNewspaper, HiTranslate, HiClock, HiLightningBolt, HiExternalLink, HiChevronDown, HiChevronUp } from 'react-icons/hi';
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const { data: stats } = useArticleStats();
   const { data: schedulerStatus } = useSchedulerStatus();
+  const { data: sitesData } = useScraperSites();
   const { selectedArticle } = useAppStore();
+  const [showSources, setShowSources] = useState(false);
 
   const quickActions = [
     {
@@ -74,17 +78,24 @@ export const DashboardPage = () => {
           <p className="text-blue-100 text-sm">Total Articles</p>
         </div>
 
-        {/* Available Sources */}
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-6 text-white shadow-lg">
+        {/* Available Sources - Clickable */}
+        <button
+          onClick={() => setShowSources(!showSources)}
+          className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-6 text-white shadow-lg text-left hover:from-teal-600 hover:to-teal-700 transition-all w-full"
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-3xl">🌐</span>
-            <HiNewspaper className="w-8 h-8 opacity-50" />
+            {showSources ? (
+              <HiChevronUp className="w-6 h-6" />
+            ) : (
+              <HiChevronDown className="w-6 h-6" />
+            )}
           </div>
           <p className="text-4xl font-bold mb-1">
-            {stats?.total_sources || '0'}
+            {sitesData?.available_sites?.length || stats?.total_sources || '0'}
           </p>
-          <p className="text-teal-100 text-sm">News Sources</p>
-        </div>
+          <p className="text-teal-100 text-sm">News Sources (click to view)</p>
+        </button>
 
         {/* Recent Articles */}
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
@@ -125,6 +136,43 @@ export const DashboardPage = () => {
           </p>
         </div>
       </div>
+
+      {/* Expandable News Sources List */}
+      {showSources && sitesData?.available_sites && (
+        <div className="mb-8 bg-white rounded-xl p-6 border-2 border-teal-200 shadow-sm">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            🌐 News Sources ({sitesData.available_sites.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {sitesData.available_sites.map((site: any) => (
+              <a
+                key={site.name}
+                href={site.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`
+                  flex items-center justify-between p-3 rounded-lg border transition-all
+                  ${site.enabled
+                    ? 'border-teal-200 bg-teal-50 hover:bg-teal-100'
+                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100 opacity-60'
+                  }
+                `}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate">
+                    {site.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{site.url}</p>
+                </div>
+                <HiExternalLink className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
+              </a>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-gray-500">
+            {sitesData.enabled_sites?.length || 0} sources enabled for scraping
+          </p>
+        </div>
+      )}
 
       {/* Selected Article Banner */}
       {selectedArticle && (

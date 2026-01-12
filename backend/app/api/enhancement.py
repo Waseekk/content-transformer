@@ -232,13 +232,16 @@ async def enhance_content(
             detail=f"Access denied to formats: {', '.join(unauthorized_formats)}. Your tier ({current_user.subscription_tier}) allows: {', '.join(allowed_formats)}"
         )
 
-    # Estimate token cost (rough estimate: 500-1500 per format)
-    estimated_tokens = len(request.formats) * 1000
+    # Estimate token cost based on content length and number of formats
+    # Rough estimate: (input chars / 4) for input + (output roughly 1.5x input for enhanced content)
+    # Multiply by number of formats, add buffer
+    base_tokens = max(500, int(len(content_text) / 4 * 2.5))
+    estimated_tokens = base_tokens * len(request.formats)
 
     if not current_user.has_tokens(estimated_tokens):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Insufficient tokens. Estimated cost: {estimated_tokens} tokens. You have: {current_user.tokens_remaining} tokens."
+            detail=f"Insufficient tokens. Estimated cost: ~{estimated_tokens:,} tokens for {len(request.formats)} format(s). You have: {current_user.tokens_remaining:,} tokens remaining. Please add more credits to continue."
         )
 
     # Generate enhanced content
@@ -275,7 +278,7 @@ async def enhance_content(
     if not current_user.deduct_tokens(total_tokens):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Failed to deduct tokens"
+            detail=f"Insufficient tokens. Actual cost: {total_tokens:,} tokens exceeded your balance of {current_user.tokens_remaining:,} tokens. Please add more credits."
         )
 
     # Save to database

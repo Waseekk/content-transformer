@@ -144,6 +144,18 @@ async def extract_and_translate_from_url(
             detail="Extracted content is too short (minimum 100 characters)"
         )
 
+    # Estimate tokens based on extracted content length BEFORE calling OpenAI
+    # Rough estimate: (input chars / 4) for input tokens + similar for output
+    # Translation typically doubles token count (input + output), add 20% buffer
+    estimated_tokens = max(500, int(len(extracted_content['text']) / 4 * 2.2))
+
+    # Check token balance with estimated cost
+    if not current_user.has_tokens(estimated_tokens):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Insufficient tokens. Estimated cost: ~{estimated_tokens:,} tokens. You have: {current_user.tokens_remaining:,} tokens remaining. Please add more credits to continue."
+        )
+
     # Translate to Bengali using OpenAI
     try:
         translator = OpenAITranslator()
@@ -167,7 +179,7 @@ async def extract_and_translate_from_url(
     if not current_user.deduct_tokens(tokens_used):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Failed to deduct tokens. Account may have been paused."
+            detail=f"Insufficient tokens. Actual cost: {tokens_used:,} tokens exceeded your balance of {current_user.tokens_remaining:,} tokens. Please add more credits."
         )
 
     # Save to database
@@ -227,11 +239,16 @@ async def translate_raw_text(
     - Sufficient token balance
     - Text between 10-50,000 characters
     """
-    # Check token balance
-    if not current_user.has_tokens(100):
+    # Estimate tokens based on text length BEFORE calling OpenAI
+    # Rough estimate: (input chars / 4) for input tokens + similar for output
+    # Translation typically doubles token count (input + output), add 20% buffer
+    estimated_tokens = max(500, int(len(request.text) / 4 * 2.2))
+
+    # Check token balance with estimated cost
+    if not current_user.has_tokens(estimated_tokens):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Insufficient tokens. You have {current_user.tokens_remaining} tokens remaining."
+            detail=f"Insufficient tokens. Estimated cost: ~{estimated_tokens:,} tokens. You have: {current_user.tokens_remaining:,} tokens remaining. Please add more credits to continue."
         )
 
     # Translate to Bengali
@@ -255,7 +272,7 @@ async def translate_raw_text(
     if not current_user.deduct_tokens(tokens_used):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Failed to deduct tokens"
+            detail=f"Insufficient tokens. Actual cost: {tokens_used:,} tokens exceeded your balance of {current_user.tokens_remaining:,} tokens. Please add more credits."
         )
 
     # Save to database

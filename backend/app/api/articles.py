@@ -170,6 +170,13 @@ async def get_article_stats(
         Article.user_id == current_user.id
     ).count()
 
+    # Articles in last 24 hours
+    one_day_ago = datetime.utcnow() - timedelta(hours=24)
+    recent_24h = db.query(Article).filter(
+        Article.user_id == current_user.id,
+        Article.scraped_at >= one_day_ago
+    ).count()
+
     # Articles in last 7 days
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     last_7_days = db.query(Article).filter(
@@ -194,15 +201,22 @@ async def get_article_stats(
         func.count(Article.id).desc()
     ).limit(10).all()
 
+    # Count total unique sources
+    total_sources = db.query(Article.source).filter(
+        Article.user_id == current_user.id
+    ).distinct().count()
+
     return {
         "total_articles": total_articles,
+        "recent_24h": recent_24h,
         "last_7_days": last_7_days,
         "last_30_days": last_30_days,
         "by_source": [
             {"source": source, "count": count}
             for source, count in by_source
         ],
-        "unique_sources": len(by_source)
+        "total_sources": total_sources,
+        "unique_sources": total_sources  # Keep for backward compatibility
     }
 
 

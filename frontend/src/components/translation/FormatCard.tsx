@@ -19,6 +19,8 @@ interface FormatCardProps {
   isLoading?: boolean;
   gradientFrom: string;
   gradientTo: string;
+  formatId?: string;
+  onContentUpdate?: (formatId: string, newContent: string) => void;
 }
 
 /**
@@ -107,6 +109,8 @@ export const FormatCard: React.FC<FormatCardProps> = ({
   isLoading,
   gradientFrom,
   gradientTo,
+  formatId,
+  onContentUpdate,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -165,24 +169,6 @@ export const FormatCard: React.FC<FormatCardProps> = ({
   };
 
   /**
-   * Download content as plain text (.txt)
-   */
-  const handleDownloadTxt = () => {
-    const textToDownload = isEditing ? editedContent : (content || '');
-    if (!textToDownload) return;
-
-    const plainText = markdownToPlainText(textToDownload);
-    const blob = new Blob([plainText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Downloaded as TXT!');
-  };
-
-  /**
    * Download content as Word document (.docx) with bold formatting
    */
   const handleDownloadWord = async () => {
@@ -211,7 +197,10 @@ export const FormatCard: React.FC<FormatCardProps> = ({
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // Save changes
+      // Save changes - update parent state
+      if (onContentUpdate && formatId) {
+        onContentUpdate(formatId, editedContent);
+      }
       toast.success('Changes saved!');
     }
     setIsEditing(!isEditing);
@@ -332,24 +321,14 @@ export const FormatCard: React.FC<FormatCardProps> = ({
                   )}
                 </button>
 
-                {/* Download TXT */}
-                <button
-                  onClick={handleDownloadTxt}
-                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors flex items-center gap-1.5"
-                  title="Download as plain text"
-                >
-                  <HiDownload className="w-4 h-4" />
-                  TXT
-                </button>
-
-                {/* Download Word */}
+                {/* Download as Word */}
                 <button
                   onClick={handleDownloadWord}
-                  className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-semibold transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
                   title="Download as Word document"
                 >
                   <HiDownload className="w-4 h-4" />
-                  Word
+                  Download
                 </button>
               </div>
             </div>

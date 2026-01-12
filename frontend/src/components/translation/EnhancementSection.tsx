@@ -70,6 +70,17 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
 
   const isDisabled = !translatedText || selectedFormats.length === 0;
 
+  // Handle content updates from FormatCard edits
+  const handleContentUpdate = (formatId: string, newContent: string) => {
+    setResults((prev) => ({
+      ...prev,
+      [formatId]: {
+        ...prev[formatId],
+        content: newContent,
+      },
+    }));
+  };
+
   return (
     <div className="mt-8 space-y-6">
       {/* Header */}
@@ -145,6 +156,7 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
             return (
               <FormatCard
                 key={formatId}
+                formatId={formatId}
                 title={format.title}
                 icon={format.icon}
                 description={format.description}
@@ -153,6 +165,7 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
                 isLoading={enhance.isPending && !result}
                 gradientFrom={format.gradientFrom}
                 gradientTo={format.gradientTo}
+                onContentUpdate={handleContentUpdate}
               />
             );
           })}

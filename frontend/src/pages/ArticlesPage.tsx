@@ -115,12 +115,16 @@ export const ArticlesPage = () => {
     startScraper.mutate();
   };
 
-  // Handle scraper completion - notify user (no auto-refresh, user must click Refresh)
+  // Handle scraper completion - auto-refresh articles and stats
   const handleScraperComplete = useCallback((articlesCount: number) => {
-    toast.success(`Scraping complete! Found ${articlesCount} articles. Click Refresh to load.`);
+    toast.success(`Scraping complete! Found ${articlesCount} new articles.`);
     // Clear the active job ID
     setActiveScraperJobId(null);
-  }, [setActiveScraperJobId]);
+    // Reset known job ID so it picks up the new session
+    setKnownJobId(null);
+    // Auto-refresh the articles list
+    refetch();
+  }, [setActiveScraperJobId, refetch]);
 
   // Handle banner close
   const handleBannerClose = useCallback(() => {
