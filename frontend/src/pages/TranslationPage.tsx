@@ -1,27 +1,37 @@
 /**
- * Translation Page - Translate and enhance selected articles
+ * News Generator Page - Generate Bengali news articles from English content
+ * State persists across tab changes via Zustand store
  */
 
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useTranslate } from '../hooks/useTranslation';
 import { ContextBar } from '../components/translation/ContextBar';
 import { PasteArea } from '../components/translation/PasteArea';
-import { TranslationResult } from '../components/translation/TranslationResult';
+import { ContentPreview } from '../components/translation/ContentPreview';
 import { EnhancementSection } from '../components/translation/EnhancementSection';
 import toast from 'react-hot-toast';
 
 export const TranslationPage = () => {
   const navigate = useNavigate();
-  const { selectedArticle, selectArticle } = useAppStore();
+  const {
+    selectedArticle,
+    selectArticle,
+    pastedContent,
+    setPastedContent,
+    currentTranslation,
+    setCurrentTranslation,
+    clearTranslationState,
+  } = useAppStore();
   const translate = useTranslate();
-
-  const [pastedContent, setPastedContent] = useState('');
-  const [translationData, setTranslationData] = useState<any>(null);
 
   const handleClearSelection = () => {
     selectArticle(null);
+  };
+
+  const handleClearAll = () => {
+    clearTranslationState();
+    toast.success('Cleared all data');
   };
 
   const handleTranslate = async () => {
@@ -32,8 +42,14 @@ export const TranslationPage = () => {
 
     try {
       const result = await translate.mutateAsync(pastedContent);
-      setTranslationData(result);
-      toast.success('Translation completed!');
+      // Store in global state so it persists across tab changes
+      setCurrentTranslation({
+        original: pastedContent,
+        translated: result.translated_text,
+        tokens_used: result.tokens_used,
+        timestamp: new Date().toISOString(),
+      });
+      toast.success('Content processed!');
     } catch (error: any) {
       // Error already handled by useTranslate hook
       console.error('Translation error:', error);
@@ -45,12 +61,12 @@ export const TranslationPage = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          🌐 Translate & Enhance
+          ✨ News Generator
         </h1>
         <p className="text-gray-600">
           {selectedArticle
-            ? 'Translate your selected article and generate multiple content formats'
-            : 'Paste any content to translate and generate multiple formats'
+            ? 'Generate Bengali news articles from your selected content'
+            : 'Paste any English content to generate Bengali news articles'
           }
         </p>
       </div>
@@ -88,33 +104,31 @@ export const TranslationPage = () => {
         isLoading={translate.isPending}
       />
 
-      {/* Translation Result */}
-      {translationData && (
+      {/* Content Preview - Shows English content after translation */}
+      {currentTranslation && (
         <div className="mt-8">
-          <TranslationResult
-            original={translationData.original_text || pastedContent}
-            translated={translationData.translated_text}
-            tokensUsed={translationData.tokens_used}
-            extractedData={{
-              headline: translationData.headline,
-              content: translationData.content,
-              author: translationData.author,
-              published_date: translationData.published_date,
-            }}
-          />
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleClearAll}
+              className="text-sm text-red-500 hover:text-red-600 hover:underline"
+            >
+              Clear All & Start Fresh
+            </button>
+          </div>
+          <ContentPreview content={currentTranslation.original} />
         </div>
       )}
 
       {/* Enhancement Section */}
-      {translationData && (
-        <EnhancementSection translatedText={translationData.translated_text} />
+      {currentTranslation && (
+        <EnhancementSection translatedText={currentTranslation.translated} />
       )}
 
       {/* Help Section */}
-      {!translationData && (
+      {!currentTranslation && (
         <div className="mt-8 bg-blue-50 rounded-xl p-6 border-2 border-blue-200">
           <h3 className="text-lg font-semibold text-blue-900 mb-3">
-            💡 How to use this page
+            💡 How to use
           </h3>
           <ol className="space-y-2 text-sm text-blue-800">
             {selectedArticle ? (
@@ -132,21 +146,17 @@ export const TranslationPage = () => {
               <>
                 <li className="flex items-start gap-2">
                   <span className="font-bold">1.</span>
-                  <span>Copy any travel news content from any website, document, or source</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold">2.</span>
-                  <span>You can also paste raw text, HTML, or full webpage content</span>
+                  <span>Copy any travel news content from any website or document</span>
                 </li>
               </>
             )}
             <li className="flex items-start gap-2">
-              <span className="font-bold">3.</span>
-              <span>Paste the content in the text area above - AI will extract and translate automatically</span>
+              <span className="font-bold">{selectedArticle ? '3.' : '2.'}</span>
+              <span>Paste the content in the text area above and click "Process Content"</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="font-bold">4.</span>
-              <span>After translation, generate <strong>Hard News</strong> or <strong>Soft News</strong> formats</span>
+              <span className="font-bold">{selectedArticle ? '4.' : '3.'}</span>
+              <span>Select <strong>Hard News</strong> or <strong>Soft News</strong> format and generate</span>
             </li>
           </ol>
 

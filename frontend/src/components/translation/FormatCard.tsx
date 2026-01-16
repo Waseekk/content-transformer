@@ -15,7 +15,6 @@ interface FormatCardProps {
   icon: string;
   description: string;
   content?: string;
-  tokensUsed?: number;
   isLoading?: boolean;
   gradientFrom: string;
   gradientTo: string;
@@ -105,7 +104,6 @@ export const FormatCard: React.FC<FormatCardProps> = ({
   icon,
   description,
   content,
-  tokensUsed,
   isLoading,
   gradientFrom,
   gradientTo,
@@ -252,12 +250,6 @@ export const FormatCard: React.FC<FormatCardProps> = ({
             </div>
           </div>
 
-          {/* Token Badge */}
-          {tokensUsed && (
-            <span className="px-4 py-1.5 bg-white/90 text-teal-700 text-sm font-bold rounded-full shadow-sm">
-              {tokensUsed} tokens
-            </span>
-          )}
         </div>
       </div>
 

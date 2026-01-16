@@ -3,7 +3,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useArticles, useArticleSources } from '../hooks/useArticles';
+import { useQueryClient } from '@tanstack/react-query';
+import { useArticles, useArticleSources, useScrapingSessions } from '../hooks/useArticles';
 import { useStartScraper } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
 import { ArticleCard } from '../components/common/ArticleCard';
@@ -11,21 +12,29 @@ import { SearchableMultiSelect } from '../components/common/SearchableMultiSelec
 import { ScraperStatusBanner } from '../components/common/ScraperStatusBanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { HiFilter, HiClock } from 'react-icons/hi';
 
 export const ArticlesPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const jobIdParam = searchParams.get('job_id');
   const jobId = jobIdParam ? parseInt(jobIdParam) : undefined;
 
-  // If job_id is provided, show articles from that session (history mode)
-  // Otherwise show articles from latest session (default)
+  // Filter state: show all articles by default, or only from latest scraping
+  const [showLatestOnly, setShowLatestOnly] = useState(false);
+
+  // Get articles - all unique articles by default, or filtered by job
   const { data: articlesData, isLoading, refetch } = useArticles({
-    latestOnly: !jobId, // Only filter by latest if no job_id specified
+    latestOnly: jobId ? false : showLatestOnly, // Use filter only when not viewing history
     jobId: jobId,
   });
   const { data: sourcesData } = useArticleSources();
+  const { data: sessionsData } = useScrapingSessions({ limit: 1 }); // Get latest session info
   const startScraper = useStartScraper();
+
+  // Get latest session info for display
+  const latestSession = sessionsData?.sessions?.[0];
 
   const {
     filters,
@@ -115,16 +124,18 @@ export const ArticlesPage = () => {
     startScraper.mutate();
   };
 
-  // Handle scraper completion - auto-refresh articles and stats
+  // Handle scraper completion - auto-refresh articles, stats, and sources
   const handleScraperComplete = useCallback((articlesCount: number) => {
     toast.success(`Scraping complete! Found ${articlesCount} new articles.`);
     // Clear the active job ID
     setActiveScraperJobId(null);
     // Reset known job ID so it picks up the new session
     setKnownJobId(null);
-    // Auto-refresh the articles list
+    // Auto-refresh queries
     refetch();
-  }, [setActiveScraperJobId, refetch]);
+    queryClient.invalidateQueries({ queryKey: ['articleSources'] });
+    queryClient.invalidateQueries({ queryKey: ['articleStats'] });
+  }, [setActiveScraperJobId, refetch, queryClient]);
 
   // Handle banner close
   const handleBannerClose = useCallback(() => {
@@ -269,31 +280,64 @@ export const ArticlesPage = () => {
         </button>
       </div>
 
-      {/* Current Session Info - only show when viewing latest */}
-      {!jobId && articlesData?.current_job && (
-        <div className="mb-6 bg-teal-50 border border-teal-200 rounded-lg px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-teal-600 font-medium">Latest Scraping Session</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-gray-600">
-                {new Date(articlesData.current_job.completed_at).toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })}
-              </span>
+      {/* Session Info & Filter Toggle - only show when not viewing history */}
+      {!jobId && (
+        <div className="mb-6 bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            {/* Left: Latest session info */}
+            <div className="flex items-center gap-3">
+              <HiClock className="w-5 h-5 text-teal-500" />
+              <div>
+                <span className="text-gray-700 font-medium">Latest Scraping: </span>
+                {latestSession ? (
+                  <>
+                    <span className="text-gray-600">
+                      {new Date(latestSession.completed_at).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    {latestSession.article_count !== undefined && (
+                      <span className="ml-2 text-sm text-gray-500">
+                        ({latestSession.article_count} articles)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-gray-500">No scraping yet</span>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/scheduler')}
-              className="text-teal-600 hover:text-teal-700 text-sm font-medium"
-            >
-              View All History →
-            </button>
+
+            {/* Right: Filter toggle & History link */}
+            <div className="flex items-center gap-3">
+              {/* Filter Toggle Button */}
+              <button
+                onClick={() => setShowLatestOnly(!showLatestOnly)}
+                className={`
+                  flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                  ${showLatestOnly
+                    ? 'bg-teal-100 text-teal-700 border border-teal-300'
+                    : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                  }
+                `}
+              >
+                <HiFilter className="w-4 h-4" />
+                {showLatestOnly ? 'Showing Latest Only' : 'Show Latest Only'}
+              </button>
+
+              <span className="text-gray-300">|</span>
+
+              <button
+                onClick={() => navigate('/scheduler')}
+                className="text-teal-600 hover:text-teal-700 text-sm font-medium"
+              >
+                View All History →
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -319,8 +363,10 @@ export const ArticlesPage = () => {
 
       {/* Stats */}
       <div className="mb-6 text-gray-600">
-        Showing {articles.length} of {total} articles{!jobId && ' from latest session'}
-        {filters.search && ` • Filtered by: "${filters.search}"`}
+        Showing {articles.length} of {total} articles
+        {!jobId && showLatestOnly && ' from latest session'}
+        {!jobId && !showLatestOnly && ' (all unique)'}
+        {filters.search && ` • Search: "${filters.search}"`}
       </div>
 
       {/* Articles Grid */}

@@ -23,7 +23,9 @@ class UserConfig(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
 
     # Scraper settings
-    enabled_sites = Column(JSON, default=list, nullable=False)  # List of enabled site names
+    enabled_sites = Column(JSON, default=list, nullable=False)  # List of currently enabled site names
+    default_sites = Column(JSON, default=list, nullable=False)  # User's custom default sites (applied on login)
+    use_custom_default = Column(Boolean, default=False, nullable=False)  # If True, use default_sites on login
     scraper_schedule_enabled = Column(Boolean, default=False, nullable=False)
     scraper_schedule_interval = Column(Integer, default=6, nullable=False)  # hours
 
@@ -80,7 +82,10 @@ class UserConfig(Base):
         return [
             "tourism_review",
             "independent_travel",
-            "newsuk_travel"
+            "newsuk_travel",
+            "skift",
+            "unwto",
+            "phocuswire"
         ]
 
     def add_site(self, site_name: str):
@@ -115,12 +120,35 @@ class UserConfig(Base):
         """Check if user has access to a specific format"""
         return format_type in (self.allowed_formats or [])
 
+    def set_enabled_sites(self, sites: List[str]):
+        """Set the list of enabled sites"""
+        self.enabled_sites = sites.copy() if sites else []
+
+    def set_as_default(self):
+        """Set current enabled_sites as user's default"""
+        self.default_sites = self.enabled_sites.copy() if self.enabled_sites else []
+        self.use_custom_default = True
+
+    def clear_custom_default(self):
+        """Clear custom default and use system default"""
+        self.default_sites = []
+        self.use_custom_default = False
+
+    def apply_default_sites(self):
+        """Apply default sites (called on login)"""
+        if self.use_custom_default and self.default_sites:
+            self.enabled_sites = self.default_sites.copy()
+        else:
+            self.enabled_sites = self.get_default_sites()
+
     def to_dict(self):
         """Convert user config to dictionary"""
         return {
             "id": self.id,
             "user_id": self.user_id,
             "enabled_sites": self.enabled_sites or [],
+            "default_sites": self.default_sites or [],
+            "use_custom_default": self.use_custom_default,
             "scraper_schedule_enabled": self.scraper_schedule_enabled,
             "scraper_schedule_interval": self.scraper_schedule_interval,
             "allowed_formats": self.allowed_formats or [],
@@ -144,9 +172,12 @@ class UserConfig(Base):
         Returns:
             UserConfig: New user configuration instance
         """
+        default_sites = cls.get_default_sites()
         return cls(
             user_id=user_id,
-            enabled_sites=cls.get_default_sites(),
+            enabled_sites=default_sites,  # All available sites enabled by default
+            default_sites=[],  # No custom default initially
+            use_custom_default=False,  # Use system default
             allowed_formats=cls.get_default_formats(subscription_tier),
             scraper_schedule_enabled=False,
             scraper_schedule_interval=6,

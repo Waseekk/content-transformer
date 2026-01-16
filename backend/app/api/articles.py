@@ -14,11 +14,26 @@ from app.database import get_db
 from app.models.user import User
 from app.models.article import Article
 from app.models.job import Job
+from app.models.user_config import UserConfig
 from app.middleware.auth import get_current_active_user
 from app.schemas.scraper import ArticleResponse
 from app.config import format_datetime
 
 router = APIRouter()
+
+
+def get_user_enabled_sites(db: Session, user_id: int) -> Optional[List[str]]:
+    """Get user's enabled sites from UserConfig
+
+    Returns:
+        List[str]: List of enabled site names to filter by
+        None: No filter should be applied (show all)
+    """
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == user_id).first()
+    if user_config and user_config.enabled_sites:
+        return user_config.enabled_sites
+    # Return None to indicate no filter should be applied (show all)
+    return None
 
 
 class ArticleListResponse:
@@ -36,7 +51,7 @@ async def get_articles(
     search: Optional[str] = Query(None, description="Search in headline"),
     sources: Optional[List[str]] = Query(None, description="Filter by source names"),
     days: Optional[int] = Query(7, description="Number of days to look back (default: 7)"),
-    latest_only: bool = Query(True, description="Show only articles from latest scraping run"),
+    latest_only: bool = Query(False, description="Show only articles from latest scraping run"),
     job_id: Optional[int] = Query(None, description="Filter by specific job ID"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -44,13 +59,13 @@ async def get_articles(
     db: Session = Depends(get_db)
 ):
     """
-    Get user's scraped articles
+    Get user's scraped articles (all unique articles by default)
 
     Query Parameters:
     - **search**: Search in headline (optional)
     - **sources**: Filter by source names (optional, multiple allowed)
     - **days**: Number of days to look back (default: 7, max: 7)
-    - **latest_only**: Show only articles from latest scraping run (default: True)
+    - **latest_only**: Show only articles from latest scraping run (default: False)
     - **job_id**: Filter by specific job ID (optional)
     - **page**: Page number (default: 1)
     - **limit**: Items per page (default: 20, max: 100)
@@ -66,11 +81,22 @@ async def get_articles(
     # Calculate date threshold
     date_threshold = datetime.utcnow() - timedelta(days=days)
 
-    # Build base query
+    # Get user's enabled sites for filtering
+    enabled_sites = get_user_enabled_sites(db, current_user.id)
+
+    # Build base query with enabled sites filter
     query = db.query(Article).filter(
         Article.user_id == current_user.id,
         Article.scraped_at >= date_threshold
     )
+
+    # Filter by enabled sites (None = no filter, [] = show nothing, list = filter)
+    if enabled_sites is None:
+        pass  # No filter - show all articles
+    elif len(enabled_sites) == 0:
+        query = query.filter(False)  # Empty list = show nothing
+    else:
+        query = query.filter(Article.source.in_(enabled_sites))
 
     # Filter by specific job_id if provided
     if job_id:
@@ -153,10 +179,10 @@ async def get_article_stats(
     db: Session = Depends(get_db)
 ):
     """
-    Get article statistics for current user
+    Get article statistics for current user (filtered by enabled sites)
 
     Returns:
-    - Total articles count
+    - Total articles count (from enabled sites only)
     - Articles by source
     - Articles in last 7/30 days
     - Most active sources
@@ -165,45 +191,63 @@ async def get_article_stats(
     """
     from sqlalchemy import func
 
-    # Total articles
-    total_articles = db.query(Article).filter(
-        Article.user_id == current_user.id
+    # Get user's enabled sites
+    enabled_sites = get_user_enabled_sites(db, current_user.id)
+
+    # Base filter for all queries (None = no filter, [] = show nothing, list = filter)
+    def apply_enabled_filter(query):
+        if enabled_sites is None:
+            return query  # No filter - show all
+        elif len(enabled_sites) == 0:
+            return query.filter(False)  # Empty list = show nothing
+        else:
+            return query.filter(Article.source.in_(enabled_sites))
+
+    # Total articles (from enabled sites)
+    total_articles = apply_enabled_filter(
+        db.query(Article).filter(Article.user_id == current_user.id)
     ).count()
 
     # Articles in last 24 hours
     one_day_ago = datetime.utcnow() - timedelta(hours=24)
-    recent_24h = db.query(Article).filter(
-        Article.user_id == current_user.id,
-        Article.scraped_at >= one_day_ago
+    recent_24h = apply_enabled_filter(
+        db.query(Article).filter(
+            Article.user_id == current_user.id,
+            Article.scraped_at >= one_day_ago
+        )
     ).count()
 
     # Articles in last 7 days
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    last_7_days = db.query(Article).filter(
-        Article.user_id == current_user.id,
-        Article.scraped_at >= seven_days_ago
+    last_7_days = apply_enabled_filter(
+        db.query(Article).filter(
+            Article.user_id == current_user.id,
+            Article.scraped_at >= seven_days_ago
+        )
     ).count()
 
     # Articles in last 30 days
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    last_30_days = db.query(Article).filter(
-        Article.user_id == current_user.id,
-        Article.scraped_at >= thirty_days_ago
+    last_30_days = apply_enabled_filter(
+        db.query(Article).filter(
+            Article.user_id == current_user.id,
+            Article.scraped_at >= thirty_days_ago
+        )
     ).count()
 
-    # Articles by source (top 10)
-    by_source = db.query(
-        Article.source,
-        func.count(Article.id).label('count')
-    ).filter(
-        Article.user_id == current_user.id
+    # Articles by source (top 10, from enabled sites)
+    by_source = apply_enabled_filter(
+        db.query(
+            Article.source,
+            func.count(Article.id).label('count')
+        ).filter(Article.user_id == current_user.id)
     ).group_by(Article.source).order_by(
         func.count(Article.id).desc()
     ).limit(10).all()
 
-    # Count total unique sources
-    total_sources = db.query(Article.source).filter(
-        Article.user_id == current_user.id
+    # Count total unique sources (from enabled sites)
+    total_sources = apply_enabled_filter(
+        db.query(Article.source).filter(Article.user_id == current_user.id)
     ).distinct().count()
 
     return {
@@ -216,7 +260,8 @@ async def get_article_stats(
             for source, count in by_source
         ],
         "total_sources": total_sources,
-        "unique_sources": total_sources  # Keep for backward compatibility
+        "unique_sources": total_sources,  # Keep for backward compatibility
+        "enabled_sites_count": len(enabled_sites)  # Show how many sites are enabled
     }
 
 
@@ -267,7 +312,7 @@ async def get_article_sources(
     db: Session = Depends(get_db)
 ):
     """
-    Get list of publishers from scraped articles
+    Get list of publishers from scraped articles (filtered by enabled sites)
 
     Returns unique publisher names with article counts
 
@@ -275,9 +320,12 @@ async def get_article_sources(
     """
     from sqlalchemy import func
 
+    # Get user's enabled sites
+    enabled_sites = get_user_enabled_sites(db, current_user.id)
+
     # Get publishers with counts (human-readable names shown on article cards)
     # Exclude entries where publisher equals source (those are placeholder values)
-    publishers = db.query(
+    query = db.query(
         Article.publisher,
         func.count(Article.id).label('count')
     ).filter(
@@ -285,7 +333,17 @@ async def get_article_sources(
         Article.publisher.isnot(None),
         Article.publisher != '',
         Article.publisher != Article.source  # Exclude placeholder values
-    ).group_by(Article.publisher).order_by(
+    )
+
+    # Filter by enabled sites (None = no filter, [] = show nothing, list = filter)
+    if enabled_sites is None:
+        pass  # No filter - show all sources
+    elif len(enabled_sites) == 0:
+        query = query.filter(False)  # Empty list = show nothing
+    else:
+        query = query.filter(Article.source.in_(enabled_sites))
+
+    publishers = query.group_by(Article.publisher).order_by(
         func.count(Article.id).desc()
     ).all()
 
@@ -411,4 +469,92 @@ async def get_scraping_sessions(
         "total_pages": total_pages,
         "date_range_days": days,
         "latest_job_id": latest_job_id
+    }
+
+
+@router.delete("/history/sessions/{job_id}", response_model=dict)
+async def delete_session(
+    job_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a single scraping session and its articles
+
+    Path Parameters:
+    - **job_id**: Job ID to delete
+
+    Requires: Bearer token in Authorization header
+    """
+    # Find the job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id,
+        Job.job_type == "scrape"
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+
+    # Count articles before deletion
+    articles_count = db.query(Article).filter(Article.job_id == job_id).count()
+
+    # Delete articles from this job
+    db.query(Article).filter(Article.job_id == job_id).delete()
+
+    # Delete the job
+    db.delete(job)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Deleted session and {articles_count} articles",
+        "deleted_job_id": job_id,
+        "deleted_articles_count": articles_count
+    }
+
+
+@router.delete("/history/sessions", response_model=dict)
+async def delete_all_history(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete ALL scraping history (full reset)
+
+    This will delete:
+    - All scraping jobs
+    - All scraped articles
+
+    Requires: Bearer token in Authorization header
+    """
+    # Count before deletion
+    jobs_count = db.query(Job).filter(
+        Job.user_id == current_user.id,
+        Job.job_type == "scrape"
+    ).count()
+
+    articles_count = db.query(Article).filter(
+        Article.user_id == current_user.id
+    ).count()
+
+    # Delete all articles for this user
+    db.query(Article).filter(Article.user_id == current_user.id).delete()
+
+    # Delete all scraping jobs for this user
+    db.query(Job).filter(
+        Job.user_id == current_user.id,
+        Job.job_type == "scrape"
+    ).delete()
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Deleted {jobs_count} sessions and {articles_count} articles",
+        "deleted_jobs_count": jobs_count,
+        "deleted_articles_count": articles_count
     }

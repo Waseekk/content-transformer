@@ -68,3 +68,24 @@ class UserSitesResponse(BaseModel):
     """User's available scraper sites"""
     enabled_sites: List[str]
     available_sites: List[SiteConfig]
+    default_sites: List[str] = []
+    use_custom_default: bool = False
+
+
+class UpdateSitesRequest(BaseModel):
+    """Request to update user's enabled sites"""
+    enabled_sites: List[str] = Field(..., description="List of site names to enable")
+
+
+class SetDefaultSitesRequest(BaseModel):
+    """Request to set current sites as default"""
+    set_as_default: bool = Field(default=True, description="Set current enabled sites as default")
+
+
+class SitesUpdateResponse(BaseModel):
+    """Response after updating sites"""
+    success: bool
+    enabled_sites: List[str]
+    default_sites: List[str]
+    use_custom_default: bool
+    message: str

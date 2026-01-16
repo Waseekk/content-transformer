@@ -134,11 +134,18 @@ class MultiSiteScraper:
             logger.info(f"  - {site['name']}: {site['url']}")
 
     def load_sites_config(self) -> List[Dict]:
-        """Load site configurations from JSON file"""
+        """Load site configurations from JSON file, excluding disabled sites"""
         try:
             with open(SITES_CONFIG_PATH, 'r', encoding='utf-8') as f:
-                sites = json.load(f)
+                all_sites = json.load(f)
+
+            # Filter out disabled sites
+            sites = [s for s in all_sites if not s.get('disabled', False)]
+            disabled_count = len(all_sites) - len(sites)
+
             logger.info(f"Loaded configuration for {len(sites)} sites from {SITES_CONFIG_PATH}")
+            if disabled_count > 0:
+                logger.info(f"  ({disabled_count} sites disabled/skipped)")
             return sites
         except FileNotFoundError:
             logger.error(f"Config file not found: {SITES_CONFIG_PATH}")

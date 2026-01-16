@@ -41,10 +41,12 @@ interface AppState {
   schedulerStatus: SchedulerStatus | null;
 
   // Translation
+  pastedContent: string;
   currentTranslation: TranslationResult | null;
   translationHistory: TranslationResult[];
 
   // Enhancement
+  selectedFormats: string[];
   currentEnhancements: Record<string, EnhancementResult>;
 
   // UI State
@@ -61,11 +63,16 @@ interface AppState {
   setActiveScraperJobId: (jobId: number | null) => void;
   setSchedulerStatus: (status: SchedulerStatus | null) => void;
 
+  setPastedContent: (content: string) => void;
   setCurrentTranslation: (translation: TranslationResult | null) => void;
   addToTranslationHistory: (translation: TranslationResult) => void;
+  clearTranslationState: () => void;
 
+  setSelectedFormats: (formats: string[]) => void;
+  toggleFormat: (formatId: string) => void;
   setCurrentEnhancements: (enhancements: Record<string, EnhancementResult>) => void;
   addEnhancement: (formatType: string, enhancement: EnhancementResult) => void;
+  clearEnhancementState: () => void;
 
   openPreviewPanel: (article: Article) => void;
   closePreviewPanel: () => void;
@@ -88,8 +95,10 @@ export const useAppStore = create<AppState>()(
       scraperStatus: null,
       activeScraperJobId: null,
       schedulerStatus: null,
+      pastedContent: '',
       currentTranslation: null,
       translationHistory: [],
+      selectedFormats: [],
       currentEnhancements: {},
       isPreviewPanelOpen: false,
       previewArticle: null,
@@ -115,10 +124,27 @@ export const useAppStore = create<AppState>()(
 
       setSchedulerStatus: (status) => set({ schedulerStatus: status }),
 
+      setPastedContent: (content) => set({ pastedContent: content }),
+
       setCurrentTranslation: (translation) => set({ currentTranslation: translation }),
 
       addToTranslationHistory: (translation) => set((state) => ({
         translationHistory: [translation, ...state.translationHistory].slice(0, 50) // Keep last 50
+      })),
+
+      clearTranslationState: () => set({
+        pastedContent: '',
+        currentTranslation: null,
+        selectedFormats: [],
+        currentEnhancements: {},
+      }),
+
+      setSelectedFormats: (formats) => set({ selectedFormats: formats }),
+
+      toggleFormat: (formatId) => set((state) => ({
+        selectedFormats: state.selectedFormats.includes(formatId)
+          ? state.selectedFormats.filter((id) => id !== formatId)
+          : [...state.selectedFormats, formatId]
       })),
 
       setCurrentEnhancements: (enhancements) => set({ currentEnhancements: enhancements }),
@@ -129,6 +155,11 @@ export const useAppStore = create<AppState>()(
           [formatType]: enhancement
         }
       })),
+
+      clearEnhancementState: () => set({
+        selectedFormats: [],
+        currentEnhancements: {},
+      }),
 
       openPreviewPanel: (article) => set({
         isPreviewPanelOpen: true,
@@ -146,7 +177,11 @@ export const useAppStore = create<AppState>()(
         // Only persist these fields
         selectedArticle: state.selectedArticle,
         filters: state.filters,
+        pastedContent: state.pastedContent,
+        currentTranslation: state.currentTranslation,
         translationHistory: state.translationHistory,
+        selectedFormats: state.selectedFormats,
+        currentEnhancements: state.currentEnhancements,
       }),
     }
   )

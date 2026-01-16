@@ -1,10 +1,12 @@
 /**
  * Enhancement Section - Multi-format content generation
+ * State persists across tab changes via Zustand store
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { FormatCard } from './FormatCard';
 import { useEnhance } from '../../hooks/useEnhancement';
+import { useAppStore } from '../../store/useAppStore';
 
 interface EnhancementSectionProps {
   translatedText: string;
@@ -14,8 +16,12 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
   translatedText,
 }) => {
   const enhance = useEnhance();
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-  const [results, setResults] = useState<Record<string, any>>({});
+  const {
+    selectedFormats,
+    toggleFormat,
+    currentEnhancements,
+    addEnhancement,
+  } = useAppStore();
 
   // Format definitions - Only hard_news and soft_news for deployment
   const formats = [
@@ -37,14 +43,6 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
     },
   ];
 
-  const toggleFormat = (formatId: string) => {
-    setSelectedFormats((prev) =>
-      prev.includes(formatId)
-        ? prev.filter((id) => id !== formatId)
-        : [...prev, formatId]
-    );
-  };
-
   const handleEnhance = async () => {
     if (selectedFormats.length === 0) {
       return;
@@ -57,12 +55,15 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
         formats: selectedFormats,
       });
 
-      // Update results with generated content
-      const newResults: Record<string, any> = {};
+      // Store results in global state so they persist across tab changes
       response.formats.forEach((result: any) => {
-        newResults[result.format_type] = result;
+        addEnhancement(result.format_type, {
+          format_type: result.format_type,
+          content: result.content,
+          tokens_used: result.tokens_used,
+          timestamp: new Date().toISOString(),
+        });
       });
-      setResults(newResults);
     } catch (error) {
       console.error('Enhancement failed:', error);
     }
@@ -72,13 +73,13 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
 
   // Handle content updates from FormatCard edits
   const handleContentUpdate = (formatId: string, newContent: string) => {
-    setResults((prev) => ({
-      ...prev,
-      [formatId]: {
-        ...prev[formatId],
+    const existing = currentEnhancements[formatId];
+    if (existing) {
+      addEnhancement(formatId, {
+        ...existing,
         content: newContent,
-      },
-    }));
+      });
+    }
   };
 
   return (
@@ -86,10 +87,10 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
         <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          ✨ Content Enhancement
+          ✨ Generate News Articles
         </h3>
         <p className="text-gray-700 mb-4">
-          Generate multiple format variations from your translated content
+          Select format(s) and generate professional Bengali news articles
         </p>
 
         {/* Format Selection */}
@@ -151,7 +152,7 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
             const format = formats.find((f) => f.id === formatId);
             if (!format) return null;
 
-            const result = results[formatId];
+            const result = currentEnhancements[formatId];
 
             return (
               <FormatCard
@@ -161,7 +162,6 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
                 icon={format.icon}
                 description={format.description}
                 content={result?.content}
-                tokensUsed={result?.tokens_used}
                 isLoading={enhance.isPending && !result}
                 gradientFrom={format.gradientFrom}
                 gradientTo={format.gradientTo}

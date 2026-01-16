@@ -6,9 +6,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useArticleStats } from '../hooks/useArticles';
 import { useSchedulerStatus } from '../hooks/useScheduler';
-import { useScraperSites } from '../hooks/useScraper';
+import { useScraperSites, useUpdateEnabledSites, useSetDefaultSites, useClearDefaultSites } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
-import { HiNewspaper, HiTranslate, HiClock, HiLightningBolt, HiExternalLink, HiChevronDown, HiChevronUp } from 'react-icons/hi';
+import { HiNewspaper, HiTranslate, HiClock, HiLightningBolt, HiExternalLink, HiChevronDown, HiChevronUp, HiCheck, HiStar, HiRefresh } from 'react-icons/hi';
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -17,6 +17,28 @@ export const DashboardPage = () => {
   const { data: sitesData } = useScraperSites();
   const { selectedArticle } = useAppStore();
   const [showSources, setShowSources] = useState(false);
+
+  // Site management mutations
+  const updateSites = useUpdateEnabledSites();
+  const setDefault = useSetDefaultSites();
+  const clearDefault = useClearDefaultSites();
+
+  // Toggle site enabled/disabled
+  const handleToggleSite = (siteName: string) => {
+    if (!sitesData) return;
+
+    const currentEnabled = sitesData.enabled_sites || [];
+    const isCurrentlyEnabled = currentEnabled.includes(siteName);
+
+    const newEnabled = isCurrentlyEnabled
+      ? currentEnabled.filter((s: string) => s !== siteName)
+      : [...currentEnabled, siteName];
+
+    updateSites.mutate(newEnabled);
+  };
+
+  // Get enabled count
+  const enabledCount = sitesData?.enabled_sites?.length || 0;
 
   const quickActions = [
     {
@@ -140,37 +162,105 @@ export const DashboardPage = () => {
       {/* Expandable News Sources List */}
       {showSources && sitesData?.available_sites && (
         <div className="mb-8 bg-white rounded-xl p-6 border-2 border-teal-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            🌐 News Sources ({sitesData.available_sites.length})
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {sitesData.available_sites.map((site: any) => (
-              <a
-                key={site.name}
-                href={site.url}
-                target="_blank"
-                rel="noopener noreferrer"
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              🌐 News Sources ({sitesData.available_sites.length})
+            </h3>
+            <div className="flex items-center gap-2">
+              {/* Set as Default button */}
+              <button
+                onClick={() => setDefault.mutate()}
+                disabled={setDefault.isPending || enabledCount === 0}
                 className={`
-                  flex items-center justify-between p-3 rounded-lg border transition-all
-                  ${site.enabled
-                    ? 'border-teal-200 bg-teal-50 hover:bg-teal-100'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100 opacity-60'
+                  flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-all
+                  ${sitesData.use_custom_default
+                    ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-700 border border-gray-200'
                   }
+                  disabled:opacity-50 disabled:cursor-not-allowed
                 `}
+                title={sitesData.use_custom_default ? 'Custom default is set' : 'Set current selection as default'}
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">
-                    {site.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">{site.url}</p>
-                </div>
-                <HiExternalLink className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
-              </a>
-            ))}
+                <HiStar className={`w-4 h-4 ${sitesData.use_custom_default ? 'text-yellow-500' : ''}`} />
+                {sitesData.use_custom_default ? 'Default Set' : 'Set as Default'}
+              </button>
+
+              {/* Reset to System Default */}
+              {sitesData.use_custom_default && (
+                <button
+                  onClick={() => clearDefault.mutate()}
+                  disabled={clearDefault.isPending}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 transition-all disabled:opacity-50"
+                  title="Reset to system default (all sites)"
+                >
+                  <HiRefresh className="w-4 h-4" />
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
-          <p className="mt-4 text-sm text-gray-500">
-            {sitesData.enabled_sites?.length || 0} sources enabled for scraping
+
+          <p className="text-sm text-gray-500 mb-4">
+            Click on a source to enable/disable it. Only enabled sources will show articles.
           </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {sitesData.available_sites.map((site: any) => {
+              const isEnabled = sitesData.enabled_sites?.includes(site.name);
+              return (
+                <button
+                  key={site.name}
+                  onClick={() => handleToggleSite(site.name)}
+                  disabled={updateSites.isPending}
+                  className={`
+                    flex items-center justify-between p-3 rounded-lg border-2 transition-all text-left
+                    ${isEnabled
+                      ? 'border-teal-400 bg-teal-50 hover:bg-teal-100 shadow-sm'
+                      : 'border-gray-200 bg-gray-50 hover:bg-gray-100 opacity-70'
+                    }
+                    disabled:cursor-wait
+                  `}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className={`
+                        w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0
+                        ${isEnabled ? 'bg-teal-500' : 'bg-gray-300'}
+                      `}>
+                        {isEnabled && <HiCheck className="w-3 h-3 text-white" />}
+                      </div>
+                      <p className={`font-medium truncate ${isEnabled ? 'text-gray-900' : 'text-gray-500'}`}>
+                        {site.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500 truncate mt-1 ml-7">{site.url}</p>
+                  </div>
+                  <a
+                    href={site.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1 hover:bg-white rounded transition-colors ml-2 flex-shrink-0"
+                    title="Open in new tab"
+                  >
+                    <HiExternalLink className="w-4 h-4 text-gray-400 hover:text-teal-600" />
+                  </a>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-700">
+              <span className="text-teal-600">{enabledCount}</span> of {sitesData.available_sites.length} sources enabled
+            </p>
+            {sitesData.use_custom_default && (
+              <p className="text-xs text-yellow-600 flex items-center gap-1">
+                <HiStar className="w-3 h-3" />
+                Custom default: {sitesData.default_sites?.length || 0} sites
+              </p>
+            )}
+          </div>
         </div>
       )}
 

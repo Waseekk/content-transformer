@@ -3,6 +3,8 @@
     "name": "tourism_review",
     "url": "https://www.tourism-review.com/",
     "use_selenium": false,
+    "description": "Tourism Review - Global tourism news",
+    "language": "en",
     "selectors": [
       {
         "method": "standard",
@@ -41,6 +43,8 @@
     "name": "independent_travel",
     "url": "https://www.independent.co.uk/travel",
     "use_selenium": false,
+    "description": "The Independent - UK travel news",
+    "language": "en",
     "selectors": [
       {
         "method": "standard",
@@ -71,6 +75,8 @@
     "name": "newsuk_travel",
     "url": "https://www.newsnow.co.uk/h/Lifestyle/Travel",
     "use_selenium": false,
+    "description": "NewsNow UK - Travel news aggregator",
+    "language": "en",
     "multi_view": true,
     "views": {
       "top": "",
@@ -100,6 +106,8 @@
     "name": "prothom_alo",
     "url": "https://www.prothomalo.com/",
     "use_selenium": true,
+    "disabled": true,
+    "disabled_reason": "Requires Selenium - not implemented yet",
     "description": "Prothom Alo - Leading Bengali newspaper",
     "language": "bn",
     "selectors": [
@@ -124,6 +132,8 @@
     "name": "daily_star",
     "url": "https://www.thedailystar.net/",
     "use_selenium": true,
+    "disabled": true,
+    "disabled_reason": "Requires Selenium - not implemented yet",
     "description": "The Daily Star - English news from Bangladesh",
     "language": "en",
     "selectors": [
@@ -147,7 +157,7 @@
   },
   {
     "name": "skift",
-    "url": "https://skift.com/",
+    "url": "https://skift.com/news/",
     "use_selenium": false,
     "description": "Skift - Global travel industry news",
     "language": "en",
@@ -155,15 +165,9 @@
       {
         "method": "standard",
         "container_tag": "article",
-        "title_tag": "h2",
-        "link_tag": "a",
-        "link_attribute": "href"
-      },
-      {
-        "method": "standard",
-        "container_tag": "div",
-        "container_class": "post",
+        "container_class": "c-tease",
         "title_tag": "h3",
+        "title_class": "c-tease__title",
         "link_tag": "a",
         "link_attribute": "href"
       }
@@ -171,23 +175,16 @@
   },
   {
     "name": "unwto",
-    "url": "https://www.unwto.org/news",
+    "url": "https://www.untourism.int/news",
     "use_selenium": false,
-    "description": "UNWTO - United Nations World Tourism Organization",
+    "description": "UN Tourism - United Nations Tourism Organization (URL changed from unwto.org)",
     "language": "en",
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "article",
-        "title_tag": "h2",
-        "link_tag": "a",
-        "link_attribute": "href"
-      },
-      {
-        "method": "standard",
-        "container_tag": "div",
-        "container_class": "item-list",
-        "title_tag": "h3",
+        "container_tag": "h2",
+        "container_class": "term--label",
+        "title_tag": "span",
         "link_tag": "a",
         "link_attribute": "href"
       }
@@ -195,16 +192,19 @@
   },
   {
     "name": "phocuswire",
-    "url": "https://www.phocuswire.com/",
+    "url": "https://www.phocuswire.com/Latest-News",
     "use_selenium": false,
     "description": "PhocusWire - Travel tech and innovation news",
     "language": "en",
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "article",
-        "title_tag": "h2",
+        "container_tag": "div",
+        "container_class": "item",
+        "title_tag": "a",
+        "title_class": "title",
         "link_tag": "a",
+        "link_class": "title",
         "link_attribute": "href"
       }
     ]

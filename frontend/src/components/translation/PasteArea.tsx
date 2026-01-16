@@ -89,7 +89,7 @@ export const PasteArea: React.FC<PasteAreaProps> = ({
           <span>{wordCount.toLocaleString()} words</span>
         </div>
 
-        {/* Translate Button */}
+        {/* Process Button */}
         <button
           onClick={onTranslate}
           disabled={!value.trim() || isLoading}
@@ -105,10 +105,10 @@ export const PasteArea: React.FC<PasteAreaProps> = ({
           {isLoading ? (
             <span className="flex items-center gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Translating...
+              Processing...
             </span>
           ) : (
-            '🌐 Translate to Bengali'
+            '⚡ Process Content'
           )}
         </button>
       </div>

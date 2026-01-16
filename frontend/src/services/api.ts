@@ -39,6 +39,16 @@ export const articlesApi = {
     const response = await axios.get('/api/articles/history/sessions', { params });
     return response.data;
   },
+
+  deleteSession: async (jobId: number) => {
+    const response = await axios.delete(`/api/articles/history/sessions/${jobId}`);
+    return response.data;
+  },
+
+  deleteAllHistory: async () => {
+    const response = await axios.delete('/api/articles/history/sessions');
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -63,6 +73,23 @@ export const scraperApi = {
 
   getSites: async () => {
     const response = await axios.get('/api/scraper/sites');
+    return response.data;
+  },
+
+  updateEnabledSites: async (enabledSites: string[]) => {
+    const response = await axios.put('/api/scraper/sites', {
+      enabled_sites: enabledSites,
+    });
+    return response.data;
+  },
+
+  setDefaultSites: async () => {
+    const response = await axios.post('/api/scraper/sites/default');
+    return response.data;
+  },
+
+  clearDefaultSites: async () => {
+    const response = await axios.delete('/api/scraper/sites/default');
     return response.data;
   },
 };

@@ -2,14 +2,15 @@
  * Articles Hooks - React Query hooks for articles API
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { articlesApi } from '../services/api';
 import { useAppStore } from '../store/useAppStore';
+import toast from 'react-hot-toast';
 
-// Get articles from latest scraping run by default
+// Get all unique articles by default (no job filter)
 export const useArticles = (options?: { latestOnly?: boolean; jobId?: number }) => {
   const filters = useAppStore((state) => state.filters);
-  const latestOnly = options?.latestOnly ?? true; // Default to true - show only latest
+  const latestOnly = options?.latestOnly ?? false; // Default to false - show all unique articles
   const jobId = options?.jobId;
 
   return useQuery({
@@ -52,5 +53,45 @@ export const useScrapingSessions = (
     queryFn: () => articlesApi.getScrapingSessions(params),
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchInterval: options?.refetchInterval,
+  });
+};
+
+// Delete a single scraping session
+export const useDeleteSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: articlesApi.deleteSession,
+    onSuccess: (data) => {
+      // Invalidate all related queries
+      queryClient.invalidateQueries({ queryKey: ['scrapingSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['articles'] });
+      queryClient.invalidateQueries({ queryKey: ['articleStats'] });
+      queryClient.invalidateQueries({ queryKey: ['articleSources'] });
+      toast.success(data.message);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete session');
+    },
+  });
+};
+
+// Delete all scraping history (full reset)
+export const useDeleteAllHistory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: articlesApi.deleteAllHistory,
+    onSuccess: (data) => {
+      // Invalidate all related queries
+      queryClient.invalidateQueries({ queryKey: ['scrapingSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['articles'] });
+      queryClient.invalidateQueries({ queryKey: ['articleStats'] });
+      queryClient.invalidateQueries({ queryKey: ['articleSources'] });
+      toast.success(data.message);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete history');
+    },
   });
 };

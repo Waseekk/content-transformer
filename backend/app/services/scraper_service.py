@@ -43,10 +43,10 @@ class ScraperService:
     @staticmethod
     def get_all_available_sites() -> List[Dict[str, Any]]:
         """
-        Get all available scraper sites from configuration
+        Get all available scraper sites from configuration (excludes disabled sites)
 
         Returns:
-            List of site configurations
+            List of site configurations (only enabled sites)
         """
         import json
 
@@ -55,8 +55,13 @@ class ScraperService:
                 sites_config = json.load(f)
                 # sites_config can be either a list or a dict with 'sites' key
                 if isinstance(sites_config, list):
-                    return sites_config
-                return sites_config.get('sites', [])
+                    all_sites = sites_config
+                else:
+                    all_sites = sites_config.get('sites', [])
+
+                # Filter out disabled sites (e.g., prothom_alo, daily_star)
+                enabled_sites = [s for s in all_sites if not s.get('disabled', False)]
+                return enabled_sites
         return []
 
     @staticmethod
@@ -180,27 +185,42 @@ class ScraperService:
 
             ScraperService.update_job_status(
                 db, job, "running", 80,
-                f"Saving {len(filtered_articles)} articles to database..."
+                f"Processing {len(filtered_articles)} articles..."
             )
 
-            # Save articles to database
-            saved_count = 0
+            # Save articles to database with duplicate detection
+            new_count = 0
+            duplicate_count = 0
+
             for article_data in filtered_articles:
-                article = Article(
-                    user_id=user.id,
-                    job_id=job.id,  # Link article to this scraping job
-                    source=article_data.get('source'),
-                    publisher=article_data.get('publisher'),
-                    headline=article_data.get('headline', article_data.get('title')),
-                    article_url=article_data.get('article_url', article_data.get('link')),
-                    published_time=article_data.get('published_time'),
-                    country=article_data.get('country'),
-                    view=article_data.get('view'),
-                    extra_data=article_data,
-                    scraped_at=datetime.utcnow()
-                )
-                db.add(article)
-                saved_count += 1
+                article_url = article_data.get('article_url', article_data.get('link'))
+
+                # Check if article already exists (by URL for this user)
+                existing = db.query(Article).filter(
+                    Article.user_id == user.id,
+                    Article.article_url == article_url
+                ).first()
+
+                if existing:
+                    # Article already exists - skip
+                    duplicate_count += 1
+                else:
+                    # New article - save it
+                    article = Article(
+                        user_id=user.id,
+                        job_id=job.id,  # Link article to this scraping job
+                        source=article_data.get('source'),
+                        publisher=article_data.get('publisher'),
+                        headline=article_data.get('headline', article_data.get('title')),
+                        article_url=article_url,
+                        published_time=article_data.get('published_time'),
+                        country=article_data.get('country'),
+                        view=article_data.get('view'),
+                        extra_data=article_data,
+                        scraped_at=datetime.utcnow()
+                    )
+                    db.add(article)
+                    new_count += 1
 
             db.commit()
 
@@ -212,17 +232,25 @@ class ScraperService:
 
             result = {
                 "success": True,
-                "total_articles": len(filtered_articles),
-                "articles_saved": saved_count,
+                "total_scraped": len(filtered_articles),
+                "new_articles": new_count,
+                "duplicates_skipped": duplicate_count,
                 "articles_by_site": articles_by_site,
                 "file_path": str(filepath) if filepath else None
             }
 
-            # Update job to completed
+            # Update job to completed with accurate message
             job.result = result
+            if new_count > 0:
+                message = f"Found {new_count} new article{'s' if new_count != 1 else ''}"
+                if duplicate_count > 0:
+                    message += f", {duplicate_count} already existed"
+            else:
+                message = f"No new articles found ({duplicate_count} already existed)"
+
             ScraperService.update_job_status(
                 db, job, "completed", 100,
-                f"Scraping completed! Saved {saved_count} articles."
+                message
             )
 
             return result

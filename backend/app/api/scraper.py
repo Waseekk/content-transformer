@@ -19,8 +19,11 @@ from app.schemas.scraper import (
     ScraperResult,
     UserSitesResponse,
     SiteConfig,
-    ArticleResponse
+    ArticleResponse,
+    UpdateSitesRequest,
+    SitesUpdateResponse
 )
+from app.models.user_config import UserConfig
 from app.services.scraper_service import ScraperService
 from app.config import format_datetime
 
@@ -180,26 +183,157 @@ async def get_user_sites(
     Returns:
     - **enabled_sites**: Sites currently enabled for the user
     - **available_sites**: All available sites in the system
+    - **default_sites**: User's custom default sites
+    - **use_custom_default**: Whether user has custom default set
     """
-    # Get user's enabled sites
-    enabled_sites = ScraperService.get_user_sites(db, current_user)
-
-    # Get all available sites from configuration
+    # Get all available sites from configuration (excludes disabled sites)
     all_sites_config = ScraperService.get_all_available_sites()
+    available_site_names = [s.get('name') for s in all_sites_config]
+
+    # Get or create user's config
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == current_user.id).first()
+
+    if not user_config:
+        # Create default config with all available sites enabled
+        user_config = UserConfig.create_default_config(current_user.id)
+        user_config.enabled_sites = available_site_names  # Enable all available sites
+        db.add(user_config)
+        db.commit()
+        db.refresh(user_config)
+
+    # Auto-sync: If user has no custom default, ensure all available sites are enabled
+    # This handles the case when new sites are added to the system
+    if not user_config.use_custom_default:
+        current_enabled = user_config.enabled_sites or []
+        # Check if any available sites are missing from enabled
+        missing_sites = [s for s in available_site_names if s not in current_enabled]
+        if missing_sites:
+            # Add missing sites to enabled list
+            user_config.enabled_sites = available_site_names
+            db.commit()
+            db.refresh(user_config)
+
+    enabled_sites = user_config.enabled_sites or []
+    default_sites = user_config.default_sites or []
+    use_custom_default = user_config.use_custom_default
 
     available_sites = [
         SiteConfig(
             name=site.get('name', 'Unknown'),
             url=site.get('url', ''),
             enabled=site.get('name') in enabled_sites,
-            description=f"Source: {site.get('name')}"
+            description=site.get('description', f"Source: {site.get('name')}")
         )
         for site in all_sites_config
     ]
 
     return UserSitesResponse(
         enabled_sites=enabled_sites,
-        available_sites=available_sites
+        available_sites=available_sites,
+        default_sites=default_sites,
+        use_custom_default=use_custom_default
+    )
+
+
+@router.put("/sites", response_model=SitesUpdateResponse)
+async def update_user_sites(
+    request: UpdateSitesRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user's enabled sites (instant save on toggle)
+
+    - **enabled_sites**: List of site names to enable
+    """
+    # Get or create user config
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == current_user.id).first()
+
+    if not user_config:
+        user_config = UserConfig.create_default_config(current_user.id)
+        db.add(user_config)
+
+    # Validate sites exist in available sites
+    available_sites = ScraperService.get_all_available_sites()
+    available_names = [s.get('name') for s in available_sites]
+
+    valid_sites = [s for s in request.enabled_sites if s in available_names]
+
+    # Update enabled sites
+    user_config.set_enabled_sites(valid_sites)
+    db.commit()
+    db.refresh(user_config)
+
+    return SitesUpdateResponse(
+        success=True,
+        enabled_sites=user_config.enabled_sites,
+        default_sites=user_config.default_sites or [],
+        use_custom_default=user_config.use_custom_default,
+        message=f"Updated to {len(valid_sites)} enabled sites"
+    )
+
+
+@router.post("/sites/default", response_model=SitesUpdateResponse)
+async def set_default_sites(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Set current enabled sites as user's default (applied on login)
+    """
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == current_user.id).first()
+
+    if not user_config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User configuration not found"
+        )
+
+    # Set current sites as default
+    user_config.set_as_default()
+    db.commit()
+    db.refresh(user_config)
+
+    return SitesUpdateResponse(
+        success=True,
+        enabled_sites=user_config.enabled_sites,
+        default_sites=user_config.default_sites,
+        use_custom_default=user_config.use_custom_default,
+        message=f"Set {len(user_config.default_sites)} sites as default"
+    )
+
+
+@router.delete("/sites/default", response_model=SitesUpdateResponse)
+async def clear_default_sites(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Clear custom default and use system default (all available sites)
+    """
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == current_user.id).first()
+
+    if not user_config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User configuration not found"
+        )
+
+    # Clear custom default
+    user_config.clear_custom_default()
+
+    # Reset to system default
+    user_config.enabled_sites = UserConfig.get_default_sites()
+
+    db.commit()
+    db.refresh(user_config)
+
+    return SitesUpdateResponse(
+        success=True,
+        enabled_sites=user_config.enabled_sites,
+        default_sites=user_config.default_sites or [],
+        use_custom_default=user_config.use_custom_default,
+        message="Cleared custom default, using system default"
     )
 
 

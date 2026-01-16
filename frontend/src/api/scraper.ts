@@ -1,10 +1,26 @@
 import axios from './axios';
 
 export interface ScraperSite {
-  id: number;
+  id?: number;
   name: string;
   url: string;
   enabled: boolean;
+  description?: string;
+}
+
+export interface UserSitesResponse {
+  enabled_sites: string[];
+  available_sites: ScraperSite[];
+  default_sites: string[];
+  use_custom_default: boolean;
+}
+
+export interface SitesUpdateResponse {
+  success: boolean;
+  enabled_sites: string[];
+  default_sites: string[];
+  use_custom_default: boolean;
+  message: string;
 }
 
 export interface ScraperJob {
@@ -51,10 +67,30 @@ export const getScraperResult = async (jobId: string): Promise<ScraperResult> =>
   return response.data;
 };
 
-// Get available sites
-export const getScraperSites = async (): Promise<ScraperSite[]> => {
+// Get available sites with user's enabled status
+export const getScraperSites = async (): Promise<UserSitesResponse> => {
   const response = await axios.get('/api/scraper/sites');
-  return response.data.sites;
+  return response.data;
+};
+
+// Update user's enabled sites (instant save on toggle)
+export const updateEnabledSites = async (enabledSites: string[]): Promise<SitesUpdateResponse> => {
+  const response = await axios.put('/api/scraper/sites', {
+    enabled_sites: enabledSites,
+  });
+  return response.data;
+};
+
+// Set current enabled sites as user's default
+export const setDefaultSites = async (): Promise<SitesUpdateResponse> => {
+  const response = await axios.post('/api/scraper/sites/default');
+  return response.data;
+};
+
+// Clear custom default and use system default
+export const clearDefaultSites = async (): Promise<SitesUpdateResponse> => {
+  const response = await axios.delete('/api/scraper/sites/default');
+  return response.data;
 };
 
 // Get scraper job history

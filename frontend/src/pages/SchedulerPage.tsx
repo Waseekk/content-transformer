@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   HiPlay,
   HiStop,
@@ -12,6 +13,8 @@ import {
   HiChartBar,
   HiCheckCircle,
   HiLightningBolt,
+  HiTrash,
+  HiExclamation,
 } from 'react-icons/hi';
 import {
   useSchedulerStatus,
@@ -20,7 +23,7 @@ import {
   useSchedulerHistory,
 } from '../hooks/useScheduler';
 import { useStartScraper } from '../hooks/useScraper';
-import { useArticleStats, useScrapingSessions } from '../hooks/useArticles';
+import { useArticleStats, useScrapingSessions, useDeleteSession, useDeleteAllHistory } from '../hooks/useArticles';
 import { useAppStore } from '../store/useAppStore';
 import { ScraperStatusBanner } from '../components/common/ScraperStatusBanner';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +41,7 @@ const INTERVAL_PRESETS = [
 
 export const SchedulerPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: status } = useSchedulerStatus();
   useSchedulerHistory(10); // Keep the query active for caching
   const { data: stats, refetch: refetchStats } = useArticleStats();
@@ -57,6 +61,8 @@ export const SchedulerPage = () => {
   const startScheduler = useStartScheduler();
   const stopScheduler = useStopScheduler();
   const startScraper = useStartScraper();
+  const deleteSession = useDeleteSession();
+  const deleteAllHistory = useDeleteAllHistory();
 
   // Global state for scraper job tracking
   const { activeScraperJobId, setActiveScraperJobId } = useAppStore();
@@ -68,16 +74,21 @@ export const SchedulerPage = () => {
   const [customMinutes, setCustomMinutes] = useState(30);
   const [activeTab, setActiveTab] = useState<'scheduler' | 'scraper' | 'history'>('scheduler');
 
+  // Delete confirmation state
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<number | null>(null);
+
   const isRunning = status?.is_running || false;
 
   // Handle scraper completion
   const handleScraperComplete = useCallback((articlesCount: number) => {
     toast.success(`Scraping complete! Found ${articlesCount} articles`);
     setActiveScraperJobId(null);
-    // Refresh stats and sessions
+    // Refresh stats, sessions, and sources
     refetchStats();
     refetchSessions();
-  }, [setActiveScraperJobId, refetchStats, refetchSessions]);
+    queryClient.invalidateQueries({ queryKey: ['articleSources'] });
+  }, [setActiveScraperJobId, refetchStats, refetchSessions, queryClient]);
 
   const handleBannerClose = useCallback(() => {
     setActiveScraperJobId(null);
@@ -107,6 +118,27 @@ export const SchedulerPage = () => {
 
   const handleRunNow = () => {
     startScraper.mutate();
+  };
+
+  // Delete handlers
+  const handleDeleteSession = (jobId: number) => {
+    setSessionToDelete(jobId);
+  };
+
+  const confirmDeleteSession = () => {
+    if (sessionToDelete) {
+      deleteSession.mutate(sessionToDelete);
+      setSessionToDelete(null);
+    }
+  };
+
+  const handleDeleteAll = () => {
+    setShowDeleteAllConfirm(true);
+  };
+
+  const confirmDeleteAll = () => {
+    deleteAllHistory.mutate();
+    setShowDeleteAllConfirm(false);
   };
 
   // Format time until next run
@@ -453,7 +485,19 @@ export const SchedulerPage = () => {
 
           {/* Scraping Sessions List */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Scraping Sessions</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Scraping Sessions</h3>
+              {scrapingSessions?.sessions && scrapingSessions.sessions.length > 0 && (
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={deleteAllHistory.isPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors border border-red-200 disabled:opacity-50"
+                >
+                  <HiTrash className="w-4 h-4" />
+                  Delete All History
+                </button>
+              )}
+            </div>
 
             {sessionsLoading ? (
               <div className="text-center py-12">
@@ -491,12 +535,22 @@ export const SchedulerPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => navigate(`/articles?job_id=${session.job_id}`)}
-                      className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      View Articles
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate(`/articles?job_id=${session.job_id}`)}
+                        className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        View Articles
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSession(session.job_id)}
+                        disabled={deleteSession.isPending}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete this session"
+                      >
+                        <HiTrash className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -518,6 +572,78 @@ export const SchedulerPage = () => {
         </div>
       )}
       </div>
+
+      {/* Delete Session Confirmation Modal */}
+      {sessionToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <HiExclamation className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Delete Session?</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              This will permanently delete this scraping session and all its articles.
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setSessionToDelete(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteSession}
+                disabled={deleteSession.isPending}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {deleteSession.isPending ? 'Deleting...' : 'Delete Session'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Confirmation Modal */}
+      {showDeleteAllConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <HiExclamation className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Delete All History?</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              This will permanently delete:
+            </p>
+            <ul className="list-disc list-inside text-gray-600 mb-4 ml-2">
+              <li>All scraping sessions ({scrapingSessions?.total || 0} sessions)</li>
+              <li>All scraped articles ({stats?.total_articles || 0} articles)</li>
+            </ul>
+            <p className="text-red-600 font-medium mb-6">
+              ⚠️ This action cannot be undone!
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteAllConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAll}
+                disabled={deleteAllHistory.isPending}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {deleteAllHistory.isPending ? 'Deleting...' : 'Delete Everything'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
