@@ -202,42 +202,116 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
 
     def simple_translate(self, text, target_lang='bn'):
         """
-        Simple translation without extraction (for short texts)
+        Extract clean article content and translate to Bengali.
+
+        This method:
+        1. Uses AI to extract ONLY the main article content (removes nav, ads, comments, etc.)
+        2. Translates the clean content to Bengali
+        3. Returns both clean English AND Bengali translation
 
         Args:
-            text: Text to translate
+            text: Raw pasted text (may include navigation, ads, etc.)
             target_lang: Target language (default: 'bn')
 
         Returns:
-            tuple: (translated_text, tokens_used)
+            dict: {
+                'translation': Bengali translated text,
+                'clean_english': Extracted clean English article,
+                'tokens_used': int
+            }
         """
-        logger.info(f"Simple translation: {len(text)} chars")
+        logger.info(f"Extract and translate: {len(text)} chars")
 
         if not self._initialize_provider():
-            return text, 0
+            return {'translation': text, 'clean_english': text, 'tokens_used': 0}
 
         try:
-            simple_prompt = f"""Translate the following text to natural Bangladeshi Bengali.
-Maintain the tone and meaning. Keep proper nouns unchanged.
+            extract_translate_prompt = f"""You are processing a pasted webpage. Do TWO tasks:
 
-Text to translate:
-{text}
+TASK 1 - EXTRACT CLEAN ENGLISH:
+Extract ONLY the main news article content from this pasted text.
+REMOVE completely:
+- Navigation menus (Home, News, Sport, etc.)
+- Weather widgets
+- Advertisement markers
+- "View comments", "Share", "e-mail" buttons
+- Comments section
+- Related articles lists
+- Footer content (Privacy, Terms, etc.)
+- Trending/Popular sections
+- Any non-article content
 
-Bengali translation:"""
+KEEP only:
+- Article headline
+- Byline (By Author Name)
+- Publication date
+- Main article body paragraphs
+- Quotes within the article
+
+TASK 2 - TRANSLATE TO BENGALI:
+Translate the extracted clean article to natural Bangladeshi Bengali.
+- Use modern Bangladeshi dialect (NOT Indian Bengali)
+- Keep proper nouns unchanged (names, places)
+- Maintain journalistic tone
+
+OUTPUT FORMAT (JSON only, no extra text):
+{{
+  "clean_english": "The extracted clean English article content here...",
+  "bengali_translation": "বাংলা অনুবাদ এখানে..."
+}}
+
+PASTED CONTENT:
+{text}"""
 
             response, tokens = self.provider.generate(
-                system_prompt="You are a professional translator specializing in Bangladeshi Bengali.",
-                user_prompt=simple_prompt,
+                system_prompt="You are an expert at extracting article content and translating to Bangladeshi Bengali. Output ONLY valid JSON.",
+                user_prompt=extract_translate_prompt,
                 temperature=0.3,
-                max_tokens=2000
+                max_tokens=6000  # Increased for both English + Bengali
             )
 
-            logger.info(f"Translation completed: {tokens} tokens")
-            return response.strip(), tokens
+            logger.info(f"Extract+Translate completed: {tokens} tokens")
+
+            # Parse JSON response
+            import json
+            try:
+                # Extract JSON from response
+                if '```json' in response:
+                    json_start = response.find('```json') + 7
+                    json_end = response.find('```', json_start)
+                    json_str = response[json_start:json_end].strip()
+                elif '```' in response:
+                    json_start = response.find('```') + 3
+                    json_end = response.find('```', json_start)
+                    json_str = response[json_start:json_end].strip()
+                elif '{' in response:
+                    json_start = response.find('{')
+                    json_end = response.rfind('}') + 1
+                    json_str = response[json_start:json_end]
+                else:
+                    json_str = response
+
+                result = json.loads(json_str)
+
+                return {
+                    'translation': result.get('bengali_translation', ''),
+                    'clean_english': result.get('clean_english', text),
+                    'tokens_used': tokens
+                }
+
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing error: {e}")
+                logger.error(f"Response preview: {response[:500]}")
+                # Fallback: return response as translation, original as English
+                return {
+                    'translation': response.strip(),
+                    'clean_english': text,
+                    'tokens_used': tokens
+                }
 
         except Exception as e:
-            logger.error(f"Simple translation error: {e}")
-            return text, 0
+            logger.error(f"Extract+translate error: {e}")
+            return {'translation': text, 'clean_english': text, 'tokens_used': 0}
 
 
 # ============================================================================

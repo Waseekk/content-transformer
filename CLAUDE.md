@@ -78,9 +78,12 @@ START_FRONTEND.bat
 - Literary travel features
 - Storytelling approach
 - 500-800 words
-- Bold headline (no prefix), bold intro 1 (2-4 lines)
-- Byline NOT bold: `নিউজ ডেস্ক, বাংলার কলম্বাস`
-- Non-bold intro 2 REQUIRED before first subhead
+- Structure (CRITICAL - 2 paragraphs before first subhead):
+  1. **Bold Headline** (no prefix)
+  2. Byline NOT bold: `নিউজ ডেস্ক, বাংলার কলম্বাস`
+  3. **Bold Intro 1** (2-4 lines, vivid hook)
+  4. Non-bold Intro 2 (context/background)
+  5. **Bold Subhead** (first subhead comes here)
 - Subheads: bold, no brackets
 - Body paragraphs: NOT bold, max 2 lines each
 
@@ -124,7 +127,36 @@ Located in `.claude/agents/`:
 
 ---
 
-## TODO List (Last Updated: 2026-01-11)
+## Recent Changes (2026-01-17)
+
+### OpenAI-Based Content Extraction
+- **`translator.py`**: `simple_translate()` now extracts clean article content AND translates
+  - Removes navigation, ads, comments, weather widgets from pasted webpages
+  - Returns `{ translation, clean_english, tokens_used }`
+- **`translation.py`**: `/translate-text` endpoint uses `clean_english` from OpenAI
+- **Frontend**: `TranslationPage.tsx` displays cleaned English content (not raw paste)
+
+### Soft News 2-Paragraph Rule
+- **CRITICAL**: Exactly 2 paragraphs before first subhead:
+  1. Bold Intro 1 (hook with vivid imagery)
+  2. Non-bold Intro 2 (context/background)
+  3. Then IMMEDIATELY first **Subhead**
+- Updated in `bengali_news_styles.json` (v2.4)
+- All 7 test articles PASS this validation
+
+### Test Scripts
+- `test_soft_news_format.py` - Single article soft news format test
+- `test_all_articles.py` - Comprehensive test for 7 articles → Word output
+- Output: `test_output/all_articles_test_results.docx`
+
+### Prompt Updates (v2.4)
+- Currency formatting: `৬.৫ মিলিয়ন ইউরো` (not `€৬.৫ মিলিয়ন`)
+- Quotation rules: `বলেন, "..."` (comma before quote)
+- Relaxed word counts for flexibility
+
+---
+
+## TODO List (Last Updated: 2026-01-17)
 
 ### Critical Security Fixes (Before Production)
 

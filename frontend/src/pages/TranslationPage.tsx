@@ -43,8 +43,9 @@ export const TranslationPage = () => {
     try {
       const result = await translate.mutateAsync(pastedContent);
       // Store in global state so it persists across tab changes
+      // Use result.original_text (cleaned by backend) instead of raw pastedContent
       setCurrentTranslation({
-        original: pastedContent,
+        original: result.original_text,  // Cleaned text from API (navigation/headers removed)
         translated: result.translated_text,
         tokens_used: result.tokens_used,
         timestamp: new Date().toISOString(),

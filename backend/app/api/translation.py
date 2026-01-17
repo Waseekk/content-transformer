@@ -232,17 +232,22 @@ async def translate_raw_text(
     - Content is from a source that doesn't have a URL
     - You want to translate custom text
 
-    **Token Cost:** ~500-2000 tokens depending on text length
+    **Note:** OpenAI automatically extracts clean article content from pasted
+    webpages, removing navigation, ads, comments, and other junk.
+    Returns both clean English AND Bengali translation.
+
+    **Token Cost:** ~1000-3000 tokens depending on text length
 
     **Requirements:**
     - Valid JWT access token
     - Sufficient token balance
     - Text between 10-50,000 characters
     """
-    # Estimate tokens based on text length BEFORE calling OpenAI
-    # Rough estimate: (input chars / 4) for input tokens + similar for output
-    # Translation typically doubles token count (input + output), add 20% buffer
-    estimated_tokens = max(500, int(len(request.text) / 4 * 2.2))
+    # Use provided title or default
+    title = request.title or "Direct Text Translation"
+
+    # Estimate tokens based on text length (extraction + translation = ~2x)
+    estimated_tokens = max(1000, int(len(request.text) / 4 * 3))
 
     # Check token balance with estimated cost
     if not current_user.has_tokens(estimated_tokens):
@@ -251,16 +256,15 @@ async def translate_raw_text(
             detail=f"Insufficient tokens. Estimated cost: ~{estimated_tokens:,} tokens. You have: {current_user.tokens_remaining:,} tokens remaining. Please add more credits to continue."
         )
 
-    # Translate to Bengali
+    # Use OpenAI to extract clean English AND translate to Bengali
     try:
         translator = OpenAITranslator()
         translation_result = translator.simple_translate(request.text)
 
-        if isinstance(translation_result, dict):
-            translated_text = translation_result.get('translation', translation_result.get('content', ''))
-            tokens_used = translation_result.get('tokens_used', 0)
-        else:
-            translated_text, tokens_used = translation_result
+        # New format returns dict with clean_english and translation
+        translated_text = translation_result.get('translation', '')
+        clean_english = translation_result.get('clean_english', request.text)
+        tokens_used = translation_result.get('tokens_used', 0)
 
     except Exception as e:
         raise HTTPException(
@@ -275,15 +279,16 @@ async def translate_raw_text(
             detail=f"Insufficient tokens. Actual cost: {tokens_used:,} tokens exceeded your balance of {current_user.tokens_remaining:,} tokens. Please add more credits."
         )
 
-    # Save to database
+    # Save to database with CLEAN English text (extracted by AI)
     translation_record = None
     if request.save_to_history:
         translation_record = Translation(
             user_id=current_user.id,
             original_url=None,
-            title=request.title or "Direct Text Translation",
-            original_text=request.text,
+            title=title,
+            original_text=clean_english,  # Store AI-extracted clean English
             translated_text=translated_text,
+            extraction_method='openai_extract',  # Mark as AI-extracted
             tokens_used=tokens_used
         )
         db.add(translation_record)
@@ -295,9 +300,10 @@ async def translate_raw_text(
     return TranslationResponse(
         id=translation_record.id if translation_record else None,
         original_url=None,
-        original_title=request.title or "Direct Text Translation",
-        original_text=request.text,
+        original_title=title,
+        original_text=clean_english,  # Return AI-extracted clean English
         translated_text=translated_text,
+        extraction_method='openai_extract',
         tokens_used=tokens_used,
         tokens_remaining=current_user.tokens_remaining,
         created_at=translation_record.created_at.isoformat() if translation_record else datetime.utcnow().isoformat()
