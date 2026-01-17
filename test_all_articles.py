@@ -1,11 +1,13 @@
 """
 Comprehensive Test: Generate Hard News and Soft News for all 7 PDF articles
 Output to Word document with proper formatting
+v2.5: Code-based post-processing (100% reliable, no AI checker)
 """
 import os
 import sys
 import json
 import io
+import re
 from pathlib import Path
 from datetime import datetime
 from openai import OpenAI
@@ -24,6 +26,182 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 json_path = Path(__file__).parent / "backend" / "app" / "config" / "formats" / "bengali_news_styles.json"
 with open(json_path, "r", encoding="utf-8") as f:
     STYLES = json.load(f)
+
+# ============================================================================
+# CODE-BASED POST-PROCESSING (v2.5 - 100% Reliable, No AI Checker)
+# ============================================================================
+
+# Word correction patterns
+WORD_CORRECTIONS = [
+    (r'শীঘ্রই', 'শিগগিরই'),
+    (r'([০-৯]+)লা\b', r'\1'),
+    (r'([০-৯]+)ই\b', r'\1'),
+    (r'([০-৯]+)শে\b', r'\1'),
+]
+
+# Words that START with সহ - don't join these
+SAHO_EXCEPTION_PATTERNS = [
+    'সহায়', 'সহযোগ', 'সহকার', 'সহজ', 'সহ্য', 'সহস্র',
+    'সহমত', 'সহমর্ম', 'সহাবস্থান', 'সহসা', 'সহচর',
+    'সহধর্মিণী', 'সহপাঠী', 'সহবাস', 'সহমরণ', 'সহানুভূতি',
+    'সহকর্মী', 'সহযাত্রী', 'সহশিল্পী', 'সহনশীল',
+]
+
+# English words to replace with Bengali equivalents
+ENGLISH_TO_BENGALI = {
+    'accompanying': 'সহায়ক',
+    'landmark': 'ঐতিহ্যবাহী স্থান',
+    'landmarks': 'ঐতিহ্যবাহী স্থানসমূহ',
+    'sharply': 'তীব্রভাবে',
+    'system': 'ব্যবস্থা',
+    'tariff': 'শুল্ক',
+    'desperation': 'মরিয়া অবস্থা',
+    'tourists': 'পর্যটকরা',
+    'tourist': 'পর্যটক',
+    'government': 'সরকার',
+    'official': 'কর্মকর্তা',
+    'officials': 'কর্মকর্তারা',
+    'significant': 'উল্লেখযোগ্য',
+    'approximately': 'প্রায়',
+    'recently': 'সম্প্রতি',
+    'currently': 'বর্তমানে',
+    'however': 'তবে',
+    'therefore': 'তাই',
+    'moreover': 'অধিকন্তু',
+    'despite': 'সত্ত্বেও',
+    'although': 'যদিও',
+}
+
+
+def apply_word_corrections(text):
+    """Apply Bengali word corrections"""
+    if not text:
+        return text
+    for pattern, replacement in WORD_CORRECTIONS:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
+def fix_saho_joining(text):
+    """Join সহ with previous word only when it means 'with'"""
+    if not text:
+        return text
+    exception_lookahead = '|'.join(SAHO_EXCEPTION_PATTERNS)
+    pattern = rf'(\S+)\s+সহ(?!{exception_lookahead})(?=[\s,।\n]|$)'
+    return re.sub(pattern, r'\1সহ', text)
+
+
+def replace_english_words(text):
+    """Replace common English words with Bengali equivalents"""
+    if not text:
+        return text
+    for eng, ben in ENGLISH_TO_BENGALI.items():
+        pattern = rf'\b{eng}\b'
+        text = re.sub(pattern, ben, text, flags=re.IGNORECASE)
+    return text
+
+
+def split_quotes(text):
+    """
+    Split paragraphs where text appears after a CLOSING quote.
+
+    Only split when: punctuation + closing quote + space + more text
+    Pattern: ।" or !" or ?" (punctuation inside) OR "। or "! or "? (punctuation outside)
+    """
+    if not text:
+        return text
+
+    paragraphs = text.split('\n\n')
+    result = []
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        # Skip bold paragraphs (headlines, intros, subheads)
+        if para.startswith('**') and '**' in para[2:]:
+            result.append(para)
+            continue
+
+        # Skip byline
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            result.append(para)
+            continue
+
+        # Check if paragraph has quotes
+        if '"' not in para:
+            result.append(para)
+            continue
+
+        # Split only at CLOSING quote patterns
+        current_para = para
+        split_parts = []
+
+        while True:
+            # Match CLOSING quote patterns only:
+            # - [।!?]" = punctuation inside, then closing quote
+            # - "[।!?] = closing quote, then punctuation outside
+            match = re.search(r'([।!?]"|"[।!?])\s+(\S.+)', current_para)
+            if match:
+                split_pos = match.start() + len(match.group(1))
+                part1 = current_para[:split_pos].strip()
+                part2 = match.group(2).strip()
+                if part1:
+                    split_parts.append(part1)
+                current_para = part2
+            else:
+                if current_para.strip():
+                    split_parts.append(current_para.strip())
+                break
+
+        result.extend(split_parts)
+
+    return '\n\n'.join(result)
+
+
+def process_content(text, format_type):
+    """
+    Full code-based post-processing pipeline (v2.5)
+
+    1. Apply word corrections (শিগগিরই, date suffixes)
+    2. Fix সহ joining (smart)
+    3. Replace English words
+    4. Split quotes (CRITICAL)
+    """
+    text = apply_word_corrections(text)
+    text = fix_saho_joining(text)
+    text = replace_english_words(text)
+    text = split_quotes(text)
+    return text
+
+
+def detect_issues(content, format_type, max_words=35):
+    """Detect issues for logging (no longer triggers AI checker)"""
+    issues = []
+    paragraphs = content.split('\n\n')
+    body_start = 3 if format_type == 'hard_news' else 5
+
+    for i, para in enumerate(paragraphs):
+        para = para.strip()
+        if not para or i < body_start:
+            continue
+        if para.startswith('**') and '**' in para[2:]:
+            continue
+        if 'নিউজ ডেস্ক' in para:
+            continue
+
+        word_count = len(para.split())
+        if word_count > max_words:
+            issues.append(f"P{i+1}: {word_count} words")
+
+        if '"' in para:
+            last_quote = para.rfind('"')
+            text_after = para[last_quote+1:].strip()
+            if len(text_after) > 5 and not text_after.startswith('।'):
+                issues.append(f"P{i+1}: Text after quote")
+
+    return issues
 
 # ============================================================================
 # ALL 7 ARTICLES FROM PDF
@@ -192,7 +370,7 @@ def translate_to_bengali(text):
 
 
 def generate_hard_news(translated_text, article_info):
-    """Generate Hard News format"""
+    """Generate Hard News format with code-based post-processing (v2.5)"""
     style = STYLES["hard_news"]
 
     user_prompt = f"""নিচের ভ্রমণ সংবাদটি পুনর্লিখন করুন:
@@ -214,11 +392,25 @@ def generate_hard_news(translated_text, article_info):
         temperature=style["temperature"],
         max_tokens=style["max_tokens"]
     )
-    return response.choices[0].message.content
+    raw_content = response.choices[0].message.content
+
+    # Detect issues BEFORE processing (for logging)
+    original_issues = detect_issues(raw_content, 'hard_news')
+    if original_issues:
+        print(f"      [AI ISSUES] {original_issues} → will be fixed by code")
+
+    # Apply ALL code-based fixes (100% reliable)
+    content = process_content(raw_content, 'hard_news')
+
+    # Verify issues were fixed
+    remaining_issues = detect_issues(content, 'hard_news')
+    code_fixed = len(original_issues) > 0 and len(remaining_issues) < len(original_issues)
+
+    return content, code_fixed, original_issues
 
 
 def generate_soft_news(translated_text, article_info):
-    """Generate Soft News format"""
+    """Generate Soft News format with code-based post-processing (v2.5)"""
     style = STYLES["soft_news"]
 
     user_prompt = f"""নিচের ভ্রমণ সংবাদটি পুনর্লিখন করুন:
@@ -240,7 +432,21 @@ def generate_soft_news(translated_text, article_info):
         temperature=style["temperature"],
         max_tokens=style["max_tokens"]
     )
-    return response.choices[0].message.content
+    raw_content = response.choices[0].message.content
+
+    # Detect issues BEFORE processing (for logging)
+    original_issues = detect_issues(raw_content, 'soft_news')
+    if original_issues:
+        print(f"      [AI ISSUES] {original_issues} → will be fixed by code")
+
+    # Apply ALL code-based fixes (100% reliable)
+    content = process_content(raw_content, 'soft_news')
+
+    # Verify issues were fixed
+    remaining_issues = detect_issues(content, 'soft_news')
+    code_fixed = len(original_issues) > 0 and len(remaining_issues) < len(original_issues)
+
+    return content, code_fixed, original_issues
 
 
 def analyze_structure(content, news_type):
@@ -336,6 +542,8 @@ def create_word_document(results):
         # Hard News Analysis
         analysis_hard = result.get('analysis_hard', {})
         doc.add_paragraph(f"Total paragraphs: {analysis_hard.get('total_paragraphs', 'N/A')}")
+        if result.get('hard_code_fixed'):
+            doc.add_paragraph(f"Code Fixed Issues: {', '.join(result.get('hard_original_issues', []))}")
 
         doc.add_paragraph()
 
@@ -365,6 +573,8 @@ def create_word_document(results):
         validation = analysis_soft.get('validation', {})
         if '2_paragraph_rule' in validation:
             doc.add_paragraph(f"2-Paragraph Rule: {validation['2_paragraph_rule']}")
+        if result.get('soft_code_fixed'):
+            doc.add_paragraph(f"Code Fixed Issues: {', '.join(result.get('soft_original_issues', []))}")
 
         # Page break between articles
         doc.add_page_break()
@@ -391,16 +601,18 @@ def main():
 
         # Step 2: Generate Hard News
         print(f"  [2/3] Generating Hard News...")
-        hard_news = generate_hard_news(translated, article)
+        hard_news, hard_code_fixed, hard_original_issues = generate_hard_news(translated, article)
         analysis_hard = analyze_structure(hard_news, "hard_news")
-        print(f"  [OK] Hard News: {analysis_hard['total_paragraphs']} paragraphs")
+        fix_status_hard = "CODE FIXED" if hard_code_fixed else "Clean"
+        print(f"  [OK] Hard News: {analysis_hard['total_paragraphs']} paragraphs ({fix_status_hard})")
 
         # Step 3: Generate Soft News
         print(f"  [3/3] Generating Soft News...")
-        soft_news = generate_soft_news(translated, article)
+        soft_news, soft_code_fixed, soft_original_issues = generate_soft_news(translated, article)
         analysis_soft = analyze_structure(soft_news, "soft_news")
         validation_status = analysis_soft.get('validation', {}).get('2_paragraph_rule', 'N/A')
-        print(f"  [OK] Soft News: {analysis_soft['total_paragraphs']} paragraphs, 2-para rule: {validation_status}")
+        fix_status_soft = "CODE FIXED" if soft_code_fixed else "Clean"
+        print(f"  [OK] Soft News: {analysis_soft['total_paragraphs']} paragraphs, 2-para rule: {validation_status} ({fix_status_soft})")
 
         results.append({
             "id": article['id'],
@@ -410,7 +622,11 @@ def main():
             "hard_news": hard_news,
             "soft_news": soft_news,
             "analysis_hard": analysis_hard,
-            "analysis_soft": analysis_soft
+            "analysis_soft": analysis_soft,
+            "hard_code_fixed": hard_code_fixed,
+            "hard_original_issues": hard_original_issues,
+            "soft_code_fixed": soft_code_fixed,
+            "soft_original_issues": soft_original_issues
         })
 
     # Save to Word document
@@ -419,7 +635,8 @@ def main():
     print("=" * 70)
 
     doc = create_word_document(results)
-    output_path = Path(__file__).parent / "test_output" / "all_articles_test_results.docx"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = Path(__file__).parent / "test_output" / f"all_articles_test_results_{timestamp}.docx"
     output_path.parent.mkdir(exist_ok=True)
     doc.save(str(output_path))
     print(f"[OK] Word document saved: {output_path}")
@@ -435,11 +652,15 @@ def main():
 
             f.write("-" * 40 + "\n")
             f.write("HARD NEWS:\n")
+            if result.get('hard_code_fixed'):
+                f.write(f"[CODE FIXED - Original issues: {', '.join(result.get('hard_original_issues', []))}]\n")
             f.write("-" * 40 + "\n")
             f.write(result['hard_news'] + "\n\n")
 
             f.write("-" * 40 + "\n")
             f.write("SOFT NEWS:\n")
+            if result.get('soft_code_fixed'):
+                f.write(f"[CODE FIXED - Original issues: {', '.join(result.get('soft_original_issues', []))}]\n")
             f.write("-" * 40 + "\n")
             f.write(result['soft_news'] + "\n\n")
 

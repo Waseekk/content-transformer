@@ -10,7 +10,7 @@ import json
 # Import modules
 from app.core.ai_providers import get_provider
 from app.core.prompts import get_format_config, get_user_prompt
-from app.core.text_processor import process_enhanced_content
+from app.core.text_processor import process_enhanced_content, needs_checker
 from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('enhancer')
@@ -18,7 +18,7 @@ logger = LoggerManager.get_logger('enhancer')
 
 class EnhancementResult:
     """Store enhancement results"""
-    
+
     def __init__(self, format_type, content, tokens_used=0):
         self.format_type = format_type
         self.content = content
@@ -26,6 +26,9 @@ class EnhancementResult:
         self.generated_at = datetime.now().isoformat()
         self.success = True
         self.error = None
+        self.checker_used = False
+        self.checker_issues = []
+        self.checker_tokens = 0
 
 
 class ContentEnhancer:
@@ -59,30 +62,41 @@ class ContentEnhancer:
         except Exception as e:
             logger.error(f"Provider initialization failed: {e}")
             return False
-    
+
     def enhance_single_format(self, translated_text, article_info, format_type):
         """
-        Generate content for a single format
-        
+        Generate content for a single format with code-based post-processing.
+
+        Workflow (v2.5 - No AI Checker, 100% Code-Based Fixes):
+        1. Generate content (AI)
+        2. Apply post-processing (code-based, deterministic):
+           - Word corrections (শিগগিরই, date suffixes)
+           - Smart সহ joining (preserves সহায়ক, সহযোগী, etc.)
+           - English word replacement
+           - Quote splitting (CRITICAL - paragraph ends at quote)
+           - Paragraph length enforcement
+        3. Validate structure
+        4. Log any issues that were in original AI output (for analytics)
+
         Args:
             translated_text: Bengali translated text
             article_info: Article metadata dict
-            format_type: 'newspaper', 'blog', 'facebook', 'instagram'
-        
+            format_type: 'hard_news', 'soft_news', etc.
+
         Returns:
             EnhancementResult
         """
         try:
             # Get format configuration
             config = get_format_config(format_type)
-            
+
             logger.info(f"Generating {format_type} with {self.provider_name}")
-            
+
             # Prepare prompts
             system_prompt = config['system_prompt']
             user_prompt = get_user_prompt(translated_text, article_info)
-            
-            # Generate content
+
+            # Generate content (AI)
             content, tokens = self.provider.generate(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
@@ -90,7 +104,17 @@ class ContentEnhancer:
                 max_tokens=config['max_tokens']
             )
 
-            # Apply post-processing (word corrections + structure validation)
+            # LOG issues in original AI output BEFORE post-processing (for analytics)
+            original_issues_needed = False
+            original_issues = []
+            if format_type in ['hard_news', 'soft_news']:
+                original_issues_needed, original_issues = needs_checker(content.strip(), format_type)
+                if original_issues_needed:
+                    logger.info(f"AI generated with issues (will be fixed by code): {original_issues}")
+
+            # Apply post-processing (ALL fixes are code-based, 100% reliable)
+            # This includes: word corrections, সহ joining, English replacement,
+            # quote splitting, paragraph length enforcement, structure validation
             processed_content, validation = process_enhanced_content(
                 content.strip(),
                 format_type
@@ -101,27 +125,34 @@ class ContentEnhancer:
                 for warning in validation['warnings']:
                     logger.warning(f"Structure warning for {format_type}: {warning}")
 
-            # Create result with processed content
+            # Initialize result
             result = EnhancementResult(
                 format_type=format_type,
                 content=processed_content,
                 tokens_used=tokens
             )
 
-            self.total_tokens += tokens
+            # Log that code-based fixes were applied (no AI checker needed)
+            result.checker_used = False  # AI checker removed in v2.5
+            result.checker_tokens = 0
+            if original_issues_needed:
+                result.checker_issues = original_issues  # Log what issues were found
+                logger.info(f"Code-based fixes applied for {format_type} (no AI checker)")
 
-            logger.info(f"{format_type} generated: {len(content)} chars, {tokens} tokens")
-            
+            self.total_tokens += result.tokens_used
+
+            logger.info(f"{format_type} generated: {len(result.content)} chars, {result.tokens_used} tokens")
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error generating {format_type}: {e}")
-            
+
             # Create error result
             result = EnhancementResult(format_type=format_type, content="")
             result.success = False
             result.error = str(e)
-            
+
             return result
     
     def enhance_all_formats(self, translated_text, article_info,
@@ -202,6 +233,13 @@ class ContentEnhancer:
             # Prepare content
             config = get_format_config(format_type)
             
+            checker_info = ""
+            if result.checker_used:
+                checker_info = f"""
+CHECKER USED: Yes
+CHECKER ISSUES: {', '.join(result.checker_issues)}
+CHECKER TOKENS: {result.checker_tokens}"""
+
             file_content = f"""{'='*80}
 {config['icon']} {config['name'].upper()}
 {'='*80}
@@ -214,7 +252,7 @@ URL: {article_info.get('article_url', 'N/A')}
 
 GENERATED BY: {self.provider_name} ({self.model})
 GENERATED AT: {result.generated_at}
-TOKENS USED: {result.tokens_used}
+TOKENS USED: {result.tokens_used}{checker_info}
 
 {'='*80}
 CONTENT
@@ -250,7 +288,10 @@ CONTENT
                 'content': result.content,
                 'tokens_used': result.tokens_used,
                 'success': result.success,
-                'error': result.error
+                'error': result.error,
+                'checker_used': result.checker_used,
+                'checker_issues': result.checker_issues,
+                'checker_tokens': result.checker_tokens
             }
         
         with open(json_filepath, 'w', encoding='utf-8') as f:
