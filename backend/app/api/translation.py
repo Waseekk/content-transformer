@@ -66,6 +66,12 @@ class TranslationResponse(BaseModel):
     extraction_method: Optional[str] = None
     tokens_used: int
     tokens_remaining: int
+    # Usage limits info
+    translations_used_this_month: int
+    translations_remaining: int
+    monthly_translation_limit: int
+    limit_exceeded: bool = False
+    warning_message: Optional[str] = None
     created_at: str
 
     class Config:
@@ -203,6 +209,10 @@ async def extract_and_translate_from_url(
     if translation_record:
         db.refresh(translation_record)
 
+    # Track translation usage for extract-and-translate too
+    current_user.use_translation()
+    db.commit()
+
     return TranslationResponse(
         id=translation_record.id if translation_record else None,
         original_url=str(request.url),
@@ -214,6 +224,10 @@ async def extract_and_translate_from_url(
         extraction_method=extracted_content['method'],
         tokens_used=tokens_used,
         tokens_remaining=current_user.tokens_remaining,
+        translations_used_this_month=current_user.translations_used_this_month,
+        translations_remaining=current_user.translations_remaining,
+        monthly_translation_limit=current_user.monthly_translation_limit,
+        limit_exceeded=current_user.is_translation_limit_exceeded(),
         created_at=translation_record.created_at.isoformat() if translation_record else datetime.utcnow().isoformat()
     )
 
@@ -246,8 +260,16 @@ async def translate_raw_text(
     # Use provided title or default
     title = request.title or "Direct Text Translation"
 
+    # Check translation limit (warn but don't block)
+    translation_limit_exceeded = current_user.is_translation_limit_exceeded()
+
     # Estimate tokens based on text length (extraction + translation = ~2x)
     estimated_tokens = max(1000, int(len(request.text) / 4 * 3))
+
+    # Auto-assign tokens if low
+    auto_assigned = current_user.check_and_auto_assign_tokens()
+    if auto_assigned > 0:
+        db.commit()
 
     # Check token balance with estimated cost
     if not current_user.has_tokens(estimated_tokens):
@@ -279,6 +301,9 @@ async def translate_raw_text(
             detail=f"Insufficient tokens. Actual cost: {tokens_used:,} tokens exceeded your balance of {current_user.tokens_remaining:,} tokens. Please add more credits."
         )
 
+    # Track translation usage
+    current_user.use_translation()
+
     # Save to database with CLEAN English text (extracted by AI)
     translation_record = None
     if request.save_to_history:
@@ -297,6 +322,11 @@ async def translate_raw_text(
     if translation_record:
         db.refresh(translation_record)
 
+    # Build warning message if limit exceeded
+    warning_message = None
+    if translation_limit_exceeded:
+        warning_message = f"Monthly translation limit ({current_user.monthly_translation_limit}) exceeded. You have used {current_user.translations_used_this_month} translations this month. Limit resets on the 1st of next month."
+
     return TranslationResponse(
         id=translation_record.id if translation_record else None,
         original_url=None,
@@ -306,6 +336,11 @@ async def translate_raw_text(
         extraction_method='openai_extract',
         tokens_used=tokens_used,
         tokens_remaining=current_user.tokens_remaining,
+        translations_used_this_month=current_user.translations_used_this_month,
+        translations_remaining=current_user.translations_remaining,
+        monthly_translation_limit=current_user.monthly_translation_limit,
+        limit_exceeded=translation_limit_exceeded,
+        warning_message=warning_message,
         created_at=translation_record.created_at.isoformat() if translation_record else datetime.utcnow().isoformat()
     )
 
@@ -351,6 +386,10 @@ async def list_translations(
             extraction_method=t.extraction_method,
             tokens_used=t.tokens_used,
             tokens_remaining=current_user.tokens_remaining,
+            translations_used_this_month=current_user.translations_used_this_month,
+            translations_remaining=current_user.translations_remaining,
+            monthly_translation_limit=current_user.monthly_translation_limit,
+            limit_exceeded=current_user.is_translation_limit_exceeded(),
             created_at=t.created_at.isoformat()
         ))
 
@@ -396,6 +435,10 @@ async def get_translation(
         extraction_method=translation.extraction_method,
         tokens_used=translation.tokens_used,
         tokens_remaining=current_user.tokens_remaining,
+        translations_used_this_month=current_user.translations_used_this_month,
+        translations_remaining=current_user.translations_remaining,
+        monthly_translation_limit=current_user.monthly_translation_limit,
+        limit_exceeded=current_user.is_translation_limit_exceeded(),
         created_at=translation.created_at.isoformat()
     )
 

@@ -17,6 +17,7 @@
     "date-fns": "^3.0.0",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.26.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.69.0",

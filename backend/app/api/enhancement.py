@@ -54,6 +54,12 @@ class EnhancementResponse(BaseModel):
     formats: List[FormatOutput]
     total_tokens_used: int
     tokens_remaining: int
+    # Usage limits info
+    enhancements_used_this_month: int
+    enhancements_remaining: int
+    monthly_enhancement_limit: int
+    limit_exceeded: bool = False
+    warning_message: Optional[str] = None
     created_at: str
 
     class Config:
@@ -232,11 +238,19 @@ async def enhance_content(
             detail=f"Access denied to formats: {', '.join(unauthorized_formats)}. Your tier ({current_user.subscription_tier}) allows: {', '.join(allowed_formats)}"
         )
 
+    # Check enhancement quota (warn but don't block)
+    enhancement_limit_exceeded = current_user.is_enhancement_limit_exceeded()
+
     # Estimate token cost based on content length and number of formats
     # Rough estimate: (input chars / 4) for input + (output roughly 1.5x input for enhanced content)
     # Multiply by number of formats, add buffer
     base_tokens = max(500, int(len(content_text) / 4 * 2.5))
     estimated_tokens = base_tokens * len(request.formats)
+
+    # Auto-assign tokens if low
+    auto_assigned = current_user.check_and_auto_assign_tokens()
+    if auto_assigned > 0:
+        db.commit()  # Save the auto-assigned tokens
 
     if not current_user.has_tokens(estimated_tokens):
         raise HTTPException(
@@ -281,6 +295,9 @@ async def enhance_content(
             detail=f"Insufficient tokens. Actual cost: {total_tokens:,} tokens exceeded your balance of {current_user.tokens_remaining:,} tokens. Please add more credits."
         )
 
+    # Track enhancement usage (count each format as one enhancement)
+    current_user.use_enhancement(len(request.formats))
+
     # Save to database
     enhancement_records = []
     for result in enhancement_results:
@@ -310,12 +327,22 @@ async def enhance_content(
         for result in enhancement_results
     ]
 
+    # Build warning message if limit exceeded
+    warning_message = None
+    if enhancement_limit_exceeded:
+        warning_message = f"Monthly enhancement limit ({current_user.monthly_enhancement_limit}) exceeded. You have used {current_user.enhancements_used_this_month} enhancements this month. Limit resets on the 1st of next month."
+
     return EnhancementResponse(
         id=enhancement_records[0].id if enhancement_records else None,
         translation_id=request.translation_id,
         formats=format_outputs,
         total_tokens_used=total_tokens,
         tokens_remaining=current_user.tokens_remaining,
+        enhancements_used_this_month=current_user.enhancements_used_this_month,
+        enhancements_remaining=current_user.enhancements_remaining,
+        monthly_enhancement_limit=current_user.monthly_enhancement_limit,
+        limit_exceeded=enhancement_limit_exceeded,
+        warning_message=warning_message,
         created_at=enhancement_records[0].created_at.isoformat() if enhancement_records else datetime.utcnow().isoformat()
     )
 

@@ -82,10 +82,22 @@ class Settings(BaseSettings):
     SCRAPER_DELAY: int = 2  # seconds between requests
 
     # Token Management
-    DEFAULT_MONTHLY_TOKENS: int = 10000
-    FREE_TIER_TOKENS: int = 5000
-    PREMIUM_TIER_TOKENS: int = 50000
+    DEFAULT_MONTHLY_TOKENS: int = 1000000  # Essentially unlimited
+    FREE_TIER_TOKENS: int = 1000000
+    PREMIUM_TIER_TOKENS: int = 1000000
     TOKEN_RESET_DAY: int = 1  # 1st of each month
+    AUTO_ASSIGN_TOKENS_THRESHOLD: int = 10000  # Auto-assign when below this
+    AUTO_ASSIGN_TOKENS_AMOUNT: int = 100000  # Amount to auto-assign
+
+    # Enhancement Limits
+    DEFAULT_MONTHLY_ENHANCEMENTS: int = 600
+    FREE_TIER_ENHANCEMENTS: int = 600
+    PREMIUM_TIER_ENHANCEMENTS: int = 600
+
+    # Translation Limits
+    DEFAULT_MONTHLY_TRANSLATIONS: int = 600
+    FREE_TIER_TRANSLATIONS: int = 600
+    PREMIUM_TIER_TRANSLATIONS: int = 600
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")

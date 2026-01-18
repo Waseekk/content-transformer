@@ -7,7 +7,7 @@ export function ScraperControls() {
   const [isRunning, setIsRunning] = useState(false);
   const [currentJob, setCurrentJob] = useState<ScraperJob | null>(null);
   const [result, setResult] = useState<any>(null);
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     return () => {

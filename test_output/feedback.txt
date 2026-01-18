@@ -1,0 +1,16 @@
+narticle 1,
+hard news: একজনসহায়ক , good Bengali, but why in one same word???
+soft news: "রোমের মেয়র রোবের্তো গুয়ালতিয়েরি সংবাদ সংস্থা রয়টার্সকে বলেন, "দুই ইউরো খুব বেশি নয়। এটি পর্যটকদের প্রবাহকে কম বিশৃঙ্খল করবে।" শহর কর্তৃপক্ষ আশা করছে, এই ফাউন্টেন থেকে প্রতি বছর প্রায় ৬.৫ মিলিয়ন ইউরো সংগ্রহ করা সম্ভব হবে। ", i think i have told this several times, also put a maker checker so that tyhere is no fuckling line after the quotation. if a paragraph has a quotation, that will be the last line of that certain paragraph.. why the fuck it is happening again and again??
+artcle 2,
+hard news:1. "মিঃ ডাল সাসো উল্লেখ করেন, "এই স্থানটি ডাইনোসরদের দ্বারা পূর্ণ ছিল; এটি একটি বিশাল বৈজ্ঞানিক সম্পদ।" তিনি আরও বলেন, "গোত্রগুলো সমন্বয়ে চলছিল, এবং আরও জটিল আচরণের চিহ্নও রয়েছে, যেমন প্রাণীদের একটি বৃত্তে জড়ো হওয়া, সম্ভবত প্রতিরক্ষার উদ্দেশ্যে।"" same quATATION PROBLEM. HOW MANY TIMES I HAVE TO FUCKING TELL YOU?? 	 why 2 quotation in a single paragraph
+2. "স্টেলভিও জাতীয় উদ্যানটি ইতালির সুইজারল্যান্ডের সীমান্তের ফ্রায়েলে উপত্যকায় অবস্থিত, যেখানে আগামী বছর শীতকালীন অলিম্পিক অনুষ্ঠিত হবে। ইতালীয় সংস্কৃতি মন্ত্রণালয় জানায়, "এটি যেন ইতিহাস নিজেই সর্ববৃহৎ বৈশ্বিক ক্রীড়া ইভেন্টকে সম্মান জানাতে চেয়েছিল।" প্রকৃতি এবং ক্রীড়ার মধ্যে একটি প্রতীকী ব্যাটনের পরিবর্তনের মাধ্যমে অতীত এবং বর্তমানকে একত্রিত করে।"                i make the checker so that if a paragraph has more than 40 words, then make the last line another paragraph.. is that a joke? 
+soft news: 1. "মিলান ভিত্তিক জীবাশ্মবিদ ক্রিস্টিয়ানো ডাল সাসো বলেন, "আমি কখনো ভাবিনি যে আমি আমার বাসস্থানের অঞ্চলে এমন একটি চমৎকার আবিষ্কারের মুখোমুখি হব।" প্রোসরোপড নামক এই ডাইনোসরগুলো ছিল দীর্ঘ গলা, ছোট মাথা এবং তীক্ষ্ণ নখযুক্ত শাকাহারী। " agin, why it is adding any line after the quatiation.. why??? there should not be anything after a fuclking quation ends. it is not awlways making it correctly.
+articl3 3:
+hard news:
+1. অ্যাস্পেন ও কুরচেভেল-এর মতো জনপ্রিয় স্থানগুলো সবসময়ই আকর্ষণীয়। তবে স্কিইয়ারদের মধ্যে "শুধু লিফট অ্যাক্সেস নয়, আবিষ্কারের অনুভূতি" খুঁজে পাওয়ার আগ্রহ বেড়েছে। স্কি.কম-এরসহ-সভাপতি ক্যাট ইওয়াঞ্চুক জানান, স্কিইয়াররা তাদের পরিকল্পনাগুলো তুষারের সঠিক অবস্থার সাথে মিলিয়ে পরিবর্তন করছে।, again ine after quotation. you are just making me angry.
+
+
+in article 7. why wyou re adding fucking English word in the news? like landmark?, sharply... wtf???? this is new error. there should not be any fucking English word. only if there is a confusing proper noun, then you can add englisg but this is highly discourage to do... 
+
+
+WHAT CAN I DOP MORE.... you are just making this worst. this is so simpe, yet i am dealing with these problem for 2 days... why the fuck??? what do you need more????

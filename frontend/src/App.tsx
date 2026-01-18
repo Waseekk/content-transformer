@@ -14,6 +14,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ArticlesPage } from './pages/ArticlesPage';
 import { TranslationPage } from './pages/TranslationPage';
 import { SchedulerPage } from './pages/SchedulerPage';
+import { UserDashboardPage } from './pages/UserDashboardPage';
 
 // Layout
 import { Layout } from './components/common/Layout';
@@ -68,6 +69,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SchedulerPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <UserDashboardPage />
                 </Layout>
               </ProtectedRoute>
             }

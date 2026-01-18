@@ -111,11 +111,92 @@ class UsageStats(BaseModel):
     """Usage statistics response"""
     total_translations: int
     total_enhancements: int
+    hard_news_count: int
+    soft_news_count: int
+    other_formats_count: int
     total_articles_scraped: int
+    total_scraping_sessions: int
+    # Translation limits (visible to user)
+    translations_used_this_month: int
+    translations_remaining: int
+    monthly_translation_limit: int
+    translation_limit_exceeded: bool
+    # Enhancement limits (visible to user)
+    enhancements_used_this_month: int
+    enhancements_remaining: int
+    monthly_enhancement_limit: int
+    enhancement_limit_exceeded: bool
+    # Tokens (hidden from user, but kept for backward compatibility)
     tokens_used_this_month: int
     tokens_remaining: int
     most_used_format: Optional[str]
     average_tokens_per_translation: float
+
+
+class RecentScrapingJob(BaseModel):
+    """Recent scraping job response"""
+    id: int
+    status: str
+    progress: int
+    articles_count: int
+    created_at: str
+    completed_at: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserStats(BaseModel):
+    """Admin view of user statistics"""
+    user_id: int
+    email: str
+    full_name: Optional[str]
+    subscription_tier: str
+    is_active: bool
+    is_admin: bool
+    total_translations: int
+    total_enhancements: int
+    hard_news_count: int
+    soft_news_count: int
+    total_articles_scraped: int
+    # Token info (admin only)
+    tokens_used_this_month: int
+    tokens_remaining: int
+    monthly_token_limit: int
+    # Enhancement limits
+    enhancements_used_this_month: int
+    enhancements_remaining: int
+    monthly_enhancement_limit: int
+    enhancement_limit_exceeded: bool
+    # Translation limits
+    translations_used_this_month: int
+    translations_remaining: int
+    monthly_translation_limit: int
+    translation_limit_exceeded: bool
+    created_at: str
+    last_login: Optional[str]
+
+
+class AdminSetTokensRequest(BaseModel):
+    """Admin request to set user tokens"""
+    user_id: int
+    new_limit: int
+    reset_used: bool = False
+
+
+class AdminSetEnhancementsRequest(BaseModel):
+    """Admin request to set user enhancement limit"""
+    user_id: int
+    new_limit: int
+    reset_used: bool = False
+
+
+class AdminAssignResponse(BaseModel):
+    """Response for admin assignment operations"""
+    success: bool
+    message: str
+    user_id: int
+    new_value: int
 
 
 # ============================================================================
@@ -369,14 +450,16 @@ async def get_usage_statistics(
     Get detailed usage statistics for current user
 
     Returns:
-    - Total translations, enhancements, articles scraped
+    - Total translations, enhancements (with format breakdown)
+    - Hard news, soft news, and other format counts
     - Token usage statistics
     - Most used format
-    - Average tokens per operation
+    - Scraping session count
     """
     from app.models.translation import Translation
     from app.models.enhancement import Enhancement
     from app.models.article import Article
+    from app.models.job import Job
     from sqlalchemy import func
 
     # Count translations
@@ -384,29 +467,47 @@ async def get_usage_statistics(
         Translation.user_id == current_user.id
     ).count()
 
-    # Count enhancements
-    total_enhancements = db.query(Enhancement).filter(
-        Enhancement.user_id == current_user.id
-    ).count()
-
-    # Count articles
-    total_articles = db.query(Article).filter(
-        Article.user_id == current_user.id
-    ).count()
-
-    # Get most used format
-    most_used_format_query = db.query(
+    # Count enhancements by format type
+    format_counts = db.query(
         Enhancement.format_type,
         func.count(Enhancement.id).label('count')
     ).filter(
         Enhancement.user_id == current_user.id
     ).group_by(
         Enhancement.format_type
-    ).order_by(
-        func.count(Enhancement.id).desc()
-    ).first()
+    ).all()
 
-    most_used_format = most_used_format_query[0] if most_used_format_query else None
+    # Initialize counts
+    hard_news_count = 0
+    soft_news_count = 0
+    other_formats_count = 0
+    total_enhancements = 0
+
+    for format_type, count in format_counts:
+        total_enhancements += count
+        if format_type == "hard_news":
+            hard_news_count = count
+        elif format_type == "soft_news":
+            soft_news_count = count
+        else:
+            other_formats_count += count
+
+    # Count articles
+    total_articles = db.query(Article).filter(
+        Article.user_id == current_user.id
+    ).count()
+
+    # Count scraping sessions (jobs with type 'scrape')
+    total_scraping_sessions = db.query(Job).filter(
+        Job.user_id == current_user.id,
+        Job.job_type == "scrape"
+    ).count()
+
+    # Get most used format
+    most_used_format = None
+    if format_counts:
+        most_used = max(format_counts, key=lambda x: x[1])
+        most_used_format = most_used[0]
 
     # Calculate average tokens per translation
     avg_tokens = 0.0
@@ -421,7 +522,22 @@ async def get_usage_statistics(
     return {
         "total_translations": total_translations,
         "total_enhancements": total_enhancements,
+        "hard_news_count": hard_news_count,
+        "soft_news_count": soft_news_count,
+        "other_formats_count": other_formats_count,
         "total_articles_scraped": total_articles,
+        "total_scraping_sessions": total_scraping_sessions,
+        # Translation limits (visible to user)
+        "translations_used_this_month": current_user.translations_used_this_month,
+        "translations_remaining": current_user.translations_remaining,
+        "monthly_translation_limit": current_user.monthly_translation_limit,
+        "translation_limit_exceeded": current_user.is_translation_limit_exceeded(),
+        # Enhancement limits (visible to user)
+        "enhancements_used_this_month": current_user.enhancements_used_this_month,
+        "enhancements_remaining": current_user.enhancements_remaining,
+        "monthly_enhancement_limit": current_user.monthly_enhancement_limit,
+        "enhancement_limit_exceeded": current_user.is_enhancement_limit_exceeded(),
+        # Tokens (kept for backward compatibility, hidden in UI)
         "tokens_used_this_month": current_user.tokens_used,
         "tokens_remaining": current_user.tokens_remaining,
         "most_used_format": most_used_format,
@@ -429,8 +545,50 @@ async def get_usage_statistics(
     }
 
 
+@router.get("/scraping-history", response_model=list[RecentScrapingJob])
+async def get_scraping_history(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    limit: int = 10
+):
+    """
+    Get recent scraping sessions for current user
+
+    Returns:
+    - List of recent scraping jobs with article counts
+    - Ordered by most recent first
+    """
+    from app.models.job import Job
+    from app.models.article import Article
+    from sqlalchemy import func
+
+    # Get recent scraping jobs
+    jobs = db.query(Job).filter(
+        Job.user_id == current_user.id,
+        Job.job_type == "scrape"
+    ).order_by(Job.created_at.desc()).limit(limit).all()
+
+    result = []
+    for job in jobs:
+        # Count articles for this job
+        articles_count = db.query(Article).filter(
+            Article.job_id == job.id
+        ).count()
+
+        result.append({
+            "id": job.id,
+            "status": job.status,
+            "progress": job.progress,
+            "articles_count": articles_count,
+            "created_at": job.created_at.isoformat() if job.created_at else "",
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None
+        })
+
+    return result
+
+
 # ============================================================================
-# ADMIN ENDPOINTS (Optional - for future use)
+# ADMIN ENDPOINTS
 # ============================================================================
 
 @router.get("/admin/users")
@@ -451,3 +609,207 @@ async def list_all_users(
 
     users = db.query(User).all()
     return users
+
+
+@router.get("/admin/users-stats", response_model=list[AdminUserStats])
+async def get_all_users_stats(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Get detailed usage statistics for all users
+
+    Returns:
+    - List of users with their usage stats
+    - Translations, enhancements (hard/soft news), articles
+    - Token usage information
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    from app.models.translation import Translation
+    from app.models.enhancement import Enhancement
+    from app.models.article import Article
+    from sqlalchemy import func
+
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    result = []
+
+    for user in users:
+        # Count translations
+        total_translations = db.query(Translation).filter(
+            Translation.user_id == user.id
+        ).count()
+
+        # Count enhancements by format
+        format_counts = db.query(
+            Enhancement.format_type,
+            func.count(Enhancement.id).label('count')
+        ).filter(
+            Enhancement.user_id == user.id
+        ).group_by(
+            Enhancement.format_type
+        ).all()
+
+        hard_news_count = 0
+        soft_news_count = 0
+        total_enhancements = 0
+
+        for format_type, count in format_counts:
+            total_enhancements += count
+            if format_type == "hard_news":
+                hard_news_count = count
+            elif format_type == "soft_news":
+                soft_news_count = count
+
+        # Count articles
+        total_articles = db.query(Article).filter(
+            Article.user_id == user.id
+        ).count()
+
+        result.append({
+            "user_id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "subscription_tier": user.subscription_tier,
+            "is_active": user.is_active,
+            "is_admin": user.is_admin,
+            "total_translations": total_translations,
+            "total_enhancements": total_enhancements,
+            "hard_news_count": hard_news_count,
+            "soft_news_count": soft_news_count,
+            "total_articles_scraped": total_articles,
+            "tokens_used_this_month": user.tokens_used,
+            "tokens_remaining": user.tokens_remaining,
+            "monthly_token_limit": user.monthly_token_limit,
+            "enhancements_used_this_month": user.enhancements_used_this_month,
+            "enhancements_remaining": user.enhancements_remaining,
+            "monthly_enhancement_limit": user.monthly_enhancement_limit,
+            "enhancement_limit_exceeded": user.is_enhancement_limit_exceeded(),
+            "translations_used_this_month": user.translations_used_this_month,
+            "translations_remaining": user.translations_remaining,
+            "monthly_translation_limit": user.monthly_translation_limit,
+            "translation_limit_exceeded": user.is_translation_limit_exceeded(),
+            "created_at": user.created_at.isoformat() if user.created_at else "",
+            "last_login": user.last_login.isoformat() if user.last_login else None
+        })
+
+    return result
+
+
+@router.post("/admin/set-tokens", response_model=AdminAssignResponse)
+async def admin_set_user_tokens(
+    request: AdminSetTokensRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Set user's token limit
+
+    - **user_id**: Target user ID
+    - **new_limit**: New monthly token limit
+    - **reset_used**: If True, reset tokens_used to 0
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == request.user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    target_user.admin_set_tokens(request.new_limit, request.reset_used)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Token limit updated to {request.new_limit}",
+        "user_id": target_user.id,
+        "new_value": target_user.tokens_remaining
+    }
+
+
+@router.post("/admin/set-enhancements", response_model=AdminAssignResponse)
+async def admin_set_user_enhancements(
+    request: AdminSetEnhancementsRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Set user's enhancement limit
+
+    - **user_id**: Target user ID
+    - **new_limit**: New monthly enhancement limit
+    - **reset_used**: If True, reset enhancements_used to 0
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == request.user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    target_user.admin_set_enhancement_limit(request.new_limit, request.reset_used)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Enhancement limit updated to {request.new_limit}",
+        "user_id": target_user.id,
+        "new_value": target_user.enhancements_remaining
+    }
+
+
+@router.post("/admin/auto-assign-tokens/{user_id}", response_model=AdminAssignResponse)
+async def admin_trigger_auto_assign(
+    user_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Trigger auto-assign tokens for a user (if below threshold)
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    assigned = target_user.check_and_auto_assign_tokens()
+    db.commit()
+
+    if assigned > 0:
+        return {
+            "success": True,
+            "message": f"Auto-assigned {assigned} tokens",
+            "user_id": target_user.id,
+            "new_value": target_user.tokens_remaining
+        }
+    else:
+        return {
+            "success": False,
+            "message": "User has sufficient tokens, no auto-assign needed",
+            "user_id": target_user.id,
+            "new_value": target_user.tokens_remaining
+        }

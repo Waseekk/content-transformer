@@ -7,13 +7,16 @@ import React from 'react';
 import { FormatCard } from './FormatCard';
 import { useEnhance } from '../../hooks/useEnhancement';
 import { useAppStore } from '../../store/useAppStore';
+import { HiSparkles, HiNewspaper, HiBookOpen } from 'react-icons/hi';
 
 interface EnhancementSectionProps {
   translatedText: string;
+  englishContent?: string;
 }
 
 export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
   translatedText,
+  englishContent,
 }) => {
   const enhance = useEnhance();
   const {
@@ -23,23 +26,23 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
     addEnhancement,
   } = useAppStore();
 
-  // Format definitions - Only hard_news and soft_news for deployment
+  // Format definitions
   const formats = [
     {
       id: 'hard_news',
-      title: 'হার্ড নিউজ (বাংলার কলম্বাস)',
-      icon: '📄',
-      description: 'পেশাদার তথ্যভিত্তিক সংবাদ - Professional factual reporting',
-      gradientFrom: 'from-blue-600',
-      gradientTo: 'to-blue-700',
+      title: 'হার্ড নিউজ',
+      subtitle: 'বাংলার কলম্বাস',
+      icon: HiNewspaper,
+      description: 'Professional factual reporting',
+      color: 'blue',
     },
     {
       id: 'soft_news',
-      title: 'সফট নিউজ (বাংলার কলম্বাস)',
-      icon: '✍️',
-      description: 'বর্ণনামূলক ভ্রমণ ফিচার - Literary travel feature',
-      gradientFrom: 'from-teal-500',
-      gradientTo: 'to-teal-600',
+      title: 'সফট নিউজ',
+      subtitle: 'বাংলার কলম্বাস',
+      icon: HiBookOpen,
+      description: 'Literary travel feature',
+      color: 'teal',
     },
   ];
 
@@ -55,7 +58,6 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
         formats: selectedFormats,
       });
 
-      // Store results in global state so they persist across tab changes
       response.formats.forEach((result: any) => {
         addEnhancement(result.format_type, {
           format_type: result.format_type,
@@ -71,7 +73,6 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
 
   const isDisabled = !translatedText || selectedFormats.length === 0;
 
-  // Handle content updates from FormatCard edits
   const handleContentUpdate = (formatId: string, newContent: string) => {
     const existing = currentEnhancements[formatId];
     if (existing) {
@@ -85,67 +86,79 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
   return (
     <div className="mt-8 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          ✨ Generate News Articles
-        </h3>
-        <p className="text-gray-700 mb-4">
-          Select format(s) and generate professional Bengali news articles
-        </p>
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+            <HiSparkles className="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">
+              Generate News Articles
+            </h3>
+            <p className="text-sm text-gray-500">
+              Select format(s) and generate professional Bengali news
+            </p>
+          </div>
+        </div>
 
         {/* Format Selection */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {formats.map((format) => (
-            <button
-              key={format.id}
-              onClick={() => toggleFormat(format.id)}
-              className={`
-                px-4 py-2 rounded-lg font-semibold transition-all
-                ${
-                  selectedFormats.includes(format.id)
-                    ? 'bg-purple-500 text-white shadow-lg'
-                    : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300'
-                }
-              `}
-            >
-              {format.icon} {format.title}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-3 mb-5">
+          {formats.map((format) => {
+            const isSelected = selectedFormats.includes(format.id);
+            const Icon = format.icon;
+            return (
+              <button
+                key={format.id}
+                onClick={() => toggleFormat(format.id)}
+                className={`
+                  flex items-center gap-3 px-5 py-3 rounded-xl font-medium transition-all border-2
+                  ${isSelected
+                    ? format.color === 'blue'
+                      ? 'bg-blue-500 text-white border-blue-500 shadow-md'
+                      : 'bg-teal-500 text-white border-teal-500 shadow-md'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                  }
+                `}
+              >
+                <Icon className="w-5 h-5" />
+                <div className="text-left">
+                  <p className="font-semibold">{format.title}</p>
+                  <p className={`text-xs ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                    {format.subtitle}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Generate Button */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleEnhance}
-            disabled={isDisabled || enhance.isPending}
-            className={`
-              px-8 py-3 rounded-lg font-bold transition-all
-              ${
-                isDisabled || enhance.isPending
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-xl transform hover:scale-105'
-              }
-            `}
-          >
-            {enhance.isPending ? (
-              <span className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Generating...
-              </span>
-            ) : (
-              `🚀 Generate ${selectedFormats.length} Format${selectedFormats.length !== 1 ? 's' : ''}`
-            )}
-          </button>
-
-          {selectedFormats.length > 0 && (
-            <span className="text-sm text-gray-600">
-              {selectedFormats.length} format{selectedFormats.length !== 1 ? 's' : ''} selected
-            </span>
+        <button
+          onClick={handleEnhance}
+          disabled={isDisabled || enhance.isPending}
+          className={`
+            inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all
+            ${isDisabled || enhance.isPending
+              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:scale-[1.02]'
+            }
+          `}
+        >
+          {enhance.isPending ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <HiSparkles className="w-5 h-5" />
+              Generate {selectedFormats.length > 0 ? `(${selectedFormats.length})` : ''}
+            </>
           )}
-        </div>
+        </button>
       </div>
 
-      {/* Format Cards - Vertical Stack */}
+      {/* Format Cards */}
       {selectedFormats.length > 0 && (
         <div className="flex flex-col gap-6">
           {selectedFormats.map((formatId) => {
@@ -153,18 +166,20 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
             if (!format) return null;
 
             const result = currentEnhancements[formatId];
+            const Icon = format.icon;
 
             return (
               <FormatCard
                 key={formatId}
                 formatId={formatId}
                 title={format.title}
-                icon={format.icon}
+                subtitle={format.subtitle}
+                icon={Icon}
                 description={format.description}
                 content={result?.content}
+                englishContent={englishContent}
                 isLoading={enhance.isPending && !result}
-                gradientFrom={format.gradientFrom}
-                gradientTo={format.gradientTo}
+                color={format.color}
                 onContentUpdate={handleContentUpdate}
               />
             );

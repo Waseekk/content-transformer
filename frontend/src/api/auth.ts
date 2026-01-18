@@ -1,5 +1,16 @@
 import api from './axios';
-import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../types/auth';
+import type {
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+  User,
+  UsageStats,
+  RecentScrapingJob,
+  AdminUserStats,
+  AdminSetTokensRequest,
+  AdminSetEnhancementsRequest,
+  AdminAssignResponse
+} from '../types/auth';
 
 export const authApi = {
   // Login user
@@ -34,6 +45,42 @@ export const authApi = {
     const response = await api.post<AuthResponse>('/api/auth/refresh', {
       refresh_token: refreshToken,
     });
+    return response.data;
+  },
+
+  // Get usage statistics for current user
+  getUsageStats: async (): Promise<UsageStats> => {
+    const response = await api.get<UsageStats>('/api/auth/usage-stats');
+    return response.data;
+  },
+
+  // Get recent scraping sessions for current user
+  getScrapingHistory: async (limit: number = 10): Promise<RecentScrapingJob[]> => {
+    const response = await api.get<RecentScrapingJob[]>(`/api/auth/scraping-history?limit=${limit}`);
+    return response.data;
+  },
+
+  // Admin: Get all users' stats
+  getAdminUsersStats: async (): Promise<AdminUserStats[]> => {
+    const response = await api.get<AdminUserStats[]>('/api/auth/admin/users-stats');
+    return response.data;
+  },
+
+  // Admin: Set user tokens
+  adminSetTokens: async (data: AdminSetTokensRequest): Promise<AdminAssignResponse> => {
+    const response = await api.post<AdminAssignResponse>('/api/auth/admin/set-tokens', data);
+    return response.data;
+  },
+
+  // Admin: Set user enhancement limit
+  adminSetEnhancements: async (data: AdminSetEnhancementsRequest): Promise<AdminAssignResponse> => {
+    const response = await api.post<AdminAssignResponse>('/api/auth/admin/set-enhancements', data);
+    return response.data;
+  },
+
+  // Admin: Trigger auto-assign tokens
+  adminAutoAssignTokens: async (userId: number): Promise<AdminAssignResponse> => {
+    const response = await api.post<AdminAssignResponse>(`/api/auth/admin/auto-assign-tokens/${userId}`);
     return response.data;
   },
 };

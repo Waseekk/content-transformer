@@ -15,7 +15,7 @@ export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' })
   return (
     <div className={`flex justify-center items-center ${className}`}>
       <svg
-        className={`animate-spin text-blue-600 ${sizeClasses[size]}`}
+        className={`animate-spin text-indigo-600 ${sizeClasses[size]}`}
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
