@@ -63,7 +63,44 @@ class ContentEnhancer:
             logger.error(f"Provider initialization failed: {e}")
             return False
 
-    def enhance_single_format(self, translated_text, article_info, format_type):
+    def _count_body_words(self, content: str) -> int:
+        """
+        Count words in hard news body (excluding headline and byline).
+
+        Counts from intro paragraph to conclusion.
+
+        Args:
+            content: Generated hard news content
+
+        Returns:
+            int: Word count of body content
+        """
+        if not content:
+            return 0
+
+        paragraphs = content.split('\n\n')
+        body_words = 0
+
+        for i, para in enumerate(paragraphs):
+            para = para.strip()
+            if not para:
+                continue
+
+            # Skip headline (first bold line, usually index 0)
+            if i == 0 and para.startswith('**'):
+                continue
+
+            # Skip byline
+            if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+                continue
+
+            # Count words in this paragraph (remove ** markers first)
+            clean_para = para.replace('**', '')
+            body_words += len(clean_para.split())
+
+        return body_words
+
+    def enhance_single_format(self, translated_text, article_info, format_type, retry_count=0):
         """
         Generate content for a single format with code-based post-processing.
 
@@ -74,14 +111,16 @@ class ContentEnhancer:
            - Smart সহ joining (preserves সহায়ক, সহযোগী, etc.)
            - English word replacement
            - Quote splitting (CRITICAL - paragraph ends at quote)
-           - Paragraph length enforcement
+           - 3-line paragraph fixer
         3. Validate structure
-        4. Log any issues that were in original AI output (for analytics)
+        4. For hard_news: Check minimum 200 words, regenerate if needed
+        5. Log any issues that were in original AI output (for analytics)
 
         Args:
             translated_text: Bengali translated text
             article_info: Article metadata dict
             format_type: 'hard_news', 'soft_news', etc.
+            retry_count: Internal counter for regeneration attempts
 
         Returns:
             EnhancementResult
@@ -90,7 +129,8 @@ class ContentEnhancer:
             # Get format configuration
             config = get_format_config(format_type)
 
-            logger.info(f"Generating {format_type} with {self.provider_name}")
+            logger.info(f"Generating {format_type} with {self.provider_name}" +
+                       (f" (retry {retry_count})" if retry_count > 0 else ""))
 
             # Prepare prompts
             system_prompt = config['system_prompt']
@@ -114,11 +154,20 @@ class ContentEnhancer:
 
             # Apply post-processing (ALL fixes are code-based, 100% reliable)
             # This includes: word corrections, সহ joining, English replacement,
-            # quote splitting, paragraph length enforcement, structure validation
+            # quote splitting, 3-line paragraph fixer, structure validation
             processed_content, validation = process_enhanced_content(
                 content.strip(),
                 format_type
             )
+
+            # HARD NEWS MINIMUM WORD CHECK (200 words from intro to conclusion)
+            if format_type == 'hard_news' and retry_count < 2:
+                word_count = self._count_body_words(processed_content)
+                if word_count < 200:
+                    logger.warning(f"Hard news too short: {word_count} words (min 200). Regenerating...")
+                    return self.enhance_single_format(
+                        translated_text, article_info, format_type, retry_count + 1
+                    )
 
             # Log validation warnings if any
             if not validation['valid']:
@@ -156,7 +205,7 @@ class ContentEnhancer:
             return result
     
     def enhance_all_formats(self, translated_text, article_info,
-                           formats=['newspaper', 'blog', 'facebook', 'instagram', 'hard_news', 'soft_news'],
+                           formats=['hard_news', 'soft_news'],
                            progress_callback=None):
         """
         Generate content for all formats
@@ -326,14 +375,14 @@ def enhance_translation(translated_text, article_info, provider='openai',
         article_info: Article metadata dict
         provider: 'openai' (only supported provider)
         model: Model name
-        formats: List of format types (default: all 6)
+        formats: List of format types (default: hard_news, soft_news)
         progress_callback: Optional callback function
 
     Returns:
         dict: Enhancement results
     """
     if formats is None:
-        formats = ['newspaper', 'blog', 'facebook', 'instagram', 'hard_news', 'soft_news']
+        formats = ['hard_news', 'soft_news']
     
     enhancer = ContentEnhancer(provider_name=provider, model=model)
     results = enhancer.enhance_all_formats(

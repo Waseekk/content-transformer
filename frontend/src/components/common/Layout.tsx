@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
+import { OperationStatusBar } from './OperationStatusBar';
 import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar } from 'react-icons/hi';
 
 interface LayoutProps {
@@ -57,6 +58,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen">
       {/* Cursor Glow Effect */}
       <CursorGlow />
+
+      {/* Global Operation Status Bar */}
+      <OperationStatusBar />
 
       {/* Header */}
       <motion.header

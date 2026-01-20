@@ -62,9 +62,9 @@ class UserConfig(Base):
             List[str]: List of allowed format types
         """
         format_mapping = {
-            "free": ["hard_news"],  # Only hard news format
-            "premium": ["hard_news", "soft_news"],  # Both news formats
-            "enterprise": ["hard_news", "soft_news"],  # All formats (can add more later)
+            "free": ["hard_news", "soft_news"],  # All formats available
+            "premium": ["hard_news", "soft_news"],  # All formats available
+            "enterprise": ["hard_news", "soft_news"],  # All formats available
         }
 
         return format_mapping.get(subscription_tier, format_mapping["free"])

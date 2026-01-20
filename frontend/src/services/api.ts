@@ -136,11 +136,12 @@ export const translationApi = {
     return response.data;
   },
 
-  translateText: async (text: string, title?: string) => {
+  translateText: async (text: string, title?: string, inputLanguage: 'auto' | 'en' | 'bn' = 'auto') => {
     const response = await axios.post('/api/translate/translate-text', {
       text,
       title: title || 'Untitled',
       save_to_history: true,
+      input_language: inputLanguage,
     });
     return response.data;
   },
@@ -177,6 +178,47 @@ export const enhancementApi = {
   getHistory: async (limit: number = 50) => {
     const response = await axios.get('/api/enhance/', {
       params: { limit },
+    });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// EXTRACTION
+// ============================================================================
+
+export interface URLExtractionResponse {
+  success: boolean;
+  content: string | null;
+  title: string | null;
+  extraction_method: string | null;
+  error_message: string | null;
+}
+
+export interface URLExtractAndTranslateResponse {
+  success: boolean;
+  english_content: string | null;
+  bengali_content: string | null;
+  title: string | null;
+  extraction_method: string | null;
+  tokens_used: number;
+  tokens_remaining: number;
+  error_message: string | null;
+}
+
+export const extractionApi = {
+  // Extract only (no translation)
+  extractFromURL: async (url: string): Promise<URLExtractionResponse> => {
+    const response = await axios.post<URLExtractionResponse>('/api/extract/url', {
+      url,
+    });
+    return response.data;
+  },
+
+  // Extract AND translate in one step
+  extractAndTranslate: async (url: string): Promise<URLExtractAndTranslateResponse> => {
+    const response = await axios.post<URLExtractAndTranslateResponse>('/api/extract/url-and-translate', {
+      url,
     });
     return response.data;
   },

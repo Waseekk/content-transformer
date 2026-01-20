@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth
+from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction
 from app.config import get_settings
 
 settings = get_settings()
@@ -41,6 +41,7 @@ app.include_router(enhancement.router, prefix="/api/enhance", tags=["enhancement
 app.include_router(scraper.router, prefix="/api/scraper", tags=["scraper"])
 app.include_router(scheduler.router, prefix="/api/scraper/scheduler", tags=["scheduler"])
 app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
+app.include_router(extraction.router, prefix="/api/extract", tags=["extraction"])
 
 
 @app.get("/")

@@ -105,7 +105,8 @@ export const ArticlesPage = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setFilters({ search: searchInput });
+      // Reset to page 1 when search changes
+      setFilters({ search: searchInput, page: 1 });
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);

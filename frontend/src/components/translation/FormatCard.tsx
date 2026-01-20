@@ -44,6 +44,24 @@ const markdownToPlainText = (markdown: string): string => {
 };
 
 /**
+ * Get current date in Bengali format (e.g., "২০ জানুয়ারি ২০২৬")
+ */
+const getBengaliDate = (): string => {
+  const bengaliMonths = [
+    'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+    'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+  ];
+  const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+
+  const now = new Date();
+  const day = String(now.getDate()).split('').map(d => bengaliDigits[parseInt(d)]).join('');
+  const month = bengaliMonths[now.getMonth()];
+  const year = String(now.getFullYear()).split('').map(d => bengaliDigits[parseInt(d)]).join('');
+
+  return `${day} ${month} ${year}`;
+};
+
+/**
  * Parse markdown and create Word document paragraphs
  */
 const parseMarkdownForWord = (markdown: string): Paragraph[] => {
@@ -162,11 +180,11 @@ export const FormatCard: React.FC<FormatCardProps> = ({
     try {
       const sections: Paragraph[] = [];
 
-      // Add English Content section first (if available)
+      // Add Main Content section first (if available)
       if (englishContent) {
-        // English section header
+        // Main content section header
         sections.push(new Paragraph({
-          children: [new TextRun({ text: 'ENGLISH CONTENT', bold: true, size: 28 })],
+          children: [new TextRun({ text: 'MAIN CONTENT', bold: true, size: 28 })],
           heading: HeadingLevel.HEADING_1,
           spacing: { after: 300 },
         }));
@@ -225,9 +243,11 @@ export const FormatCard: React.FC<FormatCardProps> = ({
       });
 
       const blob = await Packer.toBlob(doc);
-      const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.docx`;
+      // Bengali filename format: বাংলার কলম্বাস-হার্ড নিউজ-২০ জানুয়ারি ২০২৬.docx
+      const formatTypeBengali = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ' : 'সফট নিউজ';
+      const filename = `বাংলার কলম্বাস-${formatTypeBengali}-${getBengaliDate()}.docx`;
       saveAs(blob, filename);
-      toast.success('Downloaded with English content!');
+      toast.success('Downloaded with Main Content!');
     } catch (err) {
       console.error('Word export error:', err);
       toast.error('Failed to create Word document');
@@ -437,19 +457,9 @@ export const FormatCard: React.FC<FormatCardProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Word Count & Info */}
+            {/* Word Count */}
             <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
               <span>{displayContent.split(/\s+/).filter(Boolean).length} words</span>
-              {englishContent && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-emerald-600 flex items-center gap-1"
-                >
-                  <HiCheck className="w-4 h-4" />
-                  English included in download
-                </motion.span>
-              )}
             </div>
           </>
         ) : (

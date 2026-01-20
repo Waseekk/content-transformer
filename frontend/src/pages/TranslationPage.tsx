@@ -8,9 +8,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { useTranslate } from '../hooks/useTranslation';
 import { useEnhance } from '../hooks/useEnhancement';
+import { useNavigationWarning } from '../hooks/useNavigationWarning';
 import toast from 'react-hot-toast';
 import { AILoader, GlowButton, AnimatedCard } from '../components/ui';
 import { FormatCard } from '../components/translation/FormatCard';
+import { URLExtractor } from '../components/translation/URLExtractor';
 import {
   HiSparkles,
   HiPencilAlt,
@@ -23,9 +25,11 @@ import {
   HiCheckCircle,
   HiChevronDown,
   HiClipboard,
+  HiClipboardCheck,
   HiExternalLink,
 } from 'react-icons/hi';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { detectLanguage, getLanguageInfo } from '../utils/languageDetection';
 
 export const TranslationPage = () => {
   const navigate = useNavigate();
@@ -41,17 +45,102 @@ export const TranslationPage = () => {
     toggleFormat,
     currentEnhancements,
     addEnhancement,
+    clearEnhancementState,
+    startOperation,
+    completeOperation,
+    failOperation,
+    pendingOperations,
+    markOperationApplied,
+    clearOperation,
   } = useAppStore();
   const translate = useTranslate();
   const enhance = useEnhance();
   const [showEnglish, setShowEnglish] = useState(false);
+  const [translationSource, setTranslationSource] = useState<'url' | 'paste' | null>(null);
+  const [languageOverride, _setLanguageOverride] = useState<'auto' | 'en' | 'bn'>('auto');
+  const [urlCopied, setUrlCopied] = useState(false);
+
+  // Auto-detect language from pasted content
+  const detectedLanguage = useMemo(() => {
+    if (!pastedContent || pastedContent.trim().length < 20) return null;
+    return detectLanguage(pastedContent);
+  }, [pastedContent]);
+
+  // Note: effectiveLanguage = languageOverride !== 'auto' ? languageOverride : detectedLanguage
+  // Reserved for future language toggle feature
+
+  // Warn user when navigating away with pending operations
+  useNavigationWarning();
+
+  // Apply unapplied completed operations when returning to this page
+  useEffect(() => {
+    const unappliedOps = Object.values(pendingOperations).filter(
+      (op: { status: string; applied?: boolean }) => op.status === 'completed' && !op.applied
+    );
+
+    unappliedOps.forEach((op: any) => {
+      if (op.type === 'enhancement' && op.result?.formats) {
+        // Apply enhancement results
+        op.result.formats.forEach((result: any) => {
+          addEnhancement(result.format_type, {
+            format_type: result.format_type,
+            content: result.content,
+            tokens_used: result.tokens_used,
+            timestamp: new Date().toISOString(),
+          });
+        });
+        toast.success('News articles generated while you were away!');
+      } else if (op.type === 'translation' && op.result) {
+        // Apply translation results
+        setCurrentTranslation({
+          original: op.result.original_text,
+          translated: op.result.translated_text,
+          tokens_used: op.result.tokens_used,
+          timestamp: new Date().toISOString(),
+        });
+        setTranslationSource('paste');
+        toast.success('Content processed while you were away!');
+      } else if (op.type === 'url_extraction' && op.result) {
+        // Apply URL extraction results
+        if (op.result.english_content && op.result.bengali_content) {
+          setCurrentTranslation({
+            original: op.result.english_content,
+            translated: op.result.bengali_content,
+            tokens_used: 0,
+            timestamp: new Date().toISOString(),
+          });
+          setTranslationSource('url');
+          setShowEnglish(true);
+          toast.success('URL extracted & translated while you were away!');
+        }
+      }
+
+      // Mark as applied and clear after a delay
+      markOperationApplied(op.id);
+      setTimeout(() => clearOperation(op.id), 5000);
+    });
+  }, [pendingOperations]);
 
   const handleClearSelection = () => {
     selectArticle(null);
   };
 
+  const handleCopyUrl = async () => {
+    if (selectedArticle?.article_url) {
+      try {
+        await navigator.clipboard.writeText(selectedArticle.article_url);
+        setUrlCopied(true);
+        toast.success('URL copied!');
+        setTimeout(() => setUrlCopied(false), 2000);
+      } catch {
+        toast.error('Failed to copy URL');
+      }
+    }
+  };
+
   const handleClearAll = () => {
     clearTranslationState();
+    setTranslationSource(null);
     toast.success('Cleared all data');
   };
 
@@ -61,22 +150,46 @@ export const TranslationPage = () => {
       return;
     }
 
+    // Clear previous enhancements (hard news, soft news) when processing new content
+    clearEnhancementState();
+
+    const operationId = `translate_${Date.now()}`;
+    startOperation(operationId, 'translation');
+
+    // Determine language to use
+    const inputLang = languageOverride !== 'auto' ? languageOverride : 'auto';
+
     try {
-      const result = await translate.mutateAsync(pastedContent);
+      const result = await translate.mutateAsync({
+        text: pastedContent,
+        inputLanguage: inputLang,
+      });
       setCurrentTranslation({
         original: result.original_text,
         translated: result.translated_text,
         tokens_used: result.tokens_used,
         timestamp: new Date().toISOString(),
       });
-      toast.success('Content processed!');
+      setTranslationSource('paste');
+      completeOperation(operationId, result);
+
+      // Show appropriate message based on language
+      if (result.extraction_method === 'bengali_passthrough') {
+        toast.success('Bengali content ready! Select format to generate news.');
+      } else {
+        toast.success('Content processed!');
+      }
     } catch (error: any) {
+      failOperation(operationId, error.message || 'Translation failed');
       console.error('Translation error:', error);
     }
   };
 
   const handleEnhance = async () => {
     if (selectedFormats.length === 0) return;
+
+    const operationId = `enhance_${Date.now()}`;
+    startOperation(operationId, 'enhancement', selectedFormats);
 
     try {
       const response = await enhance.mutateAsync({
@@ -94,8 +207,10 @@ export const TranslationPage = () => {
         });
       });
 
+      completeOperation(operationId, response);
       toast.success('News articles generated!');
-    } catch (error) {
+    } catch (error: any) {
+      failOperation(operationId, error.message || 'Enhancement failed');
       console.error('Enhancement failed:', error);
     }
   };
@@ -104,6 +219,36 @@ export const TranslationPage = () => {
     const existing = currentEnhancements[formatId];
     if (existing) {
       addEnhancement(formatId, { ...existing, content: newContent });
+    }
+  };
+
+  const handleURLExtractedAndTranslated = (englishContent: string, bengaliContent: string, _title?: string, extractionMethod?: string) => {
+    // Clear previous enhancements and paste content
+    clearEnhancementState();
+    setPastedContent(''); // Clear paste area - URL extraction doesn't use it
+
+    // Check if it was Bengali passthrough
+    const isBengaliPassthrough = extractionMethod?.includes('bengali_passthrough') || false;
+
+    // Set the current translation directly (skip "Process Content" step)
+    setCurrentTranslation({
+      original: englishContent,
+      translated: bengaliContent,
+      tokens_used: 0, // Token info is in the API response, but we don't need it here
+      timestamp: new Date().toISOString(),
+    });
+
+    // Mark that translation came from URL
+    setTranslationSource('url');
+
+    // Auto-expand the extracted content section for URL extractions
+    setShowEnglish(true);
+
+    // Show appropriate message
+    if (isBengaliPassthrough) {
+      toast.success('Bengali content ready! Select format to generate news.');
+    } else {
+      toast.success('Extracted & translated! Select format to generate news.');
     }
   };
 
@@ -186,18 +331,34 @@ export const TranslationPage = () => {
                     <h3 className="font-semibold text-gray-900 line-clamp-1 flex-1">
                       {selectedArticle.headline}
                     </h3>
-                    {/* Inline external link icon */}
+                    {/* Copy URL and External link icons */}
                     {selectedArticle.article_url && (
-                      <a
-                        href={selectedArticle.article_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center transition-colors group"
-                        title="Open original article"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <HiExternalLink className="w-4 h-4 text-gray-500 group-hover:text-indigo-600 transition-colors" />
-                      </a>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyUrl();
+                          }}
+                          className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors group"
+                          title="Copy URL"
+                        >
+                          {urlCopied ? (
+                            <HiClipboardCheck className="w-4 h-4 text-emerald-500" />
+                          ) : (
+                            <HiClipboard className="w-4 h-4 text-gray-500 group-hover:text-emerald-600 transition-colors" />
+                          )}
+                        </button>
+                        <a
+                          href={selectedArticle.article_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center transition-colors group"
+                          title="Open original article"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <HiExternalLink className="w-4 h-4 text-gray-500 group-hover:text-indigo-600 transition-colors" />
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -239,48 +400,75 @@ export const TranslationPage = () => {
           )}
         </AnimatedCard>
 
-        {/* Paste Area */}
-        <AnimatedCard delay={0.2} className="mb-6 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ai-primary/10 rounded-xl flex items-center justify-center">
-                <HiClipboard className="w-5 h-5 text-ai-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Paste Content</h3>
-                <p className="text-sm text-gray-500">
-                  {wordCount > 0 ? `${wordCount} words` : 'Paste English article content'}
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* URL Extractor - Extract & Translate in one step */}
+        <URLExtractor onExtractedAndTranslated={handleURLExtractedAndTranslated} />
 
-          <textarea
-            value={pastedContent}
-            onChange={(e) => setPastedContent(e.target.value)}
-            placeholder="Paste your English article content here...
+        {/* Paste Area - Hide when translation came from URL */}
+        {translationSource !== 'url' && (
+          <AnimatedCard delay={0.2} className="mb-6 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-ai-primary/10 rounded-xl flex items-center justify-center">
+                  <HiClipboard className="w-5 h-5 text-ai-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Paste Content</h3>
+                  <p className="text-sm text-gray-500">
+                    {wordCount > 0 ? `${wordCount} words` : 'Paste article content (English or Bengali)'}
+                  </p>
+                </div>
+              </div>
+              {/* Language Detection Badge */}
+              {detectedLanguage && wordCount > 10 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                    detectedLanguage === 'bn'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : detectedLanguage === 'en'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  <span>{getLanguageInfo(detectedLanguage).flag}</span>
+                  <span>{getLanguageInfo(detectedLanguage).name}</span>
+                </motion.div>
+              )}
+            </div>
+
+            <textarea
+              value={pastedContent}
+              onChange={(e) => setPastedContent(e.target.value)}
+              placeholder="Paste your article content here...
 
 The AI will automatically:
+• Detect language (English or Bengali)
 • Extract clean article text from web pages
 • Remove navigation, ads, and irrelevant content
-• Translate to Bangladeshi Bengali"
-            className="textarea-premium min-h-[200px] mb-4"
-          />
+• Translate to Bangladeshi Bengali (if English)"
+              className="textarea-premium min-h-[200px] mb-4"
+            />
 
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400">
-              Supports: News articles, blog posts, press releases
-            </p>
-            <GlowButton
-              onClick={handleTranslate}
-              disabled={!pastedContent.trim()}
-              loading={translate.isPending}
-              icon={<HiLightningBolt className="w-5 h-5" />}
-            >
-              {translate.isPending ? 'Processing...' : 'Process Content'}
-            </GlowButton>
-          </div>
-        </AnimatedCard>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-400">
+                Supports: English & Bengali articles, news, blog posts
+              </p>
+              <GlowButton
+                onClick={handleTranslate}
+                disabled={!pastedContent.trim()}
+                loading={translate.isPending}
+                icon={<HiLightningBolt className="w-5 h-5" />}
+              >
+                {translate.isPending
+                  ? 'Processing...'
+                  : detectedLanguage === 'bn'
+                    ? 'Process Bengali Content'
+                    : 'Process Content'}
+              </GlowButton>
+            </div>
+          </AnimatedCard>
+        )}
 
         {/* Content Ready Section */}
         <AnimatePresence mode="wait">
@@ -291,20 +479,28 @@ The AI will automatically:
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
             >
-              {/* English Content Preview (Collapsible) */}
+              {/* Extracted Content Preview (Collapsible) */}
               <AnimatedCard delay={0.1} className="mb-6 overflow-hidden">
                 <button
                   onClick={() => setShowEnglish(!showEnglish)}
                   className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <HiDocumentText className="w-5 h-5 text-blue-600" />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      translationSource === 'url' ? 'bg-emerald-100' : 'bg-blue-100'
+                    }`}>
+                      <HiDocumentText className={`w-5 h-5 ${
+                        translationSource === 'url' ? 'text-emerald-600' : 'text-blue-600'
+                      }`} />
                     </div>
                     <div className="text-left">
-                      <h4 className="font-semibold text-gray-900">English Content</h4>
+                      <h4 className="font-semibold text-gray-900">
+                        {translationSource === 'url' ? 'Extracted Content' : 'English Content'}
+                      </h4>
                       <p className="text-sm text-gray-500">
-                        {currentTranslation.original.split(/\s+/).filter(Boolean).length} words • Click to {showEnglish ? 'collapse' : 'expand'}
+                        {currentTranslation.original.split(/\s+/).filter(Boolean).length} words
+                        {translationSource === 'url' && ' • From URL'}
+                        {' • Click to '}{showEnglish ? 'collapse' : 'expand'}
                       </p>
                     </div>
                   </div>
@@ -453,7 +649,7 @@ The AI will automatically:
                     animate={{ opacity: 1 }}
                     className="space-y-6"
                   >
-                    {selectedFormats.map((formatId, index) => {
+                    {selectedFormats.map((formatId: string, index: number) => {
                       const format = formats.find((f) => f.id === formatId);
                       if (!format) return null;
 

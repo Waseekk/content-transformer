@@ -92,74 +92,26 @@ async def get_available_formats(
     """
     Get available content formats for current user
 
-    Format access is based on subscription tier:
-    - Free: hard_news only
-    - Premium: hard_news, soft_news
-    - Enterprise: All formats (hard_news, soft_news, newspaper, blog, facebook, instagram)
+    All users have access to: hard_news, soft_news
     """
-    # Get user config or use defaults
-    user_config = db.query(UserConfig).filter(
-        UserConfig.user_id == current_user.id
-    ).first()
-
-    if user_config and user_config.allowed_formats:
-        allowed_formats = user_config.allowed_formats
-    else:
-        # Use tier-based defaults
-        allowed_formats = UserConfig.get_default_formats(current_user.subscription_tier)
-
-    # Format definitions
-    all_formats = {
-        "hard_news": {
+    # All formats available to everyone
+    all_formats = [
+        {
+            "format_type": "hard_news",
             "name": "Hard News",
             "description": "Professional factual news reporting (BC News style)",
-            "icon": "📰",
-            "tier_required": "free"
+            "icon": "📰"
         },
-        "soft_news": {
+        {
+            "format_type": "soft_news",
             "name": "Soft News",
             "description": "Literary travel feature article (BC News style)",
-            "icon": "✈️",
-            "tier_required": "premium"
-        },
-        "newspaper": {
-            "name": "Newspaper Article",
-            "description": "Formal newspaper-style article",
-            "icon": "📜",
-            "tier_required": "enterprise"
-        },
-        "blog": {
-            "name": "Blog Post",
-            "description": "Personal travel blog style",
-            "icon": "📝",
-            "tier_required": "enterprise"
-        },
-        "facebook": {
-            "name": "Facebook Post",
-            "description": "Social media post (100-150 words)",
-            "icon": "📱",
-            "tier_required": "enterprise"
-        },
-        "instagram": {
-            "name": "Instagram Caption",
-            "description": "Short caption with hashtags (50-100 words)",
-            "icon": "📸",
-            "tier_required": "enterprise"
+            "icon": "✈️"
         }
-    }
-
-    # Filter to allowed formats
-    available = [
-        {
-            "format_type": fmt,
-            **all_formats[fmt]
-        }
-        for fmt in allowed_formats
-        if fmt in all_formats
     ]
 
     return {
-        "available_formats": available,
+        "available_formats": all_formats,
         "user_tier": current_user.subscription_tier
     }
 
@@ -220,22 +172,13 @@ async def enhance_content(
         content_text = request.text
         headline_text = request.headline or "Travel News"
 
-    # Validate formats
-    user_config = db.query(UserConfig).filter(
-        UserConfig.user_id == current_user.id
-    ).first()
-
-    if user_config and user_config.allowed_formats:
-        allowed_formats = user_config.allowed_formats
-    else:
-        allowed_formats = UserConfig.get_default_formats(current_user.subscription_tier)
-
-    # Check if user has access to requested formats
-    unauthorized_formats = [fmt for fmt in request.formats if fmt not in allowed_formats]
-    if unauthorized_formats:
+    # All formats are available to all users
+    valid_formats = ["hard_news", "soft_news"]
+    invalid_formats = [fmt for fmt in request.formats if fmt not in valid_formats]
+    if invalid_formats:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Access denied to formats: {', '.join(unauthorized_formats)}. Your tier ({current_user.subscription_tier}) allows: {', '.join(allowed_formats)}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid formats: {', '.join(invalid_formats)}. Valid formats: {', '.join(valid_formats)}"
         )
 
     # Check enhancement quota (warn but don't block)

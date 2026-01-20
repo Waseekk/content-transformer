@@ -459,7 +459,7 @@ def split_quotes(text: str) -> str:
 # PARAGRAPH LENGTH ENFORCER (Max 2 lines on A4)
 # ============================================================================
 
-def enforce_paragraph_length(text: str, max_words: int = 35) -> str:
+def enforce_paragraph_length(text: str, max_words: int = 38) -> str:
     """
     Enforce maximum paragraph length by splitting long paragraphs at sentence boundaries.
 
@@ -549,6 +549,79 @@ def enforce_paragraph_length(text: str, max_words: int = 35) -> str:
 
     if splits_made > 0:
         logger.info(f"Paragraph enforcer: Split {splits_made} long paragraph(s) at sentence boundaries")
+
+    return '\n\n'.join(result)
+
+
+def fix_three_line_paragraphs(text: str) -> str:
+    """
+    Fix paragraphs that appear to be 3+ lines by moving the last sentence to a new paragraph.
+
+    Rule: Body paragraphs should be max 2 lines. If 3 lines detected, split.
+
+    Args:
+        text: Bengali text content
+
+    Returns:
+        str: Text with 3-line paragraphs fixed
+    """
+    if not text:
+        return text
+
+    paragraphs = text.split('\n\n')
+    result = []
+    fixes_made = 0
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        # Skip bold paragraphs (headlines, intros, subheads)
+        if para.startswith('**') and '**' in para[2:]:
+            result.append(para)
+            continue
+
+        # Skip byline
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            result.append(para)
+            continue
+
+        # Count sentences in paragraph
+        # Bengali sentence endings: । (dari), ? (question), ! (exclamation)
+        sentences = re.split(r'([।?!])', para)
+
+        # Rebuild sentences with their punctuation
+        full_sentences = []
+        for i in range(0, len(sentences) - 1, 2):
+            if i + 1 < len(sentences):
+                full_sentences.append((sentences[i] + sentences[i + 1]).strip())
+            elif sentences[i].strip():
+                full_sentences.append(sentences[i].strip())
+        if len(sentences) % 2 == 1 and sentences[-1].strip():
+            full_sentences.append(sentences[-1].strip())
+
+        # Filter empty sentences
+        full_sentences = [s for s in full_sentences if s]
+
+        # If 3+ sentences, likely 3+ lines - move last sentence to new paragraph
+        if len(full_sentences) >= 3:
+            # Keep all but last sentence in first paragraph
+            part1 = ' '.join(full_sentences[:-1])
+            part2 = full_sentences[-1]
+
+            if part1 and part2:
+                result.append(part1)
+                result.append(part2)
+                fixes_made += 1
+                logger.info(f"3-line fix: Moved last sentence to new paragraph")
+            else:
+                result.append(para)
+        else:
+            result.append(para)
+
+    if fixes_made > 0:
+        logger.info(f"Fixed {fixes_made} three-line paragraph(s)")
 
     return '\n\n'.join(result)
 
@@ -707,8 +780,8 @@ def process_enhanced_content(content: str, format_type: str, max_paragraph_words
     # Step 4: Split quotes (CRITICAL - text after quote → new paragraph)
     processed_content = split_quotes(processed_content)
 
-    # Step 5: Enforce paragraph length (split long paragraphs at sentence boundaries)
-    processed_content = enforce_paragraph_length(processed_content, max_words=max_paragraph_words)
+    # Step 5: Fix 3-line paragraphs (move last sentence to new paragraph)
+    processed_content = fix_three_line_paragraphs(processed_content)
 
     # Step 6: Validate structure (logging only, doesn't modify)
     validation = validate_structure(processed_content, format_type)
@@ -720,7 +793,7 @@ def process_enhanced_content(content: str, format_type: str, max_paragraph_words
 # MAKER-CHECKER SYSTEM (Detect issues for secondary AI review)
 # ============================================================================
 
-def needs_checker(content: str, format_type: str, max_words: int = 35) -> tuple[bool, list]:
+def needs_checker(content: str, format_type: str, max_words: int = 38) -> tuple[bool, list]:
     """
     Detect if content needs Checker AI review.
 
@@ -729,13 +802,13 @@ def needs_checker(content: str, format_type: str, max_words: int = 35) -> tuple[
     - Soft News: P6+ (after headline, byline, intro1, intro2, subhead1)
 
     Issues detected:
-    1. Body paragraph word count > 35
-    2. Text after closing quote in same paragraph
+    1. Text after closing quote in same paragraph
+    (Word count check DISABLED - AI writes up to 2 lines naturally)
 
     Args:
         content: Generated content
         format_type: 'hard_news' or 'soft_news'
-        max_words: Maximum words per body paragraph (default 35)
+        max_words: DEPRECATED - no longer used
 
     Returns:
         tuple: (needs_check: bool, issues: list of issue descriptions)
@@ -768,12 +841,10 @@ def needs_checker(content: str, format_type: str, max_words: int = 35) -> tuple[
         if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
             continue
 
-        # Check 1: Word count > max_words (35)
-        word_count = len(para.split())
-        if word_count > max_words:
-            issues.append(f"P{i+1}: {word_count} words (max {max_words})")
+        # Word count check DISABLED (v3.5) - AI writes up to 2 lines naturally
+        # Previously: if word_count > max_words: issues.append(...)
 
-        # Check 2: Text after closing quote
+        # Check: Text after closing quote
         if '"' in para:
             # Find last quote position
             last_quote = para.rfind('"')
@@ -793,19 +864,12 @@ CHECKER_PROMPT = """তুমি একজন বাংলা সংবাদ �
 
 ## যা পরীক্ষা করবে:
 
-### ১. শব্দ সংখ্যা (Word Count)
-- প্রতিটি body paragraph সর্বোচ্চ ৩৫ শব্দ হবে
-- ৩৫ শব্দের বেশি হলে:
-  - প্রসঙ্গ অনুযায়ী ২ অনুচ্ছেদে ভাগ করো, অথবা
-  - সংক্ষিপ্ত করো (অর্থ বজায় রেখে)
-- তুমি সিদ্ধান্ত নাও কোনটি ভালো হবে
-
-### ২. উদ্ধৃতি নিয়ম (Quote Rule)
+### ১. উদ্ধৃতি নিয়ম (Quote Rule)
 - উদ্ধৃতি চিহ্ন (") বন্ধ হলে সেখানেই অনুচ্ছেদ শেষ হবে
 - উদ্ধৃতির পরে কোনো টেক্সট থাকলে:
   - সেই টেক্সট নতুন অনুচ্ছেদে নিয়ে যাও
 
-### ৩. মান উন্নয়ন (Quality)
+### ২. মান উন্নয়ন (Quality)
 - প্রয়োজনে বাক্য উন্নত করো
 - স্বাভাবিক প্রবাহ বজায় রাখো
 - আধুনিক বাংলাদেশী বাংলা ব্যবহার করো

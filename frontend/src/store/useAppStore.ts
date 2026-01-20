@@ -27,6 +27,20 @@ export interface EnhancementResult {
   timestamp: string;
 }
 
+export interface PendingOperation {
+  id: string;
+  type: 'translation' | 'enhancement' | 'url_extraction';
+  status: 'pending' | 'completed' | 'error';
+  startedAt: string;
+  completedAt?: string;
+  result?: any;
+  error?: string;
+  // For enhancement operations, track which formats were requested
+  formats?: string[];
+  // Flag to indicate if result has been applied to UI
+  applied?: boolean;
+}
+
 interface AppState {
   // Articles
   articles: Article[];
@@ -53,6 +67,9 @@ interface AppState {
   isPreviewPanelOpen: boolean;
   previewArticle: Article | null;
 
+  // Pending Operations (for global tracking)
+  pendingOperations: Record<string, PendingOperation>;
+
   // Actions
   setArticles: (articles: Article[]) => void;
   selectArticle: (article: Article | null) => void;
@@ -76,6 +93,15 @@ interface AppState {
 
   openPreviewPanel: (article: Article) => void;
   closePreviewPanel: () => void;
+
+  // Pending Operations Actions
+  startOperation: (id: string, type: PendingOperation['type'], formats?: string[]) => void;
+  completeOperation: (id: string, result: any) => void;
+  failOperation: (id: string, error: string) => void;
+  clearOperation: (id: string) => void;
+  markOperationApplied: (id: string) => void;
+  hasPendingOperations: () => boolean;
+  getUnappliedCompletedOperations: () => PendingOperation[];
 }
 
 const defaultFilters: ArticleFilters = {
@@ -87,7 +113,7 @@ const defaultFilters: ArticleFilters = {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial state
       articles: [],
       selectedArticle: null,
@@ -102,6 +128,7 @@ export const useAppStore = create<AppState>()(
       currentEnhancements: {},
       isPreviewPanelOpen: false,
       previewArticle: null,
+      pendingOperations: {},
 
       // Actions
       setArticles: (articles) => set({ articles }),
@@ -170,6 +197,73 @@ export const useAppStore = create<AppState>()(
         isPreviewPanelOpen: false,
         previewArticle: null
       }),
+
+      // Pending Operations
+      startOperation: (id, type, formats) => set((state) => ({
+        pendingOperations: {
+          ...state.pendingOperations,
+          [id]: {
+            id,
+            type,
+            status: 'pending',
+            startedAt: new Date().toISOString(),
+            formats,
+            applied: false,
+          }
+        }
+      })),
+
+      completeOperation: (id, result) => set((state) => ({
+        pendingOperations: {
+          ...state.pendingOperations,
+          [id]: {
+            ...state.pendingOperations[id],
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+            result,
+            applied: false,
+          }
+        }
+      })),
+
+      failOperation: (id, error) => set((state) => ({
+        pendingOperations: {
+          ...state.pendingOperations,
+          [id]: {
+            ...state.pendingOperations[id],
+            status: 'error',
+            completedAt: new Date().toISOString(),
+            error,
+          }
+        }
+      })),
+
+      clearOperation: (id) => set((state) => {
+        const { [id]: _, ...rest } = state.pendingOperations;
+        return { pendingOperations: rest };
+      }),
+
+      markOperationApplied: (id) => set((state) => ({
+        pendingOperations: {
+          ...state.pendingOperations,
+          [id]: {
+            ...state.pendingOperations[id],
+            applied: true,
+          }
+        }
+      })),
+
+      hasPendingOperations: (): boolean => {
+        const state = get();
+        return Object.values(state.pendingOperations).some((op: PendingOperation) => op.status === 'pending');
+      },
+
+      getUnappliedCompletedOperations: (): PendingOperation[] => {
+        const state = get();
+        return Object.values(state.pendingOperations).filter(
+          (op: PendingOperation) => op.status === 'completed' && !op.applied
+        );
+      },
     }),
     {
       name: 'travel-news-store', // localStorage key
@@ -182,6 +276,7 @@ export const useAppStore = create<AppState>()(
         translationHistory: state.translationHistory,
         selectedFormats: state.selectedFormats,
         currentEnhancements: state.currentEnhancements,
+        pendingOperations: state.pendingOperations, // Persist pending operations
       }),
     }
   )

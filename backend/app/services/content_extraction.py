@@ -1,6 +1,7 @@
 """
 Content Extraction Service
-Extract article content from URLs using Trafilatura and Newspaper3k
+Extract article content from URLs using Playwright, Trafilatura, and Newspaper3k
+Cascade order: Playwright (JS-rendered) → Trafilatura → Newspaper3k
 """
 
 import requests
@@ -21,13 +22,48 @@ class ExtractionError(Exception):
 
 class ContentExtractor:
     """
-    Lightweight content extraction from URLs
-    Uses cascading approach: Trafilatura → Newspaper3k
+    Content extraction from URLs
+    Uses cascading approach: Playwright → Trafilatura → Newspaper3k
     """
 
     def __init__(self):
         self.timeout = 15  # Request timeout in seconds
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        self._playwright_available = None  # Cached availability check
+
+    async def _check_playwright_available(self) -> bool:
+        """Check if Playwright is available and browser is installed."""
+        if self._playwright_available is not None:
+            return self._playwright_available
+
+        try:
+            from app.services.playwright_extractor import PlaywrightExtractor
+            self._playwright_available = True
+            logger.info("Playwright is available for content extraction")
+        except ImportError:
+            self._playwright_available = False
+            logger.warning("Playwright not available - will use fallback methods")
+
+        return self._playwright_available
+
+    async def _extract_with_playwright(self, url: str) -> Dict[str, str]:
+        """
+        Extract content using Playwright headless browser.
+        Best for JavaScript-rendered content.
+        """
+        try:
+            from app.services.playwright_extractor import PlaywrightExtractor, PlaywrightExtractionError
+
+            extractor = PlaywrightExtractor(timeout=30)
+            try:
+                result = await extractor.extract(url)
+                return result
+            finally:
+                await extractor.close()
+
+        except Exception as e:
+            logger.error(f"Playwright extraction error: {str(e)}")
+            raise ExtractionError(f"Playwright extraction failed: {str(e)}")
 
     async def extract(
         self,
@@ -39,7 +75,7 @@ class ContentExtractor:
 
         Args:
             url: Target URL to extract content from
-            method: Extraction method - 'auto', 'trafilatura', 'newspaper'
+            method: Extraction method - 'auto', 'playwright', 'trafilatura', 'newspaper'
 
         Returns:
             Dictionary with:
@@ -57,7 +93,17 @@ class ContentExtractor:
         logger.info(f"Extracting content from: {url}")
 
         if method == 'auto':
-            # Try Trafilatura first (fastest, most accurate)
+            # Try Playwright first (handles JS-rendered sites)
+            if await self._check_playwright_available():
+                try:
+                    result = await self._extract_with_playwright(url)
+                    if result and len(result['text']) > 200:
+                        logger.info(f"Successfully extracted with Playwright: {len(result['text'])} chars")
+                        return result
+                except Exception as e:
+                    logger.warning(f"Playwright extraction failed: {str(e)}")
+
+            # Fallback to Trafilatura (fast, accurate for static content)
             try:
                 result = await self._extract_with_trafilatura(url)
                 if result and len(result['text']) > 200:
@@ -66,7 +112,7 @@ class ContentExtractor:
             except Exception as e:
                 logger.warning(f"Trafilatura extraction failed: {str(e)}")
 
-            # Fallback to Newspaper3k
+            # Final fallback to Newspaper3k
             try:
                 result = await self._extract_with_newspaper(url)
                 if result and len(result['text']) > 200:
@@ -76,6 +122,9 @@ class ContentExtractor:
                 logger.warning(f"Newspaper3k extraction failed: {str(e)}")
 
             raise ExtractionError("All extraction methods failed. URL may be inaccessible or content may be behind a paywall.")
+
+        elif method == 'playwright':
+            return await self._extract_with_playwright(url)
 
         elif method == 'trafilatura':
             return await self._extract_with_trafilatura(url)

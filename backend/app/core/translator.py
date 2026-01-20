@@ -313,6 +313,60 @@ PASTED CONTENT:
             logger.error(f"Extract+translate error: {e}")
             return {'translation': text, 'clean_english': text, 'tokens_used': 0}
 
+    def translate_only(self, clean_text, target_lang='bn'):
+        """
+        Translate already-clean text to Bengali (no extraction).
+        Use this when content has already been cleaned (e.g., by Playwright).
+
+        Args:
+            clean_text: Clean article text (already extracted by Playwright)
+            target_lang: Target language (default: 'bn')
+
+        Returns:
+            dict: {
+                'translation': Bengali translated text,
+                'tokens_used': int
+            }
+        """
+        logger.info(f"Translate only (no extraction): {len(clean_text)} chars")
+
+        if not self._initialize_provider():
+            return {'translation': '', 'tokens_used': 0}
+
+        try:
+            translate_prompt = f"""Translate the following English article to natural Bangladeshi Bengali.
+
+Translation Guidelines:
+- Use modern Bangladeshi Bengali dialect (NOT Indian Bengali)
+- Keep proper nouns unchanged (names, places, organizations)
+- Maintain the journalistic tone and style
+- Translate idioms contextually (not word-by-word)
+- Keep numbers, dates, and statistics accurate
+- Preserve paragraph structure
+
+ARTICLE TO TRANSLATE:
+{clean_text}
+
+OUTPUT: Provide ONLY the Bengali translation, nothing else."""
+
+            response, tokens = self.provider.generate(
+                system_prompt="You are an expert translator specializing in Bangladeshi Bengali. Translate accurately while maintaining natural flow.",
+                user_prompt=translate_prompt,
+                temperature=0.3,
+                max_tokens=5000
+            )
+
+            logger.info(f"Translation completed: {tokens} tokens")
+
+            return {
+                'translation': response.strip(),
+                'tokens_used': tokens
+            }
+
+        except Exception as e:
+            logger.error(f"Translation error: {e}")
+            return {'translation': '', 'tokens_used': 0}
+
 
 # ============================================================================
 # CONVENIENCE FUNCTIONS
@@ -348,5 +402,22 @@ def translate_text(text, provider='openai', model=None):
     """
     translator = OpenAITranslator(provider, model)
     return translator.simple_translate(text)
+
+
+def translate_clean_text(text, provider='openai', model=None):
+    """
+    Translate already-clean text to Bengali (no extraction needed).
+    Use this when content has already been extracted (e.g., by Playwright).
+
+    Args:
+        text: Clean article text (already extracted)
+        provider: 'openai' (only supported provider)
+        model: Model name (optional)
+
+    Returns:
+        dict: {translation, tokens_used}
+    """
+    translator = OpenAITranslator(provider, model)
+    return translator.translate_only(text)
 
 

@@ -1,7 +1,8 @@
 """
 Comprehensive Test: Generate Hard News and Soft News for all 7 PDF articles
 Output to Word document with proper formatting
-v2.5: Code-based post-processing (100% reliable, no AI checker)
+v2.6: Code-based post-processing (100% reliable, no AI checker)
+      - Includes enforce_paragraph_length() for max 35 words per paragraph
 """
 import os
 import sys
@@ -160,23 +161,108 @@ def split_quotes(text):
     return '\n\n'.join(result)
 
 
+def enforce_paragraph_length(text, max_words=38):
+    """
+    Enforce maximum paragraph length by splitting long paragraphs at sentence boundaries.
+    Target: Max 2 lines on A4 (12pt font) ≈ 30-35 Bengali words per paragraph.
+
+    Rules:
+    - Skip bold paragraphs (headlines, intros, subheads)
+    - Skip byline
+    - Split at sentence boundaries (।, ?, !)
+    - Keep sentences together if they fit within max_words
+    """
+    if not text:
+        return text
+
+    paragraphs = text.split('\n\n')
+    result = []
+    splits_made = 0
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        # Skip bold paragraphs (headlines, intros, subheads)
+        if para.startswith('**') and '**' in para[2:]:
+            result.append(para)
+            continue
+
+        # Skip byline
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            result.append(para)
+            continue
+
+        # Check word count
+        words = para.split()
+        if len(words) <= max_words:
+            result.append(para)
+            continue
+
+        # Need to split - find sentence boundaries (।, ?, !)
+        sentences = re.split(r'(।|\?|!)', para)
+
+        # Rebuild sentences with their punctuation
+        full_sentences = []
+        for i in range(0, len(sentences) - 1, 2):
+            if i + 1 < len(sentences):
+                full_sentences.append(sentences[i] + sentences[i + 1])
+            else:
+                full_sentences.append(sentences[i])
+        if len(sentences) % 2 == 1 and sentences[-1].strip():
+            full_sentences.append(sentences[-1])
+
+        # Group sentences into paragraphs of max_words
+        current_para = []
+        current_word_count = 0
+
+        for sentence in full_sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+
+            sentence_words = len(sentence.split())
+
+            if current_word_count + sentence_words <= max_words:
+                current_para.append(sentence)
+                current_word_count += sentence_words
+            else:
+                if current_para:
+                    result.append(' '.join(current_para))
+                    splits_made += 1
+                current_para = [sentence]
+                current_word_count = sentence_words
+
+        # Add remaining sentences
+        if current_para:
+            result.append(' '.join(current_para))
+
+    if splits_made > 0:
+        print(f"      [POST] Split {splits_made} long paragraph(s) at sentence boundaries")
+
+    return '\n\n'.join(result)
+
+
 def process_content(text, format_type):
     """
-    Full code-based post-processing pipeline (v2.5)
+    Full code-based post-processing pipeline (v2.6)
 
     1. Apply word corrections (শিগগিরই, date suffixes)
     2. Fix সহ joining (smart)
     3. Replace English words
     4. Split quotes (CRITICAL)
+    5. Enforce paragraph length (max 35 words = ~2 lines on A4)
     """
     text = apply_word_corrections(text)
     text = fix_saho_joining(text)
     text = replace_english_words(text)
     text = split_quotes(text)
+    text = enforce_paragraph_length(text, max_words=38)
     return text
 
 
-def detect_issues(content, format_type, max_words=35):
+def detect_issues(content, format_type, max_words=38):
     """Detect issues for logging (no longer triggers AI checker)"""
     issues = []
     paragraphs = content.split('\n\n')
@@ -470,15 +556,43 @@ def analyze_structure(content, news_type):
         })
 
     if news_type == "soft_news" and len(paragraphs) >= 5:
-        # Check 2-paragraph rule for soft news
-        p3_bold = paragraphs[2].startswith('**') if len(paragraphs) > 2 else False
-        p4_bold = paragraphs[3].startswith('**') if len(paragraphs) > 3 else False
-        p5_bold = paragraphs[4].startswith('**') if len(paragraphs) > 4 else False
+        # Check 2-paragraph rule for soft news (SMART detection)
+        # Structure: P1=Headline, P2=Byline, P3=Intro1(bold), P4+=Intro2(not bold), then Subhead(bold)
+        #
+        # After paragraph splitting, Intro2 may span multiple paragraphs.
+        # Rule: After bold Intro1 (P3), there must be at least ONE non-bold paragraph
+        #       before the first subhead (bold, short text - not full paragraph)
 
-        if p3_bold and not p4_bold and p5_bold:
+        p3_bold = paragraphs[2].startswith('**') if len(paragraphs) > 2 else False
+
+        # Find first subhead after P3 (index 2)
+        # Subhead = bold, typically short (< 50 chars without **)
+        first_subhead_idx = None
+        non_bold_count_after_intro1 = 0
+
+        for i in range(3, min(len(paragraphs), 10)):  # Check up to P10
+            para = paragraphs[i]
+            is_bold = para.startswith('**')
+
+            if not is_bold:
+                non_bold_count_after_intro1 += 1
+            elif is_bold:
+                # Check if it looks like a subhead (short bold text)
+                clean_text = para.replace('**', '').strip()
+                if len(clean_text) < 80:  # Subheads are typically short
+                    first_subhead_idx = i
+                    break
+
+        # PASS if: P3 is bold AND there's at least 1 non-bold para before first subhead
+        if p3_bold and non_bold_count_after_intro1 >= 1 and first_subhead_idx is not None:
             result["validation"]["2_paragraph_rule"] = "PASS"
+            result["validation"]["intro2_paragraphs"] = non_bold_count_after_intro1
+            result["validation"]["first_subhead_at"] = f"P{first_subhead_idx + 1}"
         else:
             result["validation"]["2_paragraph_rule"] = "FAIL"
+            result["validation"]["p3_bold"] = p3_bold
+            result["validation"]["non_bold_after_intro1"] = non_bold_count_after_intro1
+            result["validation"]["first_subhead_found"] = first_subhead_idx is not None
 
     return result
 

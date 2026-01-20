@@ -9,10 +9,10 @@ import toast from 'react-hot-toast';
 
 export const useTranslate = () => {
   return useMutation({
-    mutationFn: (content: string) => {
+    mutationFn: ({ text, inputLanguage = 'auto' }: { text: string; inputLanguage?: 'auto' | 'en' | 'bn' }) => {
       const selectedArticle = useAppStore.getState().selectedArticle;
       const title = selectedArticle?.headline || 'Untitled Article';
-      return translationApi.translateText(content, title);
+      return translationApi.translateText(text, title, inputLanguage);
     },
     onSuccess: (data) => {
       toast.success('Translation complete!');

@@ -76,6 +76,7 @@ export function RegisterPage() {
               error={errors.password?.message}
               autoComplete="new-password"
               helperText="Must be at least 8 characters with uppercase, lowercase, and number"
+              showPasswordToggle
               required
             />
 
@@ -86,6 +87,7 @@ export function RegisterPage() {
               placeholder="••••••••"
               error={errors.confirmPassword?.message}
               autoComplete="new-password"
+              showPasswordToggle
               required
             />
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User, AuthContextType, RegisterRequest } from '../types/auth';
 import { authApi } from '../api/auth';
+import { useAppStore } from '../store/useAppStore';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,6 +59,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Set user
       setUser(response.user);
+
+      // Reset app state on login (filters, pagination, etc.)
+      useAppStore.getState().resetFilters();
+      useAppStore.getState().clearTranslationState();
+      useAppStore.getState().clearEnhancementState();
 
       toast.success('Login successful!');
     } catch (error: any) {
