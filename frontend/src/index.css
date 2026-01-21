@@ -424,3 +424,525 @@
     transform: translateY(-10px);
   }
 }
+
+@keyframes taglineShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Tagline Shimmer Effect */
+.tagline-shimmer {
+  background: linear-gradient(
+    90deg,
+    #6366f1 0%,
+    #a855f7 25%,
+    #6366f1 50%,
+    #a855f7 75%,
+    #6366f1 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: taglineShimmer 3s linear infinite;
+}
+
+/* Logo Pulse Glow */
+.logo-pulse-glow {
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 25px rgba(99, 102, 241, 0.6));
+  }
+}
+
+/* ========================================
+   ENHANCED LOGO ANIMATIONS
+   ======================================== */
+
+/* Rotating Ring Animation */
+.logo-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  animation: ringRotate 4s linear infinite;
+}
+
+.logo-ring-1 {
+  inset: -8px;
+  border-top-color: #6366f1;
+  border-right-color: #a855f7;
+  animation-duration: 3s;
+}
+
+.logo-ring-2 {
+  inset: -16px;
+  border-bottom-color: #a855f7;
+  border-left-color: #6366f1;
+  animation-duration: 5s;
+  animation-direction: reverse;
+}
+
+.logo-ring-3 {
+  inset: -24px;
+  border-top-color: rgba(99, 102, 241, 0.3);
+  border-right-color: rgba(168, 85, 247, 0.3);
+  animation-duration: 7s;
+}
+
+@keyframes ringRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Logo Glow Layers */
+.logo-glow-container {
+  position: relative;
+}
+
+.logo-glow-container::before,
+.logo-glow-container::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 1rem;
+  opacity: 0;
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+.logo-glow-container::before {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  filter: blur(15px);
+  animation-delay: 0s;
+}
+
+.logo-glow-container::after {
+  background: linear-gradient(225deg, #a855f7, #6366f1);
+  filter: blur(20px);
+  animation-delay: 1s;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Sparkle Effect */
+.logo-sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  animation: sparkle 2s ease-in-out infinite;
+  box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.8);
+}
+
+.logo-sparkle-1 { top: -5px; right: 20%; animation-delay: 0s; }
+.logo-sparkle-2 { top: 20%; right: -5px; animation-delay: 0.5s; }
+.logo-sparkle-3 { bottom: -5px; left: 30%; animation-delay: 1s; }
+.logo-sparkle-4 { top: 30%; left: -5px; animation-delay: 1.5s; }
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Gradient Border Animation */
+.logo-gradient-border {
+  position: relative;
+  padding: 4px;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #6366f1);
+  background-size: 300% 300%;
+  animation: gradientBorder 4s ease infinite;
+}
+
+@keyframes gradientBorder {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Orbit Animation for Login Page */
+.logo-orbit {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: orbit 8s linear infinite;
+}
+
+.logo-orbit-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Floating Animation */
+.logo-float {
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Header Logo Enhanced Glow */
+.header-logo-glow {
+  position: relative;
+}
+
+.header-logo-glow::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.4));
+  filter: blur(10px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.header-logo-glow:hover::before {
+  opacity: 1;
+}
+
+/* ========================================
+   SWIFTOR LOGO COLOR ANIMATION
+   ======================================== */
+
+/* Animated gradient text for logo */
+.logo-gradient-text {
+  background: linear-gradient(
+    90deg,
+    #1a1a2e 0%,
+    #6366f1 25%,
+    #a855f7 50%,
+    #6366f1 75%,
+    #1a1a2e 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: logoColorShift 4s ease-in-out infinite;
+}
+
+@keyframes logoColorShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Animated border color for oval */
+.logo-oval-border {
+  animation: ovalColorShift 4s ease-in-out infinite;
+}
+
+@keyframes ovalColorShift {
+  0%, 100% {
+    border-color: #1a1a2e;
+  }
+  25% {
+    border-color: #6366f1;
+  }
+  50% {
+    border-color: #a855f7;
+  }
+  75% {
+    border-color: #6366f1;
+  }
+}
+
+/* ========================================
+   TYPING CURSOR ANIMATION
+   ======================================== */
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.6rem;
+  background: linear-gradient(180deg, #6366f1, #a855f7);
+  margin: 0 1px;
+  vertical-align: middle;
+  animation: cursorBlink 0.8s ease-in-out infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 45% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   AI ASSISTANT HEADER SPARKLE
+   ======================================== */
+.ai-header-sparkle {
+  position: relative;
+}
+
+.ai-header-sparkle::before,
+.ai-header-sparkle::after {
+  content: '✦';
+  position: absolute;
+  font-size: 0.75rem;
+  animation: sparkleFloat 2s ease-in-out infinite;
+  color: #a855f7;
+}
+
+.ai-header-sparkle::before {
+  top: -8px;
+  right: -12px;
+  animation-delay: 0s;
+}
+
+.ai-header-sparkle::after {
+  bottom: -8px;
+  left: -12px;
+  animation-delay: 1s;
+}
+
+@keyframes sparkleFloat {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+}
+
+/* Animated gradient text for AI header */
+.ai-header-gradient {
+  background: linear-gradient(
+    90deg,
+    #6366f1 0%,
+    #a855f7 20%,
+    #ec4899 40%,
+    #a855f7 60%,
+    #6366f1 80%,
+    #a855f7 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: aiHeaderGradient 3s linear infinite;
+}
+
+@keyframes aiHeaderGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* ========================================
+   NAVIGATION GLOW ANIMATIONS
+   ======================================== */
+
+/* Active state outer glow - Purple */
+.nav-active-purple {
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Active state outer glow - Dark */
+.nav-active-dark {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Inner glow animation - Purple (shimmer effect) */
+.nav-inner-glow-purple {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: navInnerShimmer 3s ease-in-out infinite;
+}
+
+/* Inner glow animation - Dark (white shimmer) */
+.nav-inner-glow-dark {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 45%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.4) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: navInnerShimmer 3s ease-in-out infinite;
+}
+
+@keyframes navInnerShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Legacy classes - keep for mobile */
+.nav-glow-purple {
+  animation: navGlowPurple 2.5s ease-in-out infinite;
+}
+
+.nav-glow-dark {
+  animation: navGlowDark 2.5s ease-in-out infinite;
+}
+
+@keyframes navGlowPurple {
+  0%, 100% {
+    box-shadow: 0 2px 10px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5);
+  }
+}
+
+@keyframes navGlowDark {
+  0%, 100% {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ========================================
+   AI SPARKLE ICON ANIMATION
+   ======================================== */
+.ai-sparkle-icon {
+  animation: sparkleIconPulse 2s ease-in-out infinite, sparkleIconRotate 4s linear infinite;
+}
+
+@keyframes sparkleIconPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4));
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8));
+  }
+}
+
+@keyframes sparkleIconRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  50% {
+    transform: rotate(0deg);
+  }
+  75% {
+    transform: rotate(-5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Sparkle box container animation */
+.ai-sparkle-box {
+  position: relative;
+  animation: sparkleBoxGlow 2s ease-in-out infinite;
+}
+
+.ai-sparkle-box::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #6366f1);
+  background-size: 300% 300%;
+  animation: sparkleBoxBorder 3s linear infinite;
+  z-index: -1;
+  opacity: 0.7;
+}
+
+@keyframes sparkleBoxGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.7), 0 0 60px rgba(99, 102, 241, 0.4);
+  }
+}
+
+@keyframes sparkleBoxBorder {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

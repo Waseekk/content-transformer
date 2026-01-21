@@ -276,7 +276,7 @@ export const TranslationPage = () => {
 
   return (
     <div className="min-h-screen ai-gradient-bg">
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -287,12 +287,12 @@ export const TranslationPage = () => {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-ai-primary to-ai-secondary shadow-glow-md"
+            className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-ai-primary to-ai-secondary ai-sparkle-box"
           >
-            <HiSparkles className="w-8 h-8 text-white" />
+            <HiSparkles className="w-8 h-8 text-white ai-sparkle-icon" />
           </motion.div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            AI <span className="text-gradient">Assistant</span>
+            AI <span className="ai-header-gradient ai-header-sparkle">Assistant</span>
           </h1>
           <p className="text-gray-500 text-lg">
             Transform English content into professional Bengali news articles
@@ -555,7 +555,7 @@ The AI will automatically:
                       Generate News Articles
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Select format(s) and let AI create professional Bengali news
+                      Select format(s) and let Swiftor create professional Bengali news
                     </p>
                   </div>
                 </div>
@@ -622,7 +622,7 @@ The AI will automatically:
                     icon={<HiSparkles className="w-5 h-5" />}
                   >
                     {enhance.isPending ? (
-                      'AI is generating...'
+                      'Swiftor is generating...'
                     ) : (
                       <>Generate {selectedFormats.length > 0 ? `(${selectedFormats.length} format${selectedFormats.length > 1 ? 's' : ''})` : ''}</>
                     )}
@@ -636,7 +636,7 @@ The AI will automatically:
                     animate={{ opacity: 1 }}
                     className="mt-8 flex flex-col items-center"
                   >
-                    <AILoader variant="neural" size="lg" text="AI is crafting your news articles..." />
+                    <AILoader variant="neural" size="lg" text="Swiftor is crafting your news articles..." />
                   </motion.div>
                 )}
               </AnimatedCard>

@@ -177,7 +177,7 @@ export const DashboardPage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="text-gray-400 text-base tracking-widest uppercase"
+              className="text-base tracking-widest uppercase ai-header-gradient ai-header-sparkle"
             >
               Your AI News Editor
             </motion.p>
