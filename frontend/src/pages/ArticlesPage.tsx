@@ -29,8 +29,10 @@ import {
   HiX,
   HiNewspaper,
   HiChevronDown,
-  HiDocumentText
+  HiDocumentText,
+  HiGlobe
 } from 'react-icons/hi';
+import { GoogleNewsSearchTab } from '../components/search/GoogleNewsSearchTab';
 
 export const ArticlesPage = () => {
   const navigate = useNavigate();
@@ -43,6 +45,7 @@ export const ArticlesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showEnhancementHistory, setShowEnhancementHistory] = useState(false);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'scraped' | 'search'>('scraped');
 
   const { data: articlesData, isLoading, refetch } = useArticles({
     latestOnly: jobId ? false : showLatestOnly,
@@ -252,6 +255,43 @@ export const ArticlesPage = () => {
           </p>
         </div>
 
+        {/* Tab Navigation */}
+        {!jobId && (
+          <div className="mb-6 flex items-center gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit">
+            <button
+              onClick={() => setActiveTab('scraped')}
+              className={`
+                flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all
+                ${activeTab === 'scraped'
+                  ? 'bg-teal-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+                }
+              `}
+            >
+              <HiNewspaper className="w-5 h-5" />
+              Scraped Articles
+            </button>
+            <button
+              onClick={() => setActiveTab('search')}
+              className={`
+                flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all
+                ${activeTab === 'search'
+                  ? 'bg-teal-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+                }
+              `}
+            >
+              <HiGlobe className="w-5 h-5" />
+              Search Content
+            </button>
+          </div>
+        )}
+
+        {/* Tab Content */}
+        {activeTab === 'search' && !jobId ? (
+          <GoogleNewsSearchTab />
+        ) : (
+          <>
         {/* Actions Bar */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
@@ -261,14 +301,6 @@ export const ArticlesPage = () => {
           >
             <HiPlay className="w-5 h-5" />
             {startScraper.isPending ? 'Starting...' : 'Start Scraper'}
-          </button>
-
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all border border-gray-200"
-          >
-            <HiRefresh className="w-5 h-5" />
-            Refresh
           </button>
 
           <button
@@ -294,7 +326,7 @@ export const ArticlesPage = () => {
               className={`
                 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all border
                 ${showLatestOnly
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  ? 'bg-teal-50 text-teal-700 border-teal-200'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                 }
               `}
@@ -307,7 +339,7 @@ export const ArticlesPage = () => {
           {selectedArticle && (
             <button
               onClick={handleTranslateSelected}
-              className="ml-auto inline-flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-all shadow-sm hover:shadow-md"
+              className="ml-auto inline-flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-all shadow-sm hover:shadow-md"
             >
               Translate Selected
               <HiArrowRight className="w-5 h-5" />
@@ -662,12 +694,14 @@ export const ArticlesPage = () => {
             </div>
           </>
         )}
+          </>
+        )}
 
         {/* Floating action button */}
-        {selectedArticle && (
+        {selectedArticle && activeTab === 'scraped' && (
           <button
             onClick={handleTranslateSelected}
-            className="fixed bottom-20 right-8 inline-flex items-center gap-3 px-6 py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:shadow-2xl transition-all transform hover:scale-105"
+            className="fixed bottom-20 right-8 inline-flex items-center gap-3 px-6 py-4 bg-teal-500 text-white rounded-2xl font-bold shadow-xl hover:bg-teal-600 hover:shadow-2xl transition-all transform hover:scale-105"
           >
             <span>Translate Article</span>
             <HiArrowRight className="w-5 h-5" />
