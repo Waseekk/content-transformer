@@ -111,12 +111,6 @@ export function LoginPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-400">A product of Data Insightopia</p>
         </div>
-
-        <div className="mt-4 text-center text-sm text-gray-500">
-          <p>Demo Credentials:</p>
-          <p className="mt-1">Email: test@example.com</p>
-          <p>Password: Test1234</p>
-        </div>
       </div>
     </div>
   );
