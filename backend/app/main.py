@@ -3,12 +3,15 @@ FastAPI Application Entry Point
 Swiftor - Hard News & Soft News Backend API
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction
 from app.config import get_settings
+from app.database import get_db
 
 settings = get_settings()
 
@@ -21,10 +24,19 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS for React frontend
+# Configure CORS - Use FRONTEND_URL from environment in production
+# In development, allow localhost origins
+allowed_origins = [settings.FRONTEND_URL]
+if settings.DEBUG:
+    allowed_origins.extend([
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure specific origins in production
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,11 +67,27 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
-    """Detailed health check"""
+async def health_check(db: Session = Depends(get_db)):
+    """Detailed health check with database verification"""
+    db_status = "connected"
+    try:
+        # Verify database connection
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+        return {
+            "status": "unhealthy",
+            "database": db_status,
+            "services": {
+                "scraper": "unknown",
+                "translator": "unknown",
+                "enhancer": "unknown"
+            }
+        }
+
     return {
         "status": "healthy",
-        "database": "connected",  # TODO: Add actual DB health check
+        "database": db_status,
         "services": {
             "scraper": "available",
             "translator": "available",

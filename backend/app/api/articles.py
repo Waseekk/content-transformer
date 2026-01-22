@@ -15,6 +15,8 @@ from app.models.user import User
 from app.models.article import Article
 from app.models.job import Job
 from app.models.user_config import UserConfig
+from app.models.enhancement import Enhancement
+from app.models.translation import Translation
 from app.middleware.auth import get_current_active_user
 from app.schemas.scraper import ArticleResponse
 from app.config import format_datetime
@@ -262,6 +264,123 @@ async def get_article_stats(
         "total_sources": total_sources,
         "unique_sources": total_sources,  # Keep for backward compatibility
         "enabled_sites_count": len(enabled_sites)  # Show how many sites are enabled
+    }
+
+
+# ============================================================================
+# ENHANCEMENT HISTORY (must be before /{article_id} to avoid route conflict)
+# ============================================================================
+
+@router.get("/enhancement-sessions", response_model=dict)
+async def get_enhancement_sessions(
+    days: Optional[int] = Query(7, description="Number of days to look back"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get enhancement sessions grouped by date/translation
+
+    Returns enhancement sessions from the last N days, grouped by date and translation.
+    Each session contains both hard_news and soft_news if available.
+
+    Requires: Bearer token in Authorization header
+    """
+    from sqlalchemy import func, cast, Date
+
+    # Bangladesh timezone offset (UTC+6)
+    BD_OFFSET_HOURS = 6
+
+    # Limit days to 7 max
+    if days > 7:
+        days = 7
+
+    # Calculate date threshold
+    date_threshold = datetime.utcnow() - timedelta(days=days)
+
+    # Get all enhancements for this user within the date range
+    enhancements = db.query(Enhancement).filter(
+        Enhancement.user_id == current_user.id,
+        Enhancement.created_at >= date_threshold
+    ).order_by(Enhancement.created_at.desc()).all()
+
+    # Group enhancements by date and translation_id
+    sessions_by_date = {}
+
+    for enhancement in enhancements:
+        # Convert UTC time to Bangladesh time (UTC+6) for date grouping
+        bd_time = enhancement.created_at + timedelta(hours=BD_OFFSET_HOURS)
+        # Get the date string in Bangladesh timezone (YYYY-MM-DD)
+        date_str = bd_time.strftime("%Y-%m-%d")
+
+        # Get translation info if available
+        translation = None
+        english_content = None
+        headline = None
+
+        if enhancement.translation_id:
+            translation = db.query(Translation).filter(
+                Translation.id == enhancement.translation_id
+            ).first()
+
+            if translation:
+                english_content = translation.original_text
+                headline = translation.title or "Untitled"
+        else:
+            headline = enhancement.headline or "Direct Enhancement"
+
+        # Create session key:
+        # - If has translation_id: group by translation_id
+        # - If direct enhancement: group by timestamp (minute precision) to group Hard+Soft generated together
+        if enhancement.translation_id:
+            session_key = f"{date_str}_{enhancement.translation_id}"
+        else:
+            # Group direct enhancements by minute (so Hard+Soft generated together are in same session)
+            minute_key = bd_time.strftime("%Y%m%d%H%M")
+            session_key = f"{date_str}_direct_{minute_key}"
+
+        if date_str not in sessions_by_date:
+            sessions_by_date[date_str] = {}
+
+        if session_key not in sessions_by_date[date_str]:
+            sessions_by_date[date_str][session_key] = {
+                "translation_id": enhancement.translation_id,
+                "headline": headline,
+                "english_content": english_content,
+                "hard_news": None,
+                "soft_news": None,
+                "created_at": enhancement.created_at.isoformat()
+            }
+
+        # Add the enhancement to the appropriate format slot
+        enhancement_data = {
+            "id": enhancement.id,
+            "content": enhancement.content,
+            "word_count": enhancement.word_count or len(enhancement.content.split()) if enhancement.content else 0,
+            "tokens_used": enhancement.tokens_used,
+            "created_at": enhancement.created_at.isoformat()
+        }
+
+        if enhancement.format_type == "hard_news":
+            sessions_by_date[date_str][session_key]["hard_news"] = enhancement_data
+        elif enhancement.format_type == "soft_news":
+            sessions_by_date[date_str][session_key]["soft_news"] = enhancement_data
+
+    # Convert to response format: list of dates with sessions
+    result = []
+    for date_str in sorted(sessions_by_date.keys(), reverse=True):
+        sessions = list(sessions_by_date[date_str].values())
+        # Sort sessions by created_at (most recent first)
+        sessions.sort(key=lambda x: x["created_at"], reverse=True)
+        result.append({
+            "date": date_str,
+            "sessions": sessions,
+            "count": len(sessions)
+        })
+
+    return {
+        "enhancement_sessions": result,
+        "total_sessions": sum(len(d["sessions"]) for d in result),
+        "date_range_days": days
     }
 
 

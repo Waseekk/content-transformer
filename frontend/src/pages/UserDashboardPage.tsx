@@ -105,7 +105,7 @@ export const UserDashboardPage = () => {
       </div>
 
       <motion.div
-        className="max-w-7xl mx-auto px-4 py-8"
+        className="w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-8"
         variants={containerVariants}
         initial="hidden"
         animate="visible"

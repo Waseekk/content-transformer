@@ -555,15 +555,18 @@ def enforce_paragraph_length(text: str, max_words: int = 38) -> str:
 
 def fix_three_line_paragraphs(text: str) -> str:
     """
-    Fix paragraphs that appear to be 3+ lines by moving the last sentence to a new paragraph.
+    Enforce max 2 sentences per body paragraph (2 lines = 2 sentences).
 
-    Rule: Body paragraphs should be max 2 lines. If 3 lines detected, split.
+    Rules:
+    1. Body paragraphs should have max 2 sentences
+    2. If 3+ sentences, split into groups of max 2
+    3. If quotation exists, keep it as the last sentence of its paragraph
 
     Args:
         text: Bengali text content
 
     Returns:
-        str: Text with 3-line paragraphs fixed
+        str: Text with paragraphs properly split
     """
     if not text:
         return text
@@ -587,7 +590,7 @@ def fix_three_line_paragraphs(text: str) -> str:
             result.append(para)
             continue
 
-        # Count sentences in paragraph
+        # Split into sentences
         # Bengali sentence endings: । (dari), ? (question), ! (exclamation)
         sentences = re.split(r'([।?!])', para)
 
@@ -604,24 +607,50 @@ def fix_three_line_paragraphs(text: str) -> str:
         # Filter empty sentences
         full_sentences = [s for s in full_sentences if s]
 
-        # If 3+ sentences, likely 3+ lines - move last sentence to new paragraph
-        if len(full_sentences) >= 3:
-            # Keep all but last sentence in first paragraph
-            part1 = ' '.join(full_sentences[:-1])
-            part2 = full_sentences[-1]
-
-            if part1 and part2:
-                result.append(part1)
-                result.append(part2)
-                fixes_made += 1
-                logger.info(f"3-line fix: Moved last sentence to new paragraph")
-            else:
-                result.append(para)
-        else:
+        # If 2 or fewer sentences, keep as is
+        if len(full_sentences) <= 2:
             result.append(para)
+            continue
+
+        # 3+ sentences: split into groups of max 2
+        # Special handling for quotations - keep quote sentence at end of its paragraph
+        fixes_made += 1
+
+        # Find sentences with quotations (closing quote)
+        quote_indices = [i for i, s in enumerate(full_sentences) if '"' in s]
+
+        # Group sentences: max 2 per paragraph, quotes at end of their paragraph
+        current_group = []
+        for i, sentence in enumerate(full_sentences):
+            current_group.append(sentence)
+
+            # Check if this is a good split point
+            should_split = False
+
+            if len(current_group) >= 2:
+                # Have 2 sentences, time to split
+                should_split = True
+
+                # But if next sentence has a quote and current doesn't, wait
+                if i + 1 < len(full_sentences) and '"' in full_sentences[i + 1] and '"' not in sentence:
+                    should_split = False
+
+            # If current sentence has a quote, always split after it
+            if '"' in sentence and len(current_group) >= 1:
+                should_split = True
+
+            if should_split:
+                result.append(' '.join(current_group))
+                current_group = []
+
+        # Add remaining sentences
+        if current_group:
+            result.append(' '.join(current_group))
+
+        logger.info(f"2-sentence fix: Split paragraph with {len(full_sentences)} sentences")
 
     if fixes_made > 0:
-        logger.info(f"Fixed {fixes_made} three-line paragraph(s)")
+        logger.info(f"Fixed {fixes_made} paragraph(s) with more than 2 sentences")
 
     return '\n\n'.join(result)
 

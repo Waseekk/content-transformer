@@ -1,0 +1,90 @@
+# ============================================================
+# Docker Ignore File for Swiftor
+# Excludes files not needed in production images
+# ============================================================
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+backend/venv/
+
+# Node modules
+node_modules/
+frontend/node_modules/
+
+# Environment files (inject at runtime)
+.env
+.env.*
+!.env.production
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test output and logs
+test_output/
+logs/
+*.log
+
+# Backup files
+*.backup
+backups/
+
+# Cache directories
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in runtime)
+docs/
+*.md
+!README.md
+
+# Claude Code
+.claude/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Windows batch scripts
+*.bat
+
+# macOS
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Streamlit legacy (if any remain)
+.streamlit/
+
+# Config for development only
+.mcp.json
+
+# Large test files
+test_*.py
+*_test.py

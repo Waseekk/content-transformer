@@ -181,6 +181,18 @@ export const enhancementApi = {
     });
     return response.data;
   },
+
+  getSessions: async (days: number = 7) => {
+    const response = await axios.get('/api/articles/enhancement-sessions', {
+      params: { days },
+    });
+    return response.data;
+  },
+
+  getById: async (enhancementId: number) => {
+    const response = await axios.get(`/api/enhance/${enhancementId}`);
+    return response.data;
+  },
 };
 
 // ============================================================================

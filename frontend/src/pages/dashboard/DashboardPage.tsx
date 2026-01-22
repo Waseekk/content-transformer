@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, Badge, Button } from '../../components/common';
 
@@ -41,11 +42,36 @@ export function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Swiftor</h1>
-              <p className="text-sm text-gray-600">AI-powered translation & content enhancement</p>
+              {/* Swiftor Logo with animated text */}
+              <div className="flex items-baseline">
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-4xl font-extrabold tracking-tight logo-gradient-text"
+                >
+                  Swift
+                </motion.span>
+                <span
+                  className="inline-block rounded-full logo-oval-border ml-0.5"
+                  style={{
+                    width: '2.5rem',
+                    height: '1rem',
+                    borderWidth: '3px',
+                    borderStyle: 'solid',
+                    marginBottom: '3px'
+                  }}
+                />
+                <span
+                  className="text-2xl font-normal logo-gradient-text"
+                  style={{ marginLeft: '1px' }}
+                >
+                  r
+                </span>
+              </div>
+              <p className="text-sm tagline-shimmer">AI powered clean and credible news</p>
             </div>
             <Button variant="secondary" onClick={logout} size="sm">
               Logout
@@ -54,7 +80,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* User Info Card */}
         <Card className="mb-8">
           <div className="flex items-start justify-between">

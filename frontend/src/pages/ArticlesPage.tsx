@@ -5,13 +5,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArticles, useArticleSources, useScrapingSessions } from '../hooks/useArticles';
+import { useEnhancementSessions } from '../hooks/useEnhancementHistory';
 import { useStartScraper } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
 import { ArticleCard } from '../components/common/ArticleCard';
 import { SearchableMultiSelect } from '../components/common/SearchableMultiSelect';
 import { ScraperStatusBanner } from '../components/common/ScraperStatusBanner';
+import { EnhancementSessionCard } from '../components/history/EnhancementSessionCard';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   HiFilter,
   HiClock,
@@ -24,7 +27,9 @@ import {
   HiArrowRight,
   HiCollection,
   HiX,
-  HiNewspaper
+  HiNewspaper,
+  HiChevronDown,
+  HiDocumentText
 } from 'react-icons/hi';
 
 export const ArticlesPage = () => {
@@ -36,6 +41,8 @@ export const ArticlesPage = () => {
 
   const [showLatestOnly, setShowLatestOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showEnhancementHistory, setShowEnhancementHistory] = useState(false);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
   const { data: articlesData, isLoading, refetch } = useArticles({
     latestOnly: jobId ? false : showLatestOnly,
@@ -43,6 +50,7 @@ export const ArticlesPage = () => {
   });
   const { data: sourcesData } = useArticleSources();
   const { data: sessionsData } = useScrapingSessions({ limit: 1 });
+  const { data: enhancementSessionsData, isLoading: enhancementLoading } = useEnhancementSessions(7);
   const startScraper = useStartScraper();
 
   const latestSession = sessionsData?.sessions?.[0];
@@ -114,6 +122,35 @@ export const ArticlesPage = () => {
   const articles = articlesData?.articles || [];
   const total = articlesData?.total || 0;
   const sources = sourcesData?.sources || [];
+  const enhancementSessions = enhancementSessionsData?.enhancement_sessions || [];
+
+  const toggleDateExpansion = (date: string) => {
+    setExpandedDates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(date)) {
+        newSet.delete(date);
+      } else {
+        newSet.add(date);
+      }
+      return newSet;
+    });
+  };
+
+  /**
+   * Format date string for display (date is already in Bangladesh timezone from backend)
+   */
+  const formatDisplayDate = (dateStr: string) => {
+    // Parse the date string (YYYY-MM-DD format, already in BD timezone from backend)
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   const handleSelectArticle = (article: any) => {
     selectArticle(article);
@@ -159,7 +196,7 @@ export const ArticlesPage = () => {
       {/* New Articles Available Banner */}
       {hasNewArticles && (
         <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <HiSparkles className="w-5 h-5" />
               <span className="font-medium">New articles available from scheduler!</span>
@@ -174,7 +211,7 @@ export const ArticlesPage = () => {
         </div>
       )}
 
-      <div className={`max-w-7xl mx-auto px-6 py-8 ${activeScraperJobId || hasNewArticles ? 'pt-20' : ''}`}>
+      <div className={`w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-8 ${activeScraperJobId || hasNewArticles ? 'pt-20' : ''}`}>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
@@ -347,6 +384,147 @@ export const ArticlesPage = () => {
           </div>
         )}
 
+        {/* Enhancement History Section */}
+        {!jobId && enhancementSessions.length > 0 && (
+          <div className="mb-8">
+            {/* Section Header - Enhanced Visual */}
+            <motion.button
+              onClick={() => setShowEnhancementHistory(!showEnhancementHistory)}
+              className="w-full mb-4 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 rounded-2xl border border-purple-100 hover:border-purple-200 hover:shadow-md transition-all duration-300"
+              whileHover={{ scale: 1.005 }}
+              whileTap={{ scale: 0.995 }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <motion.div
+                    className="p-3 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 rounded-xl shadow-lg"
+                    animate={{
+                      boxShadow: showEnhancementHistory
+                        ? '0 10px 25px -5px rgba(139, 92, 246, 0.4)'
+                        : '0 4px 15px -3px rgba(139, 92, 246, 0.3)'
+                    }}
+                  >
+                    <HiDocumentText className="w-6 h-6 text-white" />
+                  </motion.div>
+                  <div className="text-left">
+                    <h3 className="text-lg font-bold text-gray-900">Enhancement History</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-sm text-gray-500">
+                        {enhancementSessionsData?.total_sessions || 0} enhancements
+                      </span>
+                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                      <span className="text-sm text-purple-600 font-medium">Last 7 days</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white/70 rounded-full border border-purple-100">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-xs font-medium text-gray-600">Hard</span>
+                    <div className="w-2 h-2 bg-teal-500 rounded-full ml-2"></div>
+                    <span className="text-xs font-medium text-gray-600">Soft</span>
+                  </div>
+                  <motion.div
+                    animate={{ rotate: showEnhancementHistory ? 180 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="p-2 bg-white rounded-xl shadow-sm border border-gray-100"
+                  >
+                    <HiChevronDown className="w-5 h-5 text-purple-500" />
+                  </motion.div>
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Enhancement Sessions Content */}
+            <AnimatePresence>
+              {showEnhancementHistory && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-6">
+                    {enhancementLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="ml-3 text-gray-500">Loading enhancement history...</span>
+                      </div>
+                    ) : (
+                      enhancementSessions.map((dateGroup, index) => (
+                        <motion.div
+                          key={dateGroup.date}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1, duration: 0.3 }}
+                          className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
+                        >
+                          {/* Date Header */}
+                          <button
+                            onClick={() => toggleDateExpansion(dateGroup.date)}
+                            className="w-full px-5 py-4 flex items-center justify-between bg-gradient-to-r from-purple-50/50 via-white to-indigo-50/50 hover:from-purple-100/50 hover:to-indigo-100/50 transition-all duration-300"
+                          >
+                            <div className="flex items-center gap-3">
+                              <motion.div
+                                animate={{
+                                  rotate: expandedDates.has(dateGroup.date) ? 360 : 0
+                                }}
+                                transition={{ duration: 0.5 }}
+                                className="p-1.5 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-lg"
+                              >
+                                <HiClock className="w-4 h-4 text-purple-600" />
+                              </motion.div>
+                              <span className="font-semibold text-gray-900">
+                                {formatDisplayDate(dateGroup.date)}
+                              </span>
+                              <motion.span
+                                className="px-2.5 py-0.5 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 text-xs font-semibold rounded-full"
+                                whileHover={{ scale: 1.05 }}
+                              >
+                                {dateGroup.count} enhancement{dateGroup.count !== 1 ? 's' : ''}
+                              </motion.span>
+                            </div>
+                            <motion.div
+                              animate={{ rotate: expandedDates.has(dateGroup.date) ? 180 : 0 }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              className="p-1.5 rounded-lg hover:bg-purple-100 transition-colors"
+                            >
+                              <HiChevronDown className="w-5 h-5 text-purple-500" />
+                            </motion.div>
+                          </button>
+
+                          {/* Sessions for this date */}
+                          <AnimatePresence>
+                            {expandedDates.has(dateGroup.date) && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-5 pb-5 pt-2 space-y-3 border-t border-gray-100">
+                                  {dateGroup.sessions.map((session, idx) => (
+                                    <EnhancementSessionCard
+                                      key={`${session.translation_id || idx}-${session.created_at}`}
+                                      session={session}
+                                    />
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
         {/* Results info */}
         <div className="mb-5 flex items-center justify-between">
           <p className="text-gray-500 text-sm">
@@ -489,7 +667,7 @@ export const ArticlesPage = () => {
         {selectedArticle && (
           <button
             onClick={handleTranslateSelected}
-            className="fixed bottom-8 right-8 inline-flex items-center gap-3 px-6 py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:shadow-2xl transition-all transform hover:scale-105"
+            className="fixed bottom-20 right-8 inline-flex items-center gap-3 px-6 py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:shadow-2xl transition-all transform hover:scale-105"
           >
             <span>Translate Article</span>
             <HiArrowRight className="w-5 h-5" />

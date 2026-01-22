@@ -167,7 +167,7 @@ export const SchedulerPage = () => {
         onClose={handleBannerClose}
       />
 
-      <div className={`max-w-6xl mx-auto px-6 py-8 ${activeScraperJobId ? 'pt-20' : ''}`}>
+      <div className={`w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8 py-8 ${activeScraperJobId ? 'pt-20' : ''}`}>
         {/* Hero Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
