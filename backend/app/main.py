@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction
+from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search
 from app.config import get_settings
 from app.database import get_db
 
@@ -26,13 +26,16 @@ app = FastAPI(
 
 # Configure CORS - Use FRONTEND_URL from environment in production
 # In development, allow localhost origins
-allowed_origins = [settings.FRONTEND_URL]
-if settings.DEBUG:
-    allowed_origins.extend([
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-    ])
+allowed_origins = [
+    settings.FRONTEND_URL,
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,6 +57,7 @@ app.include_router(scraper.router, prefix="/api/scraper", tags=["scraper"])
 app.include_router(scheduler.router, prefix="/api/scraper/scheduler", tags=["scheduler"])
 app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
 app.include_router(extraction.router, prefix="/api/extract", tags=["extraction"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])
 
 
 @app.get("/")

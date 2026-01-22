@@ -1,6 +1,8 @@
 # ============================================================
 # Swiftor Docker Compose - Production Configuration
 # ============================================================
+name: swiftor
+
 # Services:
 # - postgres: PostgreSQL 16 database
 # - redis: Redis 7 cache (optional, for future Celery)
