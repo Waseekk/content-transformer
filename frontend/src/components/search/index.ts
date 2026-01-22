@@ -1,0 +1,1 @@
+export { GoogleNewsSearchTab } from './GoogleNewsSearchTab';

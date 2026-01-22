@@ -263,3 +263,75 @@ export const authApi = {
     return response.data;
   },
 };
+
+// ============================================================================
+// GOOGLE NEWS SEARCH
+// ============================================================================
+
+export interface GoogleNewsResult {
+  title: string;
+  url: string;
+  source: string | null;
+  published_time: string | null;
+  snippet: string | null;
+}
+
+export interface GoogleNewsSearchResponse {
+  success: boolean;
+  keyword: string;
+  total_results: number;
+  results: GoogleNewsResult[];
+  search_time_ms: number;
+  cached: boolean;
+  error_message: string | null;
+}
+
+export interface PaginatedSearchResponse {
+  success: boolean;
+  results: GoogleNewsResult[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  keyword: string;
+  time_filter: string;
+  cached: boolean;
+  error_message: string | null;
+}
+
+export const searchApi = {
+  searchGoogleNews: async (params: {
+    keyword: string;
+    time_filter?: string;
+    max_results?: number;
+  }): Promise<GoogleNewsSearchResponse> => {
+    const response = await axios.post<GoogleNewsSearchResponse>('/api/search/google-news', {
+      keyword: params.keyword,
+      time_filter: params.time_filter || '24h',
+      max_results: params.max_results || 50,
+    });
+    return response.data;
+  },
+
+  getPaginatedResults: async (params: {
+    keyword: string;
+    time_filter?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedSearchResponse> => {
+    const response = await axios.get<PaginatedSearchResponse>('/api/search/google-news/paginated', {
+      params: {
+        keyword: params.keyword,
+        time_filter: params.time_filter || '24h',
+        page: params.page || 1,
+        limit: params.limit || 10,
+      },
+    });
+    return response.data;
+  },
+
+  clearSearchCache: async () => {
+    const response = await axios.delete('/api/search/google-news/cache');
+    return response.data;
+  },
+};
