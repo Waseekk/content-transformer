@@ -132,9 +132,9 @@ export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTransl
           <HiLink className="w-5 h-5 text-white" />
         </motion.div>
         <div>
-          <h3 className="font-semibold text-gray-900">Extract & Translate from URL</h3>
+          <h3 className="font-semibold text-gray-900">Extract from URL</h3>
           <p className="text-sm text-gray-500">
-            Paste URL to extract and translate in one step
+            Paste URL to extract content in one step
           </p>
         </div>
       </div>
@@ -173,7 +173,7 @@ export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTransl
           loading={extraction.isPending}
           icon={<HiSparkles className="w-5 h-5" />}
         >
-          {extraction.isPending ? 'Processing...' : 'Extract & Translate'}
+          {extraction.isPending ? 'Processing...' : 'Extract Content'}
         </GlowButton>
       </div>
 

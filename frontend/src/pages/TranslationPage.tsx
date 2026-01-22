@@ -412,7 +412,7 @@ export const TranslationPage = () => {
                   <HiClipboard className="w-5 h-5 text-ai-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Paste Content</h3>
+                  <h3 className="font-semibold text-gray-900">Content Extraction</h3>
                   <p className="text-sm text-gray-500">
                     {wordCount > 0 ? `${wordCount} words` : 'Paste article content (English or Bengali)'}
                   </p>
@@ -722,7 +722,7 @@ The AI will automatically:
                 {[
                   {
                     step: '01',
-                    title: 'Paste Content',
+                    title: 'Content Extraction',
                     desc: 'Copy any English news article and paste it above',
                     icon: HiClipboard,
                   },
