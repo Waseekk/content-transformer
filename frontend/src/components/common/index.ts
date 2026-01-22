@@ -4,3 +4,4 @@ export { Card } from './Card';
 export { Textarea } from './Textarea';
 export { Badge } from './Badge';
 export { Spinner } from './Spinner';
+export { SwiftorLogo } from './SwiftorLogo';

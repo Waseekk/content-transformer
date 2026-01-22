@@ -1,0 +1,151 @@
+/**
+ * SwiftorLogo Animations
+ *
+ * 1. Typewriter - Smooth reveal from left to right
+ * 2. Step Reveal - Letter-by-letter reveal in steps
+ * 3. Color Shift - Matte black/white alternating animation
+ */
+
+/* ========================================
+   Container
+   ======================================== */
+.swiftor-logo-container {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ========================================
+   ANIMATION 1: Typewriter (Smooth)
+   ======================================== */
+.typewriter-logo {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+}
+
+.typewriter-logo img {
+  clip-path: inset(0 100% 0 0);
+  transition: none;
+}
+
+.typewriter-logo.animate img {
+  animation: typewriterReveal 1.5s ease-out forwards;
+}
+
+@keyframes typewriterReveal {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+/* ========================================
+   ANIMATION 2: Step Reveal (7 letters)
+   ======================================== */
+.step-reveal-logo {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+}
+
+.step-reveal-logo img {
+  clip-path: inset(0 100% 0 0);
+  transition: none;
+}
+
+.step-reveal-logo.animate img {
+  animation: stepReveal 1.4s steps(7) forwards;
+}
+
+@keyframes stepReveal {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+/* ========================================
+   ANIMATION 3: Color Shift (Matte Black/White)
+   ======================================== */
+.color-shift-container {
+  position: relative;
+}
+
+.color-shift-logo {
+  position: relative;
+  display: inline-block;
+}
+
+.color-shift-logo img {
+  /* Start with matte black */
+  filter: brightness(0) saturate(100%);
+  animation: colorShift 3s ease-in-out infinite;
+}
+
+@keyframes colorShift {
+  0%, 100% {
+    /* Matte black */
+    filter: brightness(0) saturate(100%);
+  }
+  50% {
+    /* White (inverted) */
+    filter: brightness(0) saturate(100%) invert(1);
+  }
+}
+
+/* Alternative: Softer matte black to off-white */
+.color-shift-logo.soft img {
+  animation: colorShiftSoft 3s ease-in-out infinite;
+}
+
+@keyframes colorShiftSoft {
+  0%, 100% {
+    /* Dark charcoal/matte black */
+    filter: brightness(0.15) saturate(0%);
+  }
+  50% {
+    /* Off-white/cream */
+    filter: brightness(0.95) saturate(0%);
+  }
+}
+
+/* ========================================
+   Hover Effects
+   ======================================== */
+.swiftor-logo-container:hover .typewriter-logo img,
+.swiftor-logo-container:hover .step-reveal-logo img {
+  transform: scale(1.02);
+  transition: transform 0.3s ease;
+}
+
+.color-shift-logo:hover img {
+  animation-play-state: paused;
+  filter: brightness(0) saturate(100%) !important;
+  transition: filter 0.3s ease;
+}
+
+/* ========================================
+   Dark Mode Support
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  .typewriter-logo img,
+  .step-reveal-logo img {
+    filter: brightness(0) invert(1);
+  }
+}
+
+/* Force dark/light mode via class */
+.logo-dark .typewriter-logo img,
+.logo-dark .step-reveal-logo img {
+  filter: brightness(0) saturate(100%);
+}
+
+.logo-light .typewriter-logo img,
+.logo-light .step-reveal-logo img {
+  filter: brightness(0) invert(1);
+}

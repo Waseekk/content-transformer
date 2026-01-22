@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useScraperSites, useUpdateEnabledSites, useSetDefaultSites, useClearDefaultSites } from '../hooks/useScraper';
+import { SwiftorLogo } from '../components/common';
 import {
   HiCheck,
   HiStar,
@@ -158,47 +159,27 @@ export const DashboardPage = () => {
       {/* Hero Section */}
       <div className="pt-12 pb-10">
         <div className="max-w-4xl mx-auto px-6">
-          {/* Logo and Tagline - Centered with Animation */}
+          {/* Logo and Tagline - Centered with Step Reveal Animation */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
             className="flex flex-col items-center"
           >
-            <motion.img
-              initial={{ y: -20 }}
-              animate={{ y: 0 }}
-              transition={{ type: 'spring', stiffness: 100 }}
-              src="/swiftor-logo.png"
-              alt="Swiftor"
-              className="h-40 w-auto mb-4 scale-[2]"
+            <SwiftorLogo
+              variant="stepReveal"
+              size="xl"
+              className="logo-dark mb-10 scale-[8] translate-x-16"
             />
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-base tracking-widest uppercase ai-header-gradient ai-header-sparkle"
+              transition={{ delay: 1.5 }}
+              className="text-xl tracking-widest uppercase ai-header-gradient ai-header-sparkle"
             >
               Your AI News Editor
             </motion.p>
 
-            {/* AI Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ai-primary/10 border border-ai-primary/20"
-            >
-              <motion.div
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 1, 0.5]
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-2 h-2 rounded-full bg-ai-primary"
-              />
-              <span className="text-sm font-medium text-ai-primary">Powered by AI</span>
-            </motion.div>
           </motion.div>
         </div>
       </div>

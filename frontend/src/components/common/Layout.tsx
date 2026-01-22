@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
 import { OperationStatusBar } from './OperationStatusBar';
+import { SwiftorLogo } from './SwiftorLogo';
 import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar } from 'react-icons/hi';
 
 interface LayoutProps {
@@ -70,74 +71,45 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <div className="w-full max-w-[95vw] lg:max-w-[90vw] 2xl:max-w-[85vw] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo - Clean, Big, and Prominent */}
-            <Link to="/" className="flex items-center gap-4 group py-2">
-              {/* Logo Image with Subtle Glow */}
+            {/* Logo - PNG with Typewriter + Cursor Effect */}
+            <Link to="/" className="flex items-center gap-3 group py-2">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 300 }}
-                className="relative"
+                className="flex items-center gap-1"
               >
-                <motion.img
-                  animate={{
-                    filter: [
-                      'drop-shadow(0 0 8px rgba(99, 102, 241, 0.3))',
-                      'drop-shadow(0 0 15px rgba(99, 102, 241, 0.5))',
-                      'drop-shadow(0 0 8px rgba(99, 102, 241, 0.3))'
-                    ]
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  src="/swiftor-logo.png"
-                  alt="Swiftor"
-                  className="h-12 w-12 rounded-xl object-cover"
+                {/* Logo with typewriter reveal effect */}
+                <motion.div
+                  className="relative"
+                  style={{ clipPath: 'inset(0 100% 0 0)' }}
+                  animate={{ clipPath: 'inset(0 0% 0 0)' }}
+                  transition={{ duration: 1.2, ease: 'easeOut' }}
+                >
+                  <motion.img
+                    animate={{
+                      filter: [
+                        'drop-shadow(0 0 8px rgba(99, 102, 241, 0.3))',
+                        'drop-shadow(0 0 15px rgba(99, 102, 241, 0.5))',
+                        'drop-shadow(0 0 8px rgba(99, 102, 241, 0.3))'
+                      ]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    src="/swiftor-logo.png"
+                    alt="Swiftor"
+                    className="h-24 w-auto object-contain"
+                  />
+                </motion.div>
+                {/* Blinking Cursor - 80% of logo height */}
+                <motion.span
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, ease: 'steps(2)' }}
+                  className="w-1 h-16 bg-indigo-600 ml-1 rounded-sm"
                 />
               </motion.div>
 
-              {/* Brand Text - Large and Animated */}
-              <div className="flex flex-col">
-                {/* Swiftor Title - Swift(bold) + oval o + r(small) */}
-                <motion.div className="flex items-baseline">
-                  {/* Swift - BOLD with gradient animation */}
-                  <motion.span
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-3xl font-extrabold tracking-tight logo-gradient-text"
-                  >
-                    Swift
-                  </motion.span>
-                  {/* Horizontal Oval O - with color animation */}
-                  <motion.span
-                    initial={{ opacity: 0, scaleX: 0 }}
-                    animate={{ opacity: 1, scaleX: 1 }}
-                    transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                    className="inline-flex items-center justify-center ml-0.5"
-                  >
-                    <span
-                      className="inline-block rounded-full logo-oval-border"
-                      style={{
-                        width: '2.2rem',
-                        height: '0.85rem',
-                        marginBottom: '2px',
-                        borderWidth: '2px',
-                        borderStyle: 'solid'
-                      }}
-                    />
-                  </motion.span>
-                  {/* r - with gradient animation */}
-                  <motion.span
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-xl font-normal logo-gradient-text"
-                    style={{ marginLeft: '1px' }}
-                  >
-                    r
-                  </motion.span>
-                </motion.div>
-
-                {/* Tagline */}
-                <span className="text-sm font-semibold tagline-shimmer mt-0.5">AI powered clean and credible news</span>
+              {/* Tagline */}
+              <div className="flex flex-col ml-2">
+                <span className="text-sm font-semibold tagline-shimmer">AI powered clean and credible news</span>
               </div>
             </Link>
 
@@ -196,16 +168,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               })}
             </nav>
 
-            {/* Logout */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleLogout}
-              className="px-4 py-2 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-xl font-medium transition-all flex items-center gap-2"
-            >
-              <HiLogout className="w-5 h-5" />
-              <span className="hidden sm:inline">Logout</span>
-            </motion.button>
+            {/* Right Side: Logout */}
+            <div className="flex items-center gap-4">
+              {/* Logout */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleLogout}
+                className="px-4 py-2 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-xl font-medium transition-all flex items-center gap-2"
+              >
+                <HiLogout className="w-5 h-5" />
+                <span className="hidden sm:inline">Logout</span>
+              </motion.button>
+            </div>
           </div>
         </div>
 
@@ -263,7 +238,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <img src="/swiftor-logo.png" alt="Swiftor" className="h-6 rounded" />
               <span className="text-sm font-medium text-gray-700">Swiftor</span>
             </div>
-            <p className="text-sm font-medium tagline-shimmer">
+            <p className="text-sm font-medium tagline-shimmer ml-16">
               AI powered clean and credible news
             </p>
             <div className="flex items-center gap-2">
