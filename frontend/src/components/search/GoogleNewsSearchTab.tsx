@@ -64,17 +64,14 @@ export const GoogleNewsSearchTab = () => {
     setSearchedTimeFilter(timeFilter);
     setPage(1);
 
-    console.log('Starting search for:', keyword.trim(), timeFilter);
-
     try {
-      const result = await searchMutation.mutateAsync({
+      await searchMutation.mutateAsync({
         keyword: keyword.trim(),
         time_filter: timeFilter,
         max_results: 50,
       });
-      console.log('Search result:', result);
-    } catch (error) {
-      console.error('Search error:', error);
+    } catch {
+      // Search error handled by mutation
     }
   };
 

@@ -9,7 +9,10 @@ import type {
   AdminUserStats,
   AdminSetTokensRequest,
   AdminSetEnhancementsRequest,
-  AdminAssignResponse
+  AdminAssignResponse,
+  AdminToggleResponse,
+  AdminDeleteResponse,
+  AdminSetTierRequest
 } from '../types/auth';
 
 export const authApi = {
@@ -81,6 +84,30 @@ export const authApi = {
   // Admin: Trigger auto-assign tokens
   adminAutoAssignTokens: async (userId: number): Promise<AdminAssignResponse> => {
     const response = await api.post<AdminAssignResponse>(`/api/auth/admin/auto-assign-tokens/${userId}`);
+    return response.data;
+  },
+
+  // Admin: Toggle user active status
+  adminToggleUserActive: async (userId: number): Promise<AdminToggleResponse> => {
+    const response = await api.post<AdminToggleResponse>(`/api/auth/admin/users/${userId}/toggle-active`);
+    return response.data;
+  },
+
+  // Admin: Delete user
+  adminDeleteUser: async (userId: number): Promise<AdminDeleteResponse> => {
+    const response = await api.delete<AdminDeleteResponse>(`/api/auth/admin/users/${userId}`);
+    return response.data;
+  },
+
+  // Admin: Toggle user admin status
+  adminToggleUserAdmin: async (userId: number): Promise<AdminToggleResponse> => {
+    const response = await api.post<AdminToggleResponse>(`/api/auth/admin/users/${userId}/toggle-admin`);
+    return response.data;
+  },
+
+  // Admin: Set user subscription tier
+  adminSetUserTier: async (userId: number, data: AdminSetTierRequest): Promise<AdminAssignResponse> => {
+    const response = await api.post<AdminAssignResponse>(`/api/auth/admin/users/${userId}/set-tier`, data);
     return response.data;
   },
 };

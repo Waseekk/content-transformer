@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 // Auth pages
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { OAuthCallbackPage } from './pages/auth/OAuthCallbackPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Main pages
@@ -15,6 +16,7 @@ import { ArticlesPage } from './pages/ArticlesPage';
 import { TranslationPage } from './pages/TranslationPage';
 import { SchedulerPage } from './pages/SchedulerPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
+import { SupportPage } from './pages/SupportPage';
 
 // Layout
 import { Layout } from './components/common/Layout';
@@ -28,6 +30,7 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/auth/callback" element={<OAuthCallbackPage />} />
 
           {/* Protected routes with Layout */}
           <Route
@@ -80,6 +83,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <UserDashboardPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/support"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SupportPage />
                 </Layout>
               </ProtectedRoute>
             }

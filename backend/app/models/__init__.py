@@ -9,6 +9,7 @@ from app.models.translation import Translation
 from app.models.enhancement import Enhancement
 from app.models.token_usage import TokenUsage
 from app.models.user_config import UserConfig
+from app.models.support_ticket import SupportTicket, TicketReply
 
 __all__ = [
     "User",
@@ -18,4 +19,6 @@ __all__ = [
     "Enhancement",
     "TokenUsage",
     "UserConfig",
+    "SupportTicket",
+    "TicketReply",
 ]

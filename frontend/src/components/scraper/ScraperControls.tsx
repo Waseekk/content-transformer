@@ -45,8 +45,8 @@ export function ScraperControls() {
             setIsRunning(false);
             toast.error(`Scraper failed: ${status.error || 'Unknown error'}`);
           }
-        } catch (error) {
-          console.error('Error polling status:', error);
+        } catch {
+          // Polling error - will retry
         }
       }, 3000); // Poll every 3 seconds
 

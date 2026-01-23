@@ -96,15 +96,28 @@ example_6_formats.py
 read_docx.py
 groq_test.py
 bengali_news_output.json
+test_all_articles.py
+test_soft_news_format.py
+code-review-*.md
+
+# Markdown files (except CLAUDE.md which is needed for Claude Code)
+*.md
+!CLAUDE.md
 
 # Claude Code
 .claude/
 app_copy.py
 
-# Documentation and Setup Files 
-.md
-.bat
+# Documentation and Setup Files (excluding CLAUDE.md which is needed)
+*.bat
 
+# Test and development outputs
+test_output/
+backups/
+.playwright-mcp/
+
+# Development HTML preview files
+frontend/public/logo-*.html
 
 # Backend folder (only for local development, not for Streamlit Cloud)
 # Uncomment the line below when deploying to Streamlit Cloud

@@ -48,63 +48,102 @@ export const ScraperStatusBanner: React.FC<ScraperStatusBannerProps> = ({
       return;
     }
 
-    // Create EventSource with auth token in URL (SSE doesn't support headers)
+    // Use fetch with Authorization header instead of EventSource (which exposes token in URL)
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    const url = `${baseUrl}/api/scraper/status/${jobId}/stream?token=${token}`;
+    const url = `${baseUrl}/api/scraper/status/${jobId}/stream`;
 
-    const eventSource = new EventSource(url);
+    let abortController: AbortController | null = new AbortController();
 
-    eventSource.onopen = () => {
-      setIsConnected(true);
-      setIsVisible(true);
-      setError(null);
-    };
-
-    eventSource.onmessage = (event) => {
+    const fetchStream = async () => {
       try {
-        const data = JSON.parse(event.data) as ScraperStatus;
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'text/event-stream',
+          },
+          signal: abortController?.signal,
+        });
 
-        if (data.error) {
-          setError(data.error);
-          eventSource.close();
-          return;
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
 
-        setStatus(data);
+        setIsConnected(true);
+        setIsVisible(true);
+        setError(null);
 
-        // Check if job completed
-        if (data.status === 'completed') {
-          eventSource.close();
-          setIsConnected(false);
-          // Invalidate sessions cache so History tab shows new session
-          queryClient.invalidateQueries({ queryKey: ['scrapingSessions'] });
-          queryClient.invalidateQueries({ queryKey: ['articleStats'] });
-          if (onComplete) {
-            onComplete(data.articles_count || data.articles_saved || 0);
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE messages (format: "data: {...}\n\n")
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || ''; // Keep incomplete message in buffer
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6); // Remove "data: " prefix
+                const data = JSON.parse(jsonStr) as ScraperStatus;
+
+                if (data.error) {
+                  setError(data.error);
+                  reader.cancel();
+                  return;
+                }
+
+                setStatus(data);
+
+                // Check if job completed
+                if (data.status === 'completed') {
+                  setIsConnected(false);
+                  queryClient.invalidateQueries({ queryKey: ['scrapingSessions'] });
+                  queryClient.invalidateQueries({ queryKey: ['articleStats'] });
+                  if (onComplete) {
+                    onComplete(data.articles_count || data.articles_saved || 0);
+                  }
+                  return;
+                } else if (data.status === 'failed') {
+                  setIsConnected(false);
+                  setError(data.error || 'Scraping failed');
+                  return;
+                }
+              } catch {
+                // Failed to parse SSE data - ignore malformed messages
+              }
+            }
           }
-        } else if (data.status === 'failed') {
-          eventSource.close();
-          setIsConnected(false);
-          setError(data.error || 'Scraping failed');
         }
-      } catch (e) {
-        console.error('Failed to parse SSE data:', e);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return; // Intentional abort, don't retry
+        }
+        setIsConnected(false);
+        if (status?.status !== 'completed' && status?.status !== 'failed') {
+          setError('Connection lost. Retrying...');
+          setTimeout(() => connectSSE(), 2000);
+        }
       }
     };
 
-    eventSource.onerror = () => {
-      setIsConnected(false);
-      // Don't show error if we intentionally closed (job completed)
-      if (status?.status !== 'completed' && status?.status !== 'failed') {
-        setError('Connection lost. Retrying...');
-        // EventSource auto-reconnects, but let's close and retry manually after delay
-        eventSource.close();
-        setTimeout(() => connectSSE(), 2000);
-      }
-    };
+    fetchStream();
 
     return () => {
-      eventSource.close();
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
     };
   }, [jobId, onComplete, status?.status, queryClient]);
 

@@ -9,7 +9,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
 import { OperationStatusBar } from './OperationStatusBar';
 import { SwiftorLogo } from './SwiftorLogo';
-import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar } from 'react-icons/hi';
+import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle } from 'react-icons/hi';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -52,6 +52,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       path: '/my-dashboard',
       label: 'My Stats',
       icon: <HiChartBar className="w-5 h-5" />,
+    },
+    {
+      path: '/support',
+      label: 'Support',
+      icon: <HiQuestionMarkCircle className="w-5 h-5" />,
     },
   ];
 

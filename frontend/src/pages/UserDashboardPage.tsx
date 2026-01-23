@@ -3,12 +3,14 @@
  */
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { authApi } from '../api/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { AILoader } from '../components/ui';
+import type { AdminUserStats, AdminSetTierRequest } from '../types/auth';
 import {
   HiTranslate,
   HiNewspaper,
@@ -22,12 +24,69 @@ import {
   HiSparkles,
   HiTrendingUp,
   HiLightningBolt,
+  HiTrash,
+  HiBan,
+  HiCheckCircle,
+  HiShieldCheck,
+  HiShieldExclamation,
+  HiX,
 } from 'react-icons/hi';
 
 export const UserDashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showAdminStats, setShowAdminStats] = useState(false);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<AdminUserStats | null>(null);
+  const [tierChangeUser, setTierChangeUser] = useState<AdminUserStats | null>(null);
+
+  // Admin mutations
+  const toggleActiveMutation = useMutation({
+    mutationFn: authApi.adminToggleUserActive,
+    onSuccess: (data) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ['adminUsersStats'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to toggle user status');
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: authApi.adminDeleteUser,
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setDeleteConfirmUser(null);
+      queryClient.invalidateQueries({ queryKey: ['adminUsersStats'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete user');
+    },
+  });
+
+  const toggleAdminMutation = useMutation({
+    mutationFn: authApi.adminToggleUserAdmin,
+    onSuccess: (data) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ['adminUsersStats'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to toggle admin status');
+    },
+  });
+
+  const setTierMutation = useMutation({
+    mutationFn: ({ userId, data }: { userId: number; data: AdminSetTierRequest }) =>
+      authApi.adminSetUserTier(userId, data),
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setTierChangeUser(null);
+      queryClient.invalidateQueries({ queryKey: ['adminUsersStats'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to change tier');
+    },
+  });
 
   // Fetch user stats
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
@@ -668,6 +727,9 @@ export const UserDashboardPage = () => {
                               <th className="text-center py-4 px-3 font-semibold text-gray-700">
                                 Status
                               </th>
+                              <th className="text-center py-4 px-3 font-semibold text-gray-700">
+                                Actions
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
@@ -766,6 +828,80 @@ export const UserDashboardPage = () => {
                                     {userStat.is_active ? 'Active' : 'Inactive'}
                                   </span>
                                 </td>
+                                <td className="py-4 px-3">
+                                  <div className="flex items-center justify-center gap-1">
+                                    {/* Toggle Active/Inactive */}
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => toggleActiveMutation.mutate(userStat.user_id)}
+                                      disabled={userStat.user_id === user?.id || toggleActiveMutation.isPending}
+                                      className={`p-2 rounded-lg transition-colors ${
+                                        userStat.user_id === user?.id
+                                          ? 'opacity-30 cursor-not-allowed'
+                                          : userStat.is_active
+                                          ? 'text-orange-600 hover:bg-orange-50'
+                                          : 'text-emerald-600 hover:bg-emerald-50'
+                                      }`}
+                                      title={userStat.is_active ? 'Deactivate user' : 'Activate user'}
+                                    >
+                                      {userStat.is_active ? (
+                                        <HiBan className="w-5 h-5" />
+                                      ) : (
+                                        <HiCheckCircle className="w-5 h-5" />
+                                      )}
+                                    </motion.button>
+
+                                    {/* Toggle Admin */}
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => toggleAdminMutation.mutate(userStat.user_id)}
+                                      disabled={userStat.user_id === user?.id || toggleAdminMutation.isPending}
+                                      className={`p-2 rounded-lg transition-colors ${
+                                        userStat.user_id === user?.id
+                                          ? 'opacity-30 cursor-not-allowed'
+                                          : userStat.is_admin
+                                          ? 'text-amber-600 hover:bg-amber-50'
+                                          : 'text-gray-500 hover:bg-gray-100'
+                                      }`}
+                                      title={userStat.is_admin ? 'Revoke admin' : 'Grant admin'}
+                                    >
+                                      {userStat.is_admin ? (
+                                        <HiShieldExclamation className="w-5 h-5" />
+                                      ) : (
+                                        <HiShieldCheck className="w-5 h-5" />
+                                      )}
+                                    </motion.button>
+
+                                    {/* Change Tier */}
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => setTierChangeUser(userStat)}
+                                      className="p-2 rounded-lg text-purple-600 hover:bg-purple-50 transition-colors"
+                                      title="Change subscription tier"
+                                    >
+                                      <HiSparkles className="w-5 h-5" />
+                                    </motion.button>
+
+                                    {/* Delete User */}
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => setDeleteConfirmUser(userStat)}
+                                      disabled={userStat.user_id === user?.id}
+                                      className={`p-2 rounded-lg transition-colors ${
+                                        userStat.user_id === user?.id
+                                          ? 'opacity-30 cursor-not-allowed'
+                                          : 'text-red-600 hover:bg-red-50'
+                                      }`}
+                                      title="Delete user"
+                                    >
+                                      <HiTrash className="w-5 h-5" />
+                                    </motion.button>
+                                  </div>
+                                </td>
                               </motion.tr>
                             ))}
                           </tbody>
@@ -784,6 +920,134 @@ export const UserDashboardPage = () => {
           </motion.div>
         )}
       </motion.div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setDeleteConfirmUser(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <HiTrash className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Delete User</h3>
+                  <p className="text-sm text-gray-500">This action cannot be undone</p>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-6">
+                Are you sure you want to delete <span className="font-semibold">{deleteConfirmUser.email}</span>?
+                All their data including articles, translations, and enhancements will be permanently deleted.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setDeleteConfirmUser(null)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => deleteUserMutation.mutate(deleteConfirmUser.user_id)}
+                  disabled={deleteUserMutation.isPending}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                >
+                  {deleteUserMutation.isPending ? 'Deleting...' : 'Delete User'}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tier Change Modal */}
+      <AnimatePresence>
+        {tierChangeUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setTierChangeUser(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <HiSparkles className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Change Subscription Tier</h3>
+                    <p className="text-sm text-gray-500">{tierChangeUser.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setTierChangeUser(null)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <HiX className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <p className="text-gray-700 mb-4">
+                Current tier: <span className="font-semibold capitalize">{tierChangeUser.subscription_tier}</span>
+              </p>
+              <div className="space-y-3">
+                {(['free', 'premium', 'enterprise'] as const).map((tier) => (
+                  <motion.button
+                    key={tier}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setTierMutation.mutate({ userId: tierChangeUser.user_id, data: { tier } })}
+                    disabled={tier === tierChangeUser.subscription_tier || setTierMutation.isPending}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      tier === tierChangeUser.subscription_tier
+                        ? 'border-purple-500 bg-purple-50 cursor-not-allowed'
+                        : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold capitalize text-gray-900">{tier}</p>
+                        <p className="text-sm text-gray-500">
+                          {tier === 'free' && 'Basic access with limited tokens'}
+                          {tier === 'premium' && 'Extended limits and features'}
+                          {tier === 'enterprise' && 'Unlimited access'}
+                        </p>
+                      </div>
+                      {tier === tierChangeUser.subscription_tier && (
+                        <span className="px-2 py-1 bg-purple-200 text-purple-700 rounded-lg text-xs font-medium">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

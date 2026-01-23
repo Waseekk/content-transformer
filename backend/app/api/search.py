@@ -5,8 +5,11 @@ Search Google News with Playwright and return paginated results
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
+import logging
 
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 from app.middleware.auth import get_current_active_user
 from app.schemas.search import (
     GoogleNewsSearchRequest,
@@ -78,17 +81,16 @@ async def search_google_news(
 
     except RuntimeError as e:
         # Playwright not installed
+        logger.error(f"Playwright runtime error: {str(e)}")
         raise HTTPException(
             status_code=503,
-            detail=str(e)
+            detail="Search service is temporarily unavailable. Please try again later."
         )
     except Exception as e:
-        import traceback
-        print(f"Search error: {str(e)}")
-        traceback.print_exc()
+        logger.exception(f"Search error for keyword '{request.keyword}': {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Search failed: {str(e)}"
+            detail="Search failed. Please try again."
         )
 
 
@@ -139,14 +141,16 @@ async def get_paginated_results(
         )
 
     except RuntimeError as e:
+        logger.error(f"Playwright runtime error in pagination: {str(e)}")
         raise HTTPException(
             status_code=503,
-            detail=str(e)
+            detail="Search service is temporarily unavailable. Please try again later."
         )
     except Exception as e:
+        logger.exception(f"Pagination error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get results: {str(e)}"
+            detail="Failed to retrieve results. Please try again."
         )
 
 
@@ -166,7 +170,8 @@ async def clear_search_cache(
         searcher.clear_cache()
         return {"success": True, "message": "Search cache cleared"}
     except Exception as e:
+        logger.exception(f"Cache clear error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to clear cache: {str(e)}"
+            detail="Failed to clear cache. Please try again."
         )

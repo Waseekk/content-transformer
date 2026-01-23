@@ -124,3 +124,20 @@ export interface AdminAssignResponse {
   user_id: number;
   new_value: number;
 }
+
+export interface AdminToggleResponse {
+  success: boolean;
+  message: string;
+  user_id: number;
+  new_status: boolean;
+}
+
+export interface AdminDeleteResponse {
+  success: boolean;
+  message: string;
+  user_id: number;
+}
+
+export interface AdminSetTierRequest {
+  tier: 'free' | 'premium' | 'enterprise';
+}

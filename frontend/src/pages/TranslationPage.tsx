@@ -181,7 +181,6 @@ export const TranslationPage = () => {
       }
     } catch (error: any) {
       failOperation(operationId, error.message || 'Translation failed');
-      console.error('Translation error:', error);
     }
   };
 
@@ -211,7 +210,6 @@ export const TranslationPage = () => {
       toast.success('News articles generated!');
     } catch (error: any) {
       failOperation(operationId, error.message || 'Enhancement failed');
-      console.error('Enhancement failed:', error);
     }
   };
 

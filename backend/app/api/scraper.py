@@ -376,20 +376,26 @@ async def stream_scraper_status(
     Server-Sent Events (SSE) endpoint for real-time scraper status updates.
 
     Streams status updates until the job completes or fails.
-    Client should connect using EventSource API.
-
-    Note: Token must be passed as query parameter since EventSource doesn't support headers.
+    Client can use fetch with Authorization header (preferred) or EventSource with token query param.
     """
     from app.middleware.auth import decode_token
 
-    # Validate token from query param (SSE doesn't support Authorization header)
-    if not token:
+    # Try Authorization header first (preferred - doesn't expose token in URL)
+    auth_token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        auth_token = auth_header[7:]  # Remove "Bearer " prefix
+    elif token:
+        # Fallback to query param for EventSource compatibility
+        auth_token = token
+
+    if not auth_token:
         async def error_gen():
             yield f"data: {json.dumps({'error': 'Authentication required'})}\n\n"
         return StreamingResponse(error_gen(), media_type="text/event-stream")
 
     try:
-        payload = decode_token(token)
+        payload = decode_token(auth_token)
         user_email = payload.get("sub")
     except Exception:
         async def error_gen():

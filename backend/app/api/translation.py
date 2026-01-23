@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel, HttpUrl, Field
 from datetime import datetime
+import logging
 
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.models.user import User
 from app.models.translation import Translation
 from app.middleware.auth import get_current_active_user
@@ -136,14 +139,16 @@ async def extract_and_translate_from_url(
             method=request.extraction_method
         )
     except ExtractionError as e:
+        logger.warning(f"Content extraction failed for URL {request.url}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Content extraction failed: {str(e)}"
+            detail="Could not extract content from URL. Please check the URL is accessible and contains article content."
         )
     except Exception as e:
+        logger.exception(f"Extraction error for URL {request.url}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Extraction error: {str(e)}"
+            detail="An error occurred while extracting content. Please try again."
         )
 
     # Check if content is substantial enough
@@ -179,9 +184,10 @@ async def extract_and_translate_from_url(
             translated_text, tokens_used = translation_result
 
     except Exception as e:
+        logger.exception(f"Translation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Translation error: {str(e)}"
+            detail="Translation failed. Please try again."
         )
 
     # Deduct tokens from user
@@ -357,9 +363,10 @@ async def translate_raw_text(
         tokens_used = translation_result.get('tokens_used', 0)
 
     except Exception as e:
+        logger.exception(f"Translation error in translate-text: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Translation error: {str(e)}"
+            detail="Translation failed. Please try again."
         )
 
     # Deduct tokens

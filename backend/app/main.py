@@ -3,15 +3,23 @@ FastAPI Application Entry Point
 Swiftor - Hard News & Soft News Backend API
 """
 
+import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search
+from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search, support
 from app.config import get_settings
 from app.database import get_db
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -41,8 +49,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 # Add session middleware for OAuth
@@ -58,6 +66,7 @@ app.include_router(scheduler.router, prefix="/api/scraper/scheduler", tags=["sch
 app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
 app.include_router(extraction.router, prefix="/api/extract", tags=["extraction"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
+app.include_router(support.router, prefix="/api/support", tags=["support"])
 
 
 @app.get("/")
@@ -104,40 +113,35 @@ async def health_check(db: Session = Depends(get_db)):
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
-    print(">>> Swiftor API starting up...")
+    logger.info("Swiftor API starting up...")
 
     # Create database tables
     from app.database import engine, Base
-    from app.models import user, article, job, translation, enhancement, token_usage, user_config
+    from app.models import user, article, job, translation, enhancement, token_usage, user_config, support_ticket
     from sqlalchemy import text, inspect
 
-    print(">>> Creating database tables...")
+    logger.info("Creating database tables...")
     Base.metadata.create_all(bind=engine)
-    print(">>> Database tables created successfully!")
+    logger.info("Database tables created successfully")
 
     # Run migrations for existing tables
-    print(">>> Checking for migrations...")
+    logger.info("Checking for migrations...")
     with engine.connect() as conn:
         inspector = inspect(engine)
         if 'articles' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('articles')]
             if 'job_id' not in columns:
-                print(">>> Adding job_id column to articles table...")
+                logger.info("Adding job_id column to articles table...")
                 conn.execute(text("ALTER TABLE articles ADD COLUMN job_id INTEGER REFERENCES jobs(id)"))
                 conn.commit()
-                print(">>> job_id column added successfully!")
+                logger.info("job_id column added successfully")
             else:
-                print(">>> job_id column already exists")
-    print(">>> Migrations complete!")
-
-    # TODO: Initialize Redis connection
-    # TODO: Start Celery workers
+                logger.debug("job_id column already exists")
+    logger.info("Migrations complete")
 
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    print(">>> Swiftor API shutting down...")
-    # TODO: Close database connections
-    # TODO: Close Redis connections
+    logger.info("Swiftor API shutting down...")

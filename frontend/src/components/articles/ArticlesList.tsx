@@ -25,8 +25,8 @@ export function ArticlesList() {
     try {
       const sourcesData = await getSources();
       setSources(sourcesData.map(s => s.source));
-    } catch (error) {
-      console.error('Failed to load sources:', error);
+    } catch {
+      // Failed to load sources - continue with empty list
     }
   };
 

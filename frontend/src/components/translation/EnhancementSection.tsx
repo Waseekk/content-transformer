@@ -66,8 +66,8 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
           timestamp: new Date().toISOString(),
         });
       });
-    } catch (error) {
-      console.error('Enhancement failed:', error);
+    } catch {
+      // Enhancement failed - error handled by mutation
     }
   };
 

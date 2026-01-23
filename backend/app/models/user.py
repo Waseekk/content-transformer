@@ -64,6 +64,7 @@ class User(Base):
     enhancements = relationship("Enhancement", back_populates="user", cascade="all, delete-orphan")
     token_usage = relationship("TokenUsage", back_populates="user", cascade="all, delete-orphan")
     config = relationship("UserConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    support_tickets = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, tier={self.subscription_tier})>"

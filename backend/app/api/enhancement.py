@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+import logging
 
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.models.user import User
 from app.models.enhancement import Enhancement
 from app.models.translation import Translation
@@ -223,9 +226,10 @@ async def enhance_content(
         enhancement_results: List[EnhancementResult] = list(results_dict.values())
 
     except Exception as e:
+        logger.exception(f"Enhancement error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Enhancement error: {str(e)}"
+            detail="Content enhancement failed. Please try again."
         )
 
     # Calculate total tokens used

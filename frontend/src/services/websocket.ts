@@ -25,12 +25,11 @@ class WebSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ WebSocket connected');
       this.reconnectAttempts = 0;
     });
 
     this.socket.on('disconnect', () => {
-      console.log('❌ WebSocket disconnected');
+      // Connection lost - will auto-reconnect
     });
 
     // Scraper updates
@@ -47,13 +46,8 @@ class WebSocketService {
       useAppStore.getState().setSchedulerStatus(data);
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+    this.socket.on('connect_error', () => {
       this.reconnectAttempts++;
-
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('Max reconnection attempts reached');
-      }
     });
   }
 

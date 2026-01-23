@@ -248,8 +248,7 @@ export const FormatCard: React.FC<FormatCardProps> = ({
       const filename = `বাংলার কলম্বাস-${formatTypeBengali}-${getBengaliDate()}.docx`;
       saveAs(blob, filename);
       toast.success('Downloaded with Main Content!');
-    } catch (err) {
-      console.error('Word export error:', err);
+    } catch {
       toast.error('Failed to create Word document');
     }
   };

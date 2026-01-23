@@ -24,8 +24,8 @@ export const PasteArea: React.FC<PasteAreaProps> = ({
     try {
       const text = await navigator.clipboard.readText();
       onChange(text);
-    } catch (err) {
-      console.error('Failed to read clipboard:', err);
+    } catch {
+      // Failed to read clipboard - browser may have blocked access
     }
   };
 

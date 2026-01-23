@@ -191,6 +191,26 @@ class AdminSetEnhancementsRequest(BaseModel):
     reset_used: bool = False
 
 
+class AdminSetTierRequest(BaseModel):
+    """Admin request to set user subscription tier"""
+    tier: str = Field(..., pattern="^(free|premium|enterprise)$")
+
+
+class AdminToggleResponse(BaseModel):
+    """Response for admin toggle operations"""
+    success: bool
+    message: str
+    user_id: int
+    new_status: bool
+
+
+class AdminDeleteResponse(BaseModel):
+    """Response for admin delete operations"""
+    success: bool
+    message: str
+    user_id: int
+
+
 class AdminAssignResponse(BaseModel):
     """Response for admin assignment operations"""
     success: bool
@@ -813,3 +833,187 @@ async def admin_trigger_auto_assign(
             "user_id": target_user.id,
             "new_value": target_user.tokens_remaining
         }
+
+
+@router.post("/admin/users/{user_id}/toggle-active", response_model=AdminToggleResponse)
+async def admin_toggle_user_active(
+    user_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Toggle user's active status (activate/deactivate)
+
+    - **user_id**: Target user ID
+
+    Returns the new active status
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Prevent admin from deactivating themselves
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own account"
+        )
+
+    # Toggle active status
+    target_user.is_active = not target_user.is_active
+    db.commit()
+
+    action = "activated" if target_user.is_active else "deactivated"
+    return {
+        "success": True,
+        "message": f"User {action} successfully",
+        "user_id": target_user.id,
+        "new_status": target_user.is_active
+    }
+
+
+@router.delete("/admin/users/{user_id}", response_model=AdminDeleteResponse)
+async def admin_delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Delete a user and all their associated data
+
+    - **user_id**: Target user ID
+
+    This will cascade delete all user's:
+    - Articles
+    - Jobs
+    - Translations
+    - Enhancements
+    - Token usage records
+    - User config
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Prevent admin from deleting themselves
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+
+    user_email = target_user.email
+
+    # Delete user (cascade will handle related records due to model relationships)
+    db.delete(target_user)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"User {user_email} and all associated data deleted successfully",
+        "user_id": user_id
+    }
+
+
+@router.post("/admin/users/{user_id}/toggle-admin", response_model=AdminToggleResponse)
+async def admin_toggle_admin_status(
+    user_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Toggle user's admin privileges
+
+    - **user_id**: Target user ID
+
+    Returns the new admin status
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Prevent admin from removing their own admin status
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own admin status"
+        )
+
+    # Toggle admin status
+    target_user.is_admin = not target_user.is_admin
+    db.commit()
+
+    action = "granted" if target_user.is_admin else "revoked"
+    return {
+        "success": True,
+        "message": f"Admin privileges {action} successfully",
+        "user_id": target_user.id,
+        "new_status": target_user.is_admin
+    }
+
+
+@router.post("/admin/users/{user_id}/set-tier", response_model=AdminAssignResponse)
+async def admin_set_user_tier(
+    user_id: int,
+    request: AdminSetTierRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Set user's subscription tier
+
+    - **user_id**: Target user ID
+    - **tier**: New subscription tier (free, premium, enterprise)
+
+    This will also update the user's token limits based on the tier
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    old_tier = target_user.subscription_tier
+    target_user.upgrade_tier(request.tier)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Subscription tier changed from {old_tier} to {request.tier}",
+        "user_id": target_user.id,
+        "new_value": target_user.monthly_token_limit
+    }
