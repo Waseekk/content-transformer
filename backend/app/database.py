@@ -75,11 +75,12 @@ def check_db_connection():
     Check if database connection is working
     Returns True if connected, False otherwise
     """
+    from sqlalchemy import text
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         return True
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        print(f"Database connection failed: {e}")
         return False
