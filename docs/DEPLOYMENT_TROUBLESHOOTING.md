@@ -203,6 +203,62 @@ python -m migrations.add_allowed_sites
 
 ---
 
+## Issue 6: Port 80/443 Already in Use
+
+### Error
+```
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint swiftor-frontend: Bind for 0.0.0.0:80 failed: port is already allocated
+```
+
+### Cause
+Another service (in our case, n8n) was already using ports 80 and 443 on the VPS.
+
+### Diagnosis
+```bash
+# Find what's using port 80
+sudo lsof -i :80
+
+# List all Docker containers and their ports
+docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"
+```
+
+Output showed:
+```
+NAMES              IMAGE                     PORTS                                    STATUS
+n8n-n8n-1          docker.n8n.io/n8nio/n8n   127.0.0.1:5678->5678/tcp                Up 4 weeks
+```
+
+### Solution
+Instead of stopping n8n, we changed Swiftor to use different ports.
+
+**Modified `docker-compose.yml`:**
+```yaml
+# Before
+frontend:
+  ports:
+    - "80:80"
+    - "443:443"
+
+# After
+frontend:
+  ports:
+    - "8080:80"
+```
+
+We removed port 443 because SSL will be handled by the host's nginx reverse proxy later.
+
+### Access
+After this change, Swiftor is accessible at:
+- `http://46.202.160.112:8080`
+
+### Future SSL Setup
+To enable HTTPS with domain swiftor.online, we'll set up nginx on the host as a reverse proxy:
+1. Install nginx on host: `apt install nginx`
+2. Configure reverse proxy to forward swiftor.online → localhost:8080
+3. Use certbot for SSL certificate
+
+---
+
 ## Deployment Commands
 
 ### Initial Setup on VPS
