@@ -19,7 +19,6 @@ import {
   HiX,
   HiChat,
   HiChevronDown,
-  HiChevronUp,
   HiRefresh,
   HiFilter,
   HiReply,

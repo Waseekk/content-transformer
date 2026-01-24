@@ -5,9 +5,9 @@
 
 import axios from 'axios';
 
-// In production, use /api (Nginx proxies to backend)
-// In development, use localhost:8000
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// In production, use empty string (paths already include /api)
+// In development, use /api as fallback
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 // Create axios instance
 const axiosInstance = axios.create({

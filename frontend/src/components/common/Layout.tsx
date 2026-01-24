@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
 import { OperationStatusBar } from './OperationStatusBar';
-import { SwiftorLogo } from './SwiftorLogo';
 import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle } from 'react-icons/hi';
 
 interface LayoutProps {
@@ -107,7 +106,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {/* Blinking Cursor - 80% of logo height */}
                 <motion.span
                   animate={{ opacity: [1, 0, 1] }}
-                  transition={{ duration: 0.8, repeat: Infinity, ease: 'steps(2)' }}
+                  transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                   className="w-1 h-16 bg-indigo-600 ml-1 rounded-sm"
                 />
               </motion.div>

@@ -5,7 +5,7 @@
 import { io, Socket } from 'socket.io-client';
 import { useAppStore } from '../store/useAppStore';
 
-const WS_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000';
+const WS_URL = import.meta.env.VITE_API_URL?.replace('/api', '') ?? '';
 
 class WebSocketService {
   private socket: Socket | null = null;

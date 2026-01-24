@@ -1,7 +1,8 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use nullish coalescing so empty string doesn't fallback to localhost
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 // Create axios instance
 const api = axios.create({

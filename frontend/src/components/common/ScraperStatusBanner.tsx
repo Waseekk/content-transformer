@@ -49,7 +49,7 @@ export const ScraperStatusBanner: React.FC<ScraperStatusBannerProps> = ({
     }
 
     // Use fetch with Authorization header instead of EventSource (which exposes token in URL)
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
     const url = `${baseUrl}/api/scraper/status/${jobId}/stream`;
 
     let abortController: AbortController | null = new AbortController();

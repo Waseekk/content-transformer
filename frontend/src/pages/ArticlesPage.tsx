@@ -18,7 +18,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   HiFilter,
   HiClock,
-  HiRefresh,
   HiSearch,
   HiChevronLeft,
   HiChevronRight,
@@ -85,7 +84,7 @@ export const ArticlesPage = () => {
     const checkForNewArticles = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/articles?latest_only=true&limit=1`,
+          `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/articles?latest_only=true&limit=1`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem('access_token')}`,
