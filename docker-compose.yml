@@ -1,5 +1,5 @@
 # ============================================================
-# Swiftor Docker Compose - Production Configuration
+# Swiftor Docker Compose - Backend Only
 # ============================================================
 name: swiftor
 
@@ -7,7 +7,6 @@ name: swiftor
 # - postgres: PostgreSQL 16 database
 # - redis: Redis 7 cache (optional, for future Celery)
 # - backend: FastAPI API server with Playwright
-# - frontend: Caddy reverse proxy + static files
 # ============================================================
 
 services:
@@ -59,6 +58,8 @@ services:
       dockerfile: Dockerfile.backend
     container_name: swiftor-backend
     restart: unless-stopped
+    ports:
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-swiftor}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-swiftor}
       SECRET_KEY: ${SECRET_KEY:?Secret key required}
@@ -87,27 +88,6 @@ services:
     networks:
       - swiftor-network
 
-  # ----------------------------------------------------------
-  # Frontend - Caddy Reverse Proxy + Static Files
-  # ----------------------------------------------------------
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: swiftor-frontend
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - swiftor-network
-
 # ============================================================
 # Volumes
 # ============================================================
@@ -117,8 +97,6 @@ volumes:
   backend_data:
   backend_logs:
   backend_translations:
-  caddy_data:
-  caddy_config:
 
 # ============================================================
 # Networks
