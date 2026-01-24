@@ -13,6 +13,7 @@ export interface UserSitesResponse {
   available_sites: ScraperSite[];
   default_sites: string[];
   use_custom_default: boolean;
+  allowed_sites: string[];  // Admin-restricted sites (empty = all)
 }
 
 export interface SitesUpdateResponse {
@@ -107,5 +108,42 @@ export const getScraperJobs = async (
   const response = await axios.get('/api/scraper/jobs', {
     params: { skip: (page - 1) * size, limit: size },
   });
+  return response.data;
+};
+
+// ============================================================================
+// Admin API Functions
+// ============================================================================
+
+export interface AdminUserSitesResponse {
+  user_id: number;
+  username: string;
+  email: string;
+  allowed_sites: string[];
+  enabled_sites: string[];
+  all_available_sites: string[];
+  message: string;
+}
+
+// [ADMIN] Get a user's allowed sites configuration
+export const adminGetUserAllowedSites = async (userId: number): Promise<AdminUserSitesResponse> => {
+  const response = await axios.get(`/api/scraper/admin/users/${userId}/allowed-sites`);
+  return response.data;
+};
+
+// [ADMIN] Set which sites a user is allowed to access
+export const adminSetUserAllowedSites = async (
+  userId: number,
+  allowedSites: string[]
+): Promise<AdminUserSitesResponse> => {
+  const response = await axios.put(`/api/scraper/admin/users/${userId}/allowed-sites`, {
+    allowed_sites: allowedSites,
+  });
+  return response.data;
+};
+
+// [ADMIN] Get all available sites in the system
+export const adminGetAllSites = async (): Promise<ScraperSite[]> => {
+  const response = await axios.get('/api/scraper/admin/sites/all');
   return response.data;
 };

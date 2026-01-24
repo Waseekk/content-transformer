@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi } from '../api/auth';
+import { adminGetUserAllowedSites, adminSetUserAllowedSites } from '../api/scraper';
+import type { AdminUserSitesResponse } from '../api/scraper';
 import { useAuth } from '../contexts/AuthContext';
 import { AILoader } from '../components/ui';
 import type { AdminUserStats, AdminSetTierRequest } from '../types/auth';
@@ -30,6 +32,7 @@ import {
   HiShieldCheck,
   HiShieldExclamation,
   HiX,
+  HiGlobe,
 } from 'react-icons/hi';
 
 export const UserDashboardPage = () => {
@@ -39,6 +42,9 @@ export const UserDashboardPage = () => {
   const [showAdminStats, setShowAdminStats] = useState(false);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<AdminUserStats | null>(null);
   const [tierChangeUser, setTierChangeUser] = useState<AdminUserStats | null>(null);
+  const [siteManageUser, setSiteManageUser] = useState<AdminUserStats | null>(null);
+  const [userSitesData, setUserSitesData] = useState<AdminUserSitesResponse | null>(null);
+  const [selectedAllowedSites, setSelectedAllowedSites] = useState<string[]>([]);
 
   // Admin mutations
   const toggleActiveMutation = useMutation({
@@ -87,6 +93,59 @@ export const UserDashboardPage = () => {
       toast.error(error.message || 'Failed to change tier');
     },
   });
+
+  // Fetch user's allowed sites when modal opens
+  const fetchUserSitesMutation = useMutation({
+    mutationFn: adminGetUserAllowedSites,
+    onSuccess: (data) => {
+      setUserSitesData(data);
+      setSelectedAllowedSites(data.allowed_sites);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to fetch user sites');
+      setSiteManageUser(null);
+    },
+  });
+
+  // Update user's allowed sites
+  const updateAllowedSitesMutation = useMutation({
+    mutationFn: ({ userId, sites }: { userId: number; sites: string[] }) =>
+      adminSetUserAllowedSites(userId, sites),
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setSiteManageUser(null);
+      setUserSitesData(null);
+      setSelectedAllowedSites([]);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update allowed sites');
+    },
+  });
+
+  // Handle opening site management modal
+  const handleOpenSiteManagement = (userStat: AdminUserStats) => {
+    setSiteManageUser(userStat);
+    fetchUserSitesMutation.mutate(userStat.user_id);
+  };
+
+  // Toggle site in selected list
+  const toggleSiteSelection = (siteName: string) => {
+    setSelectedAllowedSites(prev =>
+      prev.includes(siteName)
+        ? prev.filter(s => s !== siteName)
+        : [...prev, siteName]
+    );
+  };
+
+  // Select/Deselect all sites
+  const toggleAllSites = () => {
+    if (!userSitesData) return;
+    if (selectedAllowedSites.length === userSitesData.all_available_sites.length) {
+      setSelectedAllowedSites([]);
+    } else {
+      setSelectedAllowedSites([...userSitesData.all_available_sites]);
+    }
+  };
 
   // Fetch user stats
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
@@ -885,6 +944,17 @@ export const UserDashboardPage = () => {
                                       <HiSparkles className="w-5 h-5" />
                                     </motion.button>
 
+                                    {/* Manage Sites */}
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => handleOpenSiteManagement(userStat)}
+                                      className="p-2 rounded-lg text-teal-600 hover:bg-teal-50 transition-colors"
+                                      title="Manage allowed sites"
+                                    >
+                                      <HiGlobe className="w-5 h-5" />
+                                    </motion.button>
+
                                     {/* Delete User */}
                                     <motion.button
                                       whileHover={{ scale: 1.1 }}
@@ -1044,6 +1114,135 @@ export const UserDashboardPage = () => {
                   </motion.button>
                 ))}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Site Management Modal */}
+      <AnimatePresence>
+        {siteManageUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setSiteManageUser(null);
+              setUserSitesData(null);
+              setSelectedAllowedSites([]);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                    <HiGlobe className="w-6 h-6 text-teal-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Manage Allowed Sites</h3>
+                    <p className="text-sm text-gray-500">{siteManageUser.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSiteManageUser(null);
+                    setUserSitesData(null);
+                    setSelectedAllowedSites([]);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <HiX className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {fetchUserSitesMutation.isPending ? (
+                <div className="flex justify-center py-12">
+                  <AILoader variant="dots" size="md" text="Loading sites..." />
+                </div>
+              ) : userSitesData ? (
+                <>
+                  <div className="mb-4 p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                    <p className="text-sm text-teal-700">
+                      <strong>Note:</strong> Select specific sites to restrict user access, or leave empty to allow access to all sites.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-gray-600">
+                      {selectedAllowedSites.length === 0 ? (
+                        <span className="text-teal-600 font-medium">All sites allowed (no restrictions)</span>
+                      ) : (
+                        <span>{selectedAllowedSites.length} of {userSitesData.all_available_sites.length} sites selected</span>
+                      )}
+                    </p>
+                    <button
+                      onClick={toggleAllSites}
+                      className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                    >
+                      {selectedAllowedSites.length === userSitesData.all_available_sites.length
+                        ? 'Deselect All'
+                        : 'Select All'}
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2 max-h-[300px]">
+                    {userSitesData.all_available_sites.map((siteName) => (
+                      <label
+                        key={siteName}
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedAllowedSites.includes(siteName)
+                            ? 'bg-teal-50 border border-teal-200'
+                            : 'bg-gray-50 border border-transparent hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAllowedSites.includes(siteName)}
+                          onChange={() => toggleSiteSelection(siteName)}
+                          className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                        />
+                        <span className="text-gray-700 font-medium">{siteName}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 justify-end mt-6">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setSiteManageUser(null);
+                        setUserSitesData(null);
+                        setSelectedAllowedSites([]);
+                      }}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors"
+                    >
+                      Cancel
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() =>
+                        updateAllowedSitesMutation.mutate({
+                          userId: siteManageUser.user_id,
+                          sites: selectedAllowedSites,
+                        })
+                      }
+                      disabled={updateAllowedSitesMutation.isPending}
+                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                    >
+                      {updateAllowedSitesMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </motion.button>
+                  </div>
+                </>
+              ) : null}
             </motion.div>
           </motion.div>
         )}

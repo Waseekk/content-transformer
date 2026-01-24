@@ -21,7 +21,9 @@ from app.schemas.scraper import (
     SiteConfig,
     ArticleResponse,
     UpdateSitesRequest,
-    SitesUpdateResponse
+    SitesUpdateResponse,
+    AdminAssignSitesRequest,
+    AdminUserSitesResponse
 )
 from app.models.user_config import UserConfig
 from app.services.scraper_service import ScraperService
@@ -182,13 +184,14 @@ async def get_user_sites(
 
     Returns:
     - **enabled_sites**: Sites currently enabled for the user
-    - **available_sites**: All available sites in the system
+    - **available_sites**: Sites available to user (filtered by admin restrictions)
     - **default_sites**: User's custom default sites
     - **use_custom_default**: Whether user has custom default set
+    - **allowed_sites**: Admin-restricted sites (empty = all allowed)
     """
     # Get all available sites from configuration (excludes disabled sites)
     all_sites_config = ScraperService.get_all_available_sites()
-    available_site_names = [s.get('name') for s in all_sites_config]
+    all_site_names = [s.get('name') for s in all_sites_config]
 
     # Get or create user's config
     user_config = db.query(UserConfig).filter(UserConfig.user_id == current_user.id).first()
@@ -196,12 +199,24 @@ async def get_user_sites(
     if not user_config:
         # Create default config with all available sites enabled
         user_config = UserConfig.create_default_config(current_user.id)
-        user_config.enabled_sites = available_site_names  # Enable all available sites
+        user_config.enabled_sites = all_site_names  # Enable all available sites
         db.add(user_config)
         db.commit()
         db.refresh(user_config)
 
-    # Auto-sync: If user has no custom default, ensure all available sites are enabled
+    # Filter available sites by allowed_sites (admin restriction)
+    # IMPORTANT: Admins always see ALL sites - they bypass restrictions
+    allowed_sites = user_config.allowed_sites or []
+    if allowed_sites and not current_user.is_admin:
+        # User has restrictions AND is not admin - only show allowed sites
+        available_site_names = [s for s in all_site_names if s in allowed_sites]
+        filtered_sites_config = [s for s in all_sites_config if s.get('name') in allowed_sites]
+    else:
+        # No restrictions OR user is admin - show all sites
+        available_site_names = all_site_names
+        filtered_sites_config = all_sites_config
+
+    # Auto-sync: If user has no custom default, ensure all available (allowed) sites are enabled
     # This handles the case when new sites are added to the system
     if not user_config.use_custom_default:
         current_enabled = user_config.enabled_sites or []
@@ -213,7 +228,9 @@ async def get_user_sites(
             db.commit()
             db.refresh(user_config)
 
-    enabled_sites = user_config.enabled_sites or []
+    # Filter enabled_sites to only include allowed sites
+    raw_enabled = user_config.enabled_sites or []
+    enabled_sites = [s for s in raw_enabled if s in available_site_names]
     default_sites = user_config.default_sites or []
     use_custom_default = user_config.use_custom_default
 
@@ -224,14 +241,15 @@ async def get_user_sites(
             enabled=site.get('name') in enabled_sites,
             description=site.get('description', f"Source: {site.get('name')}")
         )
-        for site in all_sites_config
+        for site in filtered_sites_config
     ]
 
     return UserSitesResponse(
         enabled_sites=enabled_sites,
         available_sites=available_sites,
         default_sites=default_sites,
-        use_custom_default=use_custom_default
+        use_custom_default=use_custom_default,
+        allowed_sites=allowed_sites
     )
 
 
@@ -257,7 +275,15 @@ async def update_user_sites(
     available_sites = ScraperService.get_all_available_sites()
     available_names = [s.get('name') for s in available_sites]
 
-    valid_sites = [s for s in request.enabled_sites if s in available_names]
+    # Filter by allowed_sites (admin restriction)
+    allowed_sites = user_config.allowed_sites or []
+    if allowed_sites:
+        # Only allow sites that are both available AND allowed
+        permitted_names = [s for s in available_names if s in allowed_sites]
+    else:
+        permitted_names = available_names
+
+    valid_sites = [s for s in request.enabled_sites if s in permitted_names]
 
     # Update enabled sites
     user_config.set_enabled_sites(valid_sites)
@@ -495,3 +521,167 @@ async def stream_scraper_status(
             "X-Accel-Buffering": "no",  # Disable nginx buffering
         }
     )
+
+
+# ============================================================================
+# Admin Endpoints for Site Assignment
+# ============================================================================
+
+@router.get("/admin/users/{user_id}/allowed-sites", response_model=AdminUserSitesResponse)
+async def admin_get_user_allowed_sites(
+    user_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    [ADMIN ONLY] Get a user's allowed sites configuration.
+
+    Returns the user's allowed_sites, enabled_sites, and all available system sites.
+    """
+    # Check if current user is admin
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Get target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Get user config
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == user_id).first()
+
+    # Get all available sites from system config
+    all_sites_config = ScraperService.get_all_available_sites()
+    all_site_names = [s.get('name') for s in all_sites_config]
+
+    if not user_config:
+        return AdminUserSitesResponse(
+            user_id=user_id,
+            username=target_user.full_name or target_user.email.split('@')[0],
+            email=target_user.email,
+            allowed_sites=[],
+            enabled_sites=[],
+            all_available_sites=all_site_names,
+            message="User has no config yet (will get all sites by default)"
+        )
+
+    return AdminUserSitesResponse(
+        user_id=user_id,
+        username=target_user.full_name or target_user.email.split('@')[0],
+        email=target_user.email,
+        allowed_sites=user_config.allowed_sites or [],
+        enabled_sites=user_config.enabled_sites or [],
+        all_available_sites=all_site_names,
+        message=""
+    )
+
+
+@router.put("/admin/users/{user_id}/allowed-sites", response_model=AdminUserSitesResponse)
+async def admin_set_user_allowed_sites(
+    user_id: int,
+    request: AdminAssignSitesRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    [ADMIN ONLY] Set which sites a user is allowed to access.
+
+    - **allowed_sites**: List of site names the user can access.
+      Empty list = user can access ALL sites (default).
+      Specific list = user can ONLY access those sites.
+
+    When restricting sites, the user's enabled_sites will be automatically
+    filtered to only include allowed sites.
+    """
+    # Check if current user is admin
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Get target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Get all available sites for validation
+    all_sites_config = ScraperService.get_all_available_sites()
+    all_site_names = [s.get('name') for s in all_sites_config]
+
+    # Validate that requested sites exist
+    valid_allowed_sites = [s for s in request.allowed_sites if s in all_site_names]
+    invalid_sites = [s for s in request.allowed_sites if s not in all_site_names]
+
+    # Get or create user config
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == user_id).first()
+    if not user_config:
+        user_config = UserConfig.create_default_config(user_id)
+        db.add(user_config)
+
+    # Set allowed sites
+    user_config.set_allowed_sites(valid_allowed_sites)
+
+    # If we're restricting sites, also filter enabled_sites
+    if valid_allowed_sites:
+        current_enabled = user_config.enabled_sites or []
+        filtered_enabled = [s for s in current_enabled if s in valid_allowed_sites]
+        user_config.enabled_sites = filtered_enabled
+
+    db.commit()
+    db.refresh(user_config)
+
+    display_name = target_user.full_name or target_user.email.split('@')[0]
+    message = f"Set {len(valid_allowed_sites)} allowed sites for {display_name}"
+    if not valid_allowed_sites:
+        message = f"Removed restrictions - {display_name} can access all sites"
+    if invalid_sites:
+        message += f" (ignored invalid: {', '.join(invalid_sites)})"
+
+    return AdminUserSitesResponse(
+        user_id=user_id,
+        username=display_name,
+        email=target_user.email,
+        allowed_sites=user_config.allowed_sites or [],
+        enabled_sites=user_config.enabled_sites or [],
+        all_available_sites=all_site_names,
+        message=message
+    )
+
+
+@router.get("/admin/sites/all", response_model=List[SiteConfig])
+async def admin_get_all_sites(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    [ADMIN ONLY] Get all available sites in the system.
+
+    Returns all sites from the configuration, regardless of user restrictions.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    all_sites_config = ScraperService.get_all_available_sites()
+
+    return [
+        SiteConfig(
+            name=site.get('name', 'Unknown'),
+            url=site.get('url', ''),
+            enabled=True,  # All sites shown as enabled for admin view
+            description=site.get('description', f"Source: {site.get('name')}")
+        )
+        for site in all_sites_config
+    ]

@@ -70,6 +70,7 @@ class UserSitesResponse(BaseModel):
     available_sites: List[SiteConfig]
     default_sites: List[str] = []
     use_custom_default: bool = False
+    allowed_sites: List[str] = []  # Admin-restricted sites (empty = all)
 
 
 class UpdateSitesRequest(BaseModel):
@@ -89,3 +90,23 @@ class SitesUpdateResponse(BaseModel):
     default_sites: List[str]
     use_custom_default: bool
     message: str
+
+
+# Admin schemas for site assignment
+class AdminAssignSitesRequest(BaseModel):
+    """Admin request to assign allowed sites to a user"""
+    allowed_sites: List[str] = Field(
+        default=[],
+        description="List of site names user can access. Empty list = access to ALL sites."
+    )
+
+
+class AdminUserSitesResponse(BaseModel):
+    """Admin response for user's site configuration"""
+    user_id: int
+    username: str
+    email: str
+    allowed_sites: List[str]
+    enabled_sites: List[str]
+    all_available_sites: List[str]
+    message: str = ""

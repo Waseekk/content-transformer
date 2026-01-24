@@ -26,19 +26,31 @@ class ScraperService:
     @staticmethod
     def get_user_sites(db: Session, user: User) -> List[str]:
         """
-        Get list of sites enabled for user
+        Get list of sites enabled for user, filtered by allowed_sites restriction.
 
         Args:
             db: Database session
             user: User object
 
         Returns:
-            List of enabled site names
+            List of enabled site names (respecting admin restrictions, admins bypass)
         """
         config = db.query(UserConfig).filter(UserConfig.user_id == user.id).first()
-        if config and config.enabled_sites:
-            return config.enabled_sites
-        return []
+        if not config or not config.enabled_sites:
+            return []
+
+        enabled_sites = config.enabled_sites
+        allowed_sites = config.allowed_sites or []
+
+        # Admins bypass allowed_sites restrictions
+        if user.is_admin:
+            return enabled_sites
+
+        # If allowed_sites is set, filter enabled_sites to only include allowed ones
+        if allowed_sites:
+            return [s for s in enabled_sites if s in allowed_sites]
+
+        return enabled_sites
 
     @staticmethod
     def get_all_available_sites() -> List[Dict[str, Any]]:

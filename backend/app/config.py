@@ -13,6 +13,26 @@ from datetime import datetime, timezone, timedelta
 # GMT+6 Timezone (Bangladesh Standard Time)
 GMT_PLUS_6 = timezone(timedelta(hours=6))
 
+# =============================================================================
+# Path Configuration - Computed at module level for reliability
+# =============================================================================
+# BASE_DIR is the backend folder
+_BASE_DIR = Path(__file__).parent.parent
+
+# Auto-detect Docker vs local environment for config directory
+# In Docker: /app/config exists (copied by Dockerfile)
+# In Local: config/ is in project root (BASE_DIR.parent)
+_DOCKER_CONFIG = Path('/app/config')
+if _DOCKER_CONFIG.exists():
+    _CONFIG_DIR = _DOCKER_CONFIG
+    _PROJECT_ROOT = Path('/app')
+else:
+    _PROJECT_ROOT = _BASE_DIR.parent
+    _CONFIG_DIR = _PROJECT_ROOT / 'config'
+
+_SITES_CONFIG_PATH = _CONFIG_DIR / 'sites_config.json'
+_FORMATS_CONFIG_PATH = _CONFIG_DIR / 'formats' / 'bengali_news_styles.json'
+
 
 def get_current_time() -> datetime:
     """Get current time in GMT+6 (Bangladesh timezone)"""
@@ -61,21 +81,21 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None, env="GOOGLE_CLIENT_SECRET")
     FRONTEND_URL: str = Field(default="http://localhost:5173", env="FRONTEND_URL")
 
-    # Paths
-    BASE_DIR: Path = Path(__file__).parent.parent
-    PROJECT_ROOT: Path = BASE_DIR.parent  # Root project directory (contains backend/, frontend/, config/)
-    DATA_DIR: Path = BASE_DIR / 'data'
-    RAW_DATA_DIR: Path = BASE_DIR / 'data' / 'raw'
-    PROCESSED_DATA_DIR: Path = BASE_DIR / 'data' / 'processed'
-    ARCHIVE_DIR: Path = BASE_DIR / 'data' / 'archive'
-    ENHANCED_DATA_DIR: Path = BASE_DIR / 'data' / 'enhanced'
-    TRANSLATIONS_DIR: Path = BASE_DIR / 'translations'
-    LOGS_DIR: Path = BASE_DIR / 'logs'
-    CONFIG_DIR: Path = PROJECT_ROOT / 'config'  # Config is in project root, not backend
+    # Paths - use module-level computed values for reliability
+    BASE_DIR: Path = _BASE_DIR
+    PROJECT_ROOT: Path = _PROJECT_ROOT
+    CONFIG_DIR: Path = _CONFIG_DIR
+    DATA_DIR: Path = _BASE_DIR / 'data'
+    RAW_DATA_DIR: Path = _BASE_DIR / 'data' / 'raw'
+    PROCESSED_DATA_DIR: Path = _BASE_DIR / 'data' / 'processed'
+    ARCHIVE_DIR: Path = _BASE_DIR / 'data' / 'archive'
+    ENHANCED_DATA_DIR: Path = _BASE_DIR / 'data' / 'enhanced'
+    TRANSLATIONS_DIR: Path = _BASE_DIR / 'translations'
+    LOGS_DIR: Path = _BASE_DIR / 'logs'
 
     # Configuration files
-    SITES_CONFIG_PATH: Path = CONFIG_DIR / 'sites_config.json'
-    FORMATS_CONFIG_PATH: Path = CONFIG_DIR / 'formats' / 'bengali_news_styles.json'
+    SITES_CONFIG_PATH: Path = _SITES_CONFIG_PATH
+    FORMATS_CONFIG_PATH: Path = _FORMATS_CONFIG_PATH
 
     # Scraper Settings
     SCRAPER_TIMEOUT: int = 15

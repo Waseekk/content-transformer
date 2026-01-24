@@ -26,6 +26,7 @@ class UserConfig(Base):
     enabled_sites = Column(JSON, default=list, nullable=False)  # List of currently enabled site names
     default_sites = Column(JSON, default=list, nullable=False)  # User's custom default sites (applied on login)
     use_custom_default = Column(Boolean, default=False, nullable=False)  # If True, use default_sites on login
+    allowed_sites = Column(JSON, default=list, nullable=False)  # Admin-controlled: sites user can access (empty = all)
     scraper_schedule_enabled = Column(Boolean, default=False, nullable=False)
     scraper_schedule_interval = Column(Integer, default=6, nullable=False)  # hours
 
@@ -141,6 +142,36 @@ class UserConfig(Base):
         else:
             self.enabled_sites = self.get_default_sites()
 
+    def set_allowed_sites(self, sites: List[str]):
+        """Set the list of allowed sites (admin only)"""
+        self.allowed_sites = sites.copy() if sites else []
+
+    def get_filtered_available_sites(self, all_available_sites: List[str]) -> List[str]:
+        """
+        Get sites filtered by allowed_sites restriction.
+
+        Args:
+            all_available_sites: All system-available site names
+
+        Returns:
+            Filtered list: if allowed_sites is empty, returns all;
+            otherwise returns intersection
+        """
+        allowed = self.allowed_sites or []
+        if not allowed:
+            # Empty allowed_sites = user can access ALL sites
+            return all_available_sites
+        # Return only sites that are both available and allowed
+        return [s for s in all_available_sites if s in allowed]
+
+    def can_access_site(self, site_name: str) -> bool:
+        """Check if user can access a specific site"""
+        allowed = self.allowed_sites or []
+        if not allowed:
+            # Empty = access to all
+            return True
+        return site_name in allowed
+
     def to_dict(self):
         """Convert user config to dictionary"""
         return {
@@ -149,6 +180,7 @@ class UserConfig(Base):
             "enabled_sites": self.enabled_sites or [],
             "default_sites": self.default_sites or [],
             "use_custom_default": self.use_custom_default,
+            "allowed_sites": self.allowed_sites or [],
             "scraper_schedule_enabled": self.scraper_schedule_enabled,
             "scraper_schedule_interval": self.scraper_schedule_interval,
             "allowed_formats": self.allowed_formats or [],
@@ -178,6 +210,7 @@ class UserConfig(Base):
             enabled_sites=default_sites,  # All available sites enabled by default
             default_sites=[],  # No custom default initially
             use_custom_default=False,  # Use system default
+            allowed_sites=[],  # Empty = access to all sites (admin can restrict later)
             allowed_formats=cls.get_default_formats(subscription_tier),
             scraper_schedule_enabled=False,
             scraper_schedule_interval=6,
