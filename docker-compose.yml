@@ -7,7 +7,7 @@ name: swiftor
 # - postgres: PostgreSQL 16 database
 # - redis: Redis 7 cache (optional, for future Celery)
 # - backend: FastAPI API server with Playwright
-# - frontend: Nginx reverse proxy + static files
+# - frontend: Caddy reverse proxy + static files
 # ============================================================
 
 services:
@@ -56,26 +56,18 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: backend
+      dockerfile: Dockerfile.backend
     container_name: swiftor-backend
     restart: unless-stopped
     environment:
-      # Database
       DATABASE_URL: postgresql://${POSTGRES_USER:-swiftor}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-swiftor}
-      # Security
       SECRET_KEY: ${SECRET_KEY:?Secret key required}
-      # API Keys
       OPENAI_API_KEY: ${OPENAI_API_KEY:?OpenAI API key required}
-      # URLs
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
-      # OAuth (optional)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DEBUG: ${DEBUG:-false}
-      # Redis
       REDIS_URL: redis://redis:6379/0
     volumes:
       - backend_data:/app/data
@@ -96,21 +88,20 @@ services:
       - swiftor-network
 
   # ----------------------------------------------------------
-  # Frontend - Nginx Reverse Proxy + Static Files
+  # Frontend - Caddy Reverse Proxy + Static Files
   # ----------------------------------------------------------
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: frontend
+      dockerfile: Dockerfile.frontend
     container_name: swiftor-frontend
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      # SSL certificates (mount when ready)
-      - ./ssl:/etc/nginx/ssl:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       backend:
         condition: service_healthy
@@ -122,15 +113,12 @@ services:
 # ============================================================
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
   backend_data:
-    driver: local
   backend_logs:
-    driver: local
   backend_translations:
-    driver: local
+  caddy_data:
+  caddy_config:
 
 # ============================================================
 # Networks
