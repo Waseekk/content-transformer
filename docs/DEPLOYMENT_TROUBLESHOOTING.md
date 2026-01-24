@@ -259,6 +259,59 @@ To enable HTTPS with domain swiftor.online, we'll set up nginx on the host as a 
 
 ---
 
+## Issue 7: Frontend Calling localhost:8000 Instead of Backend
+
+### Error
+Browser console shows:
+```
+Failed to load resource: net::ERR_CONNECTION_REFUSED
+localhost:8000/api/auth/login
+```
+
+### Cause
+Two problems:
+1. **`.dockerignore` blocked `frontend/.env.production`**: The pattern `.env.*` with `!.env.production` only un-ignores root `.env.production`, not `frontend/.env.production`
+2. **Fallback URL was localhost**: The code `API_URL ?? 'http://localhost:8000'` falls back to localhost when env var is undefined
+
+### Solution
+
+**1. Fix `.dockerignore`:**
+```diff
+  # Environment files (inject at runtime)
+  .env
+- .env.*
+- !.env.production
++ .env.local
++ .env.development
++ .env.development.local
++ # Keep production env files for build
++ !.env.production
++ !frontend/.env.production
+```
+
+**2. Fix `frontend/src/api/axios.ts`:**
+```javascript
+// In production: use empty string (relative URLs, nginx proxies /api to backend)
+// In development: use localhost:8000
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '');
+```
+
+This way:
+- **Development**: Uses `http://localhost:8000`
+- **Production**: Uses empty string `''` (relative URLs like `/api/auth/login`)
+- Nginx proxies `/api/*` requests to `backend:8000`
+
+### Rebuild Required
+After fixing, on VPS:
+```bash
+cd /root/projects/swiftor
+git pull origin master
+docker compose build --no-cache
+docker compose up -d
+```
+
+---
+
 ## Deployment Commands
 
 ### Initial Setup on VPS
