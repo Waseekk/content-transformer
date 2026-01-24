@@ -257,7 +257,7 @@ export const TranslationPage = () => {
       title: 'Hard News',
       subtitle: 'হার্ড নিউজ',
       icon: HiNewspaper,
-      description: 'Professional factual reporting • 300-500 words',
+      description: 'Professional factual reporting',
       color: 'blue',
     },
     {
@@ -265,7 +265,7 @@ export const TranslationPage = () => {
       title: 'Soft News',
       subtitle: 'সফট নিউজ',
       icon: HiBookOpen,
-      description: 'Literary travel feature • 500-800 words',
+      description: 'Literary travel feature',
       color: 'purple',
     },
   ];
