@@ -35,6 +35,9 @@ yarn-error.log*
 package-lock.json
 yarn.lock
 
+# Vite cache
+.vite/
+
 # IDEs and Editors
 .vscode/
 .idea/
