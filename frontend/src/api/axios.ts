@@ -1,8 +1,9 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Use nullish coalescing so empty string doesn't fallback to localhost
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+// In production: use empty string (relative URLs, nginx proxies /api to backend)
+// In development: use localhost:8000
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 // Create axios instance
 const api = axios.create({

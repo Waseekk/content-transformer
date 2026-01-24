@@ -17,8 +17,8 @@ WORKDIR /app/frontend
 # Copy package files for dependency caching
 COPY frontend/package*.json ./
 
-# Install dependencies
-RUN npm ci --silent
+# Install dependencies (npm install instead of npm ci - package-lock.json not in repo)
+RUN npm install --silent
 
 # Copy frontend source
 COPY frontend/ ./
