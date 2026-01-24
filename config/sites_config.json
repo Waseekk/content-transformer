@@ -104,52 +104,32 @@
   },
   {
     "name": "prothom_alo",
-    "url": "https://www.prothomalo.com/",
-    "use_selenium": true,
-    "disabled": true,
-    "disabled_reason": "Requires Selenium - not implemented yet",
-    "description": "Prothom Alo - Leading Bengali newspaper",
+    "url": "https://www.prothomalo.com/topic/%E0%A6%AD%E0%A7%8D%E0%A6%B0%E0%A6%AE%E0%A6%A3",
+    "use_selenium": false,
+    "description": "Prothom Alo - Leading Bengali newspaper (Travel topic page)",
     "language": "bn",
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "article",
-        "title_tag": "h2",
-        "link_tag": "a",
-        "link_attribute": "href"
-      },
-      {
-        "method": "standard",
-        "container_tag": "div",
-        "container_class": "story",
-        "title_tag": "h3",
-        "link_tag": "a",
+        "container_tag": "a",
+        "container_class": "title-link",
+        "title_tag": "span",
         "link_attribute": "href"
       }
     ]
   },
   {
     "name": "daily_star",
-    "url": "https://www.thedailystar.net/",
-    "use_selenium": true,
-    "disabled": true,
-    "disabled_reason": "Requires Selenium - not implemented yet",
-    "description": "The Daily Star - English news from Bangladesh",
+    "url": "https://www.thedailystar.net/life-living/travel",
+    "use_selenium": false,
+    "description": "The Daily Star - English news from Bangladesh (Travel section)",
     "language": "en",
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "article",
-        "container_class": "news-item",
-        "title_tag": "h2",
-        "link_tag": "a",
-        "link_attribute": "href"
-      },
-      {
-        "method": "standard",
-        "container_tag": "div",
-        "container_class": "story-card",
-        "title_tag": "h3",
+        "container_tag": "h3",
+        "container_class": "card-title",
+        "title_tag": "a",
         "link_tag": "a",
         "link_attribute": "href"
       }
@@ -169,7 +149,8 @@
         "title_tag": "h3",
         "title_class": "c-tease__title",
         "link_tag": "a",
-        "link_attribute": "href"
+        "link_attribute": "href",
+        "time_tag": "time"
       }
     ]
   },
@@ -177,16 +158,18 @@
     "name": "unwto",
     "url": "https://www.untourism.int/news",
     "use_selenium": false,
-    "description": "UN Tourism - United Nations Tourism Organization (URL changed from unwto.org)",
+    "description": "UN Tourism - United Nations Tourism Organization",
     "language": "en",
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "h2",
-        "container_class": "term--label",
-        "title_tag": "span",
+        "container_tag": "article",
+        "container_class": "node--news--teaser",
+        "title_tag": "h2",
         "link_tag": "a",
-        "link_attribute": "href"
+        "link_attribute": "href",
+        "time_tag": "div",
+        "time_class": "w--date"
       }
     ]
   },
@@ -211,24 +194,23 @@
   },
   {
     "name": "bbc_travel",
-    "url": "http://www.bbc.com/travel",
+    "url": "https://www.bbc.com/travel",
     "use_selenium": false,
     "description": "BBC Travel - Stories from around the world",
     "language": "en",
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "div",
-        "container_class": "gel-layout__item",
-        "title_tag": "h3",
-        "link_tag": "a",
+        "container_tag": "a",
+        "href_pattern": "/travel/article/",
+        "title_tag": "h2",
         "link_attribute": "href"
       },
       {
         "method": "standard",
-        "container_tag": "article",
+        "container_tag": "a",
+        "container_attr": {"data-testid": "internal-link"},
         "title_tag": "h2",
-        "link_tag": "a",
         "link_attribute": "href"
       }
     ]
@@ -242,17 +224,9 @@
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "div",
-        "container_class": "container__headline",
+        "container_tag": "a",
+        "container_class": "container__link--type-article",
         "title_tag": "span",
-        "link_tag": "a",
-        "link_attribute": "href"
-      },
-      {
-        "method": "standard",
-        "container_tag": "article",
-        "title_tag": "h3",
-        "link_tag": "a",
         "link_attribute": "href"
       }
     ]
@@ -266,10 +240,18 @@
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "article",
-        "container_class": "article-card",
-        "title_tag": "h3",
-        "link_tag": "a",
+        "container_tag": "a",
+        "container_class": "feature",
+        "title_tag": "span",
+        "title_class": "title",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "a",
+        "container_class": "text-block",
+        "title_tag": "span",
+        "title_class": "title",
         "link_attribute": "href"
       }
     ]
@@ -283,11 +265,23 @@
     "selectors": [
       {
         "method": "standard",
-        "container_tag": "div",
-        "container_class": "fc-item__container",
-        "title_tag": "span",
-        "title_class": "js-headline-text",
-        "link_tag": "a",
+        "container_tag": "a",
+        "container_class": "dcr-dqajlz",
+        "title_tag": "h4",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "a",
+        "container_class": "dcr-1k5vak2",
+        "title_tag": "h4",
+        "link_attribute": "href"
+      },
+      {
+        "method": "standard",
+        "container_tag": "a",
+        "container_class": "dcr-2z2e0g",
+        "title_tag": "h3",
         "link_attribute": "href"
       }
     ]

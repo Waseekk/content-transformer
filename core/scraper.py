@@ -12,6 +12,8 @@ from pathlib import Path
 import time
 from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlparse
+import xml.etree.ElementTree as ET
+import re
 
 # Import settings and logger
 import sys
@@ -142,19 +144,36 @@ class MultiSiteScraper:
             self.status_callback(self.status)
 
     def extract_articles_from_selector(self, soup: BeautifulSoup, selector: Dict, site_name: str, base_url: str = '') -> List[Dict]:
-        """Extract articles using a specific selector configuration"""
+        """Extract articles using a specific selector configuration
+
+        Supports multiple selection methods:
+        - container_class: Select by CSS class (traditional)
+        - container_attr: Select by HTML attributes (e.g., {"data-testid": "internal-link"})
+        - href_pattern: Select links by href pattern (e.g., "/travel/article/")
+        """
         articles = []
 
         # Find containers
         container_tag = selector.get('container_tag')
         container_class = selector.get('container_class')
+        container_attr = selector.get('container_attr')  # New: attribute-based selection
+        href_pattern = selector.get('href_pattern')  # New: href pattern matching
 
-        if container_class:
+        # Method 1: href pattern matching (most stable for article links)
+        if href_pattern:
+            containers = soup.find_all(container_tag, href=lambda x: x and href_pattern in x)
+            logger.debug(f"Found {len(containers)} containers with href pattern '{href_pattern}'")
+        # Method 2: Attribute-based selection (e.g., data-testid)
+        elif container_attr:
+            containers = soup.find_all(container_tag, attrs=container_attr)
+            logger.debug(f"Found {len(containers)} containers with attrs {container_attr}")
+        # Method 3: Class-based selection (traditional)
+        elif container_class:
             containers = soup.find_all(container_tag, class_=container_class)
+            logger.debug(f"Found {len(containers)} containers with {container_tag}.{container_class}")
         else:
             containers = soup.find_all(container_tag)
-
-        logger.debug(f"Found {len(containers)} containers with {container_tag}.{container_class}")
+            logger.debug(f"Found {len(containers)} containers with tag {container_tag}")
 
         for container in containers:
             try:
@@ -274,6 +293,121 @@ class MultiSiteScraper:
 
         return articles
 
+    def scrape_rss_feed(self, feed_url: str, site_name: str, category_filter: str = None) -> List[Dict]:
+        """Scrape articles from RSS/Atom feed
+
+        Args:
+            feed_url: URL of the RSS/Atom feed
+            site_name: Name of the site for metadata
+            category_filter: Optional category to filter by (e.g., "ভ্রমণ" for travel)
+
+        Returns:
+            List of article dictionaries
+        """
+        articles = []
+
+        try:
+            response = requests.get(feed_url, headers=self.headers, timeout=self.timeout)
+            response.raise_for_status()
+
+            root = ET.fromstring(response.content)
+
+            # Detect feed type and set namespace
+            if 'atom' in root.tag.lower() or root.tag == '{http://www.w3.org/2005/Atom}feed':
+                # Atom feed
+                ns = {'atom': 'http://www.w3.org/2005/Atom'}
+                entries = root.findall('atom:entry', ns)
+
+                for entry in entries:
+                    try:
+                        # Check category filter
+                        if category_filter:
+                            category_elem = entry.find('atom:category', ns)
+                            if category_elem is None:
+                                continue
+                            cat_term = category_elem.get('term', '')
+                            if category_filter.lower() not in cat_term.lower():
+                                # Also check link for category
+                                link_elem = entry.find('atom:link', ns)
+                                link_href = link_elem.get('href', '') if link_elem is not None else ''
+                                if category_filter.lower() not in link_href.lower():
+                                    continue
+
+                        title_elem = entry.find('atom:title', ns)
+                        link_elem = entry.find('atom:link', ns)
+                        published_elem = entry.find('atom:published', ns)
+                        author_elem = entry.find('atom:author/atom:name', ns)
+                        summary_elem = entry.find('atom:summary', ns)
+
+                        article_data = {
+                            'title': title_elem.text if title_elem is not None else '',
+                            'headline': title_elem.text if title_elem is not None else '',
+                            'link': link_elem.get('href', '') if link_elem is not None else '',
+                            'article_url': link_elem.get('href', '') if link_elem is not None else '',
+                            'published_time': published_elem.text if published_elem is not None else 'N/A',
+                            'publisher': author_elem.text if author_elem is not None else site_name,
+                            'source': site_name,
+                            'scraped_at': datetime.now().isoformat(),
+                            'country': 'Unknown'
+                        }
+
+                        if article_data['title'] and article_data['link']:
+                            articles.append(article_data)
+
+                    except Exception as e:
+                        logger.debug(f"Error parsing Atom entry: {e}")
+                        continue
+
+            else:
+                # RSS 2.0 feed
+                channel = root.find('channel')
+                if channel is None:
+                    channel = root
+
+                items = channel.findall('item')
+
+                for item in items:
+                    try:
+                        # Check category filter
+                        if category_filter:
+                            category_elem = item.find('category')
+                            cat_text = category_elem.text if category_elem is not None else ''
+                            link_elem = item.find('link')
+                            link_text = link_elem.text if link_elem is not None else ''
+                            if category_filter.lower() not in cat_text.lower() and category_filter.lower() not in link_text.lower():
+                                continue
+
+                        title_elem = item.find('title')
+                        link_elem = item.find('link')
+                        pubdate_elem = item.find('pubDate')
+                        author_elem = item.find('author') or item.find('dc:creator', {'dc': 'http://purl.org/dc/elements/1.1/'})
+
+                        article_data = {
+                            'title': title_elem.text if title_elem is not None else '',
+                            'headline': title_elem.text if title_elem is not None else '',
+                            'link': link_elem.text if link_elem is not None else '',
+                            'article_url': link_elem.text if link_elem is not None else '',
+                            'published_time': pubdate_elem.text if pubdate_elem is not None else 'N/A',
+                            'publisher': author_elem.text if author_elem is not None else site_name,
+                            'source': site_name,
+                            'scraped_at': datetime.now().isoformat(),
+                            'country': 'Unknown'
+                        }
+
+                        if article_data['title'] and article_data['link']:
+                            articles.append(article_data)
+
+                    except Exception as e:
+                        logger.debug(f"Error parsing RSS item: {e}")
+                        continue
+
+            logger.info(f"[RSS] {site_name}: Found {len(articles)} articles from feed")
+
+        except Exception as e:
+            logger.error(f"[RSS ERROR] {site_name}: {e}")
+
+        return articles
+
     def scrape_site(self, site_config: Dict) -> List[Dict]:
         """Scrape a single site using its configuration"""
         site_name = site_config['name']
@@ -281,6 +415,10 @@ class MultiSiteScraper:
         selectors = site_config.get('selectors', [])
         multi_view = site_config.get('multi_view', False)
         views = site_config.get('views', {})
+
+        # RSS feed configuration
+        rss_feed = site_config.get('rss_feed')
+        rss_category = site_config.get('rss_category')
 
         # Extract base URL for converting relative URLs to absolute
         parsed_url = urlparse(site_url)
@@ -293,6 +431,18 @@ class MultiSiteScraper:
         seen_links = set()
 
         try:
+            # Check if RSS feed is configured (highest priority)
+            if rss_feed:
+                logger.info(f"  Using RSS feed: {rss_feed}")
+                rss_articles = self.scrape_rss_feed(rss_feed, site_name, rss_category)
+                for article in rss_articles:
+                    link = article.get('link', '')
+                    if link and link not in seen_links:
+                        seen_links.add(link)
+                        all_articles.append(article)
+                logger.info(f"[OK] {site_name}: Found {len(all_articles)} unique articles from RSS")
+                return all_articles
+
             # Check if multi-view scraping is enabled
             if multi_view and views:
                 logger.info(f"  Multi-view scraping enabled with {len(views)} views")
