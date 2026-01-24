@@ -455,4 +455,153 @@ docker compose logs backend
 
 ---
 
+## Issue 8: Hostinger Firewall Blocking Connections
+
+### Error
+```
+curl: (28) Failed to connect to 46.202.160.112 port 8080 after 21041 ms: Could not connect to server
+```
+
+- Static page `/` loads sometimes
+- API calls `/api/*` always timeout
+- Intermittent TCP connection failures
+
+### Cause
+Hostinger's VPS firewall (when enabled) blocks connections inconsistently, even with correct rules added.
+
+### Diagnosis
+1. Test locally on VPS works:
+   ```bash
+   curl http://localhost:8080/api/health  # Works!
+   ```
+2. Test externally fails:
+   ```powershell
+   curl.exe http://46.202.160.112:8080/api/health  # Timeout!
+   ```
+3. nginx logs show no `/api/` requests reaching the server
+
+### Solution
+**Delete the Hostinger firewall entirely** - the VPS works fine without it.
+
+1. Go to Hostinger hPanel → VPS → Security → Firewall
+2. Delete the "swiftor" firewall (trash icon)
+3. Test again - should work without firewall
+
+Note: Ubuntu's built-in `ufw` was disabled on this VPS, so there's no local firewall blocking traffic.
+
+---
+
+## Hostinger Account Setup
+
+### Important: Two Separate Accounts
+
+| Account | Purpose | Contains |
+|---------|---------|----------|
+| **Account 1** | VPS Hosting | Ubuntu 24.04 VPS at `46.202.160.112` |
+| **Account 2** | Domain | `swiftor.online` domain registration |
+
+### Why This Matters
+- **Firewall settings** → Configure in VPS account (Account 1)
+- **DNS settings** → Configure in Domain account (Account 2)
+- Don't confuse them when making changes!
+
+### DNS Configuration (After VPS is working)
+
+In **Account 2** (domain account), go to DNS Manager and add:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | @ | 46.202.160.112 | 3600 |
+| A | www | 46.202.160.112 | 3600 |
+
+This points `swiftor.online` to your VPS.
+
+---
+
+## Current Status & Next Steps
+
+### ✅ Completed
+1. Docker containers built and running
+2. Backend healthy, database connected
+3. Frontend serves static files
+4. nginx proxy works internally
+5. Port 8080 mapped correctly
+
+### 🔄 In Progress
+- Hostinger firewall causing external connection issues
+- Need to delete firewall and test
+
+### ⏳ Pending (After Site Works)
+1. **Create admin user:**
+   ```bash
+   docker compose exec backend python -c "
+   from app.database import SessionLocal
+   from app.models.user import User
+   from app.core.security import get_password_hash
+   db = SessionLocal()
+   admin = User(
+       email='admin@swiftor.com',
+       username='admin',
+       hashed_password=get_password_hash('admin123'),
+       is_admin=True,
+       is_active=True
+   )
+   db.add(admin)
+   db.commit()
+   print('Admin created')
+   db.close()
+   "
+   ```
+
+2. **Run database migration:**
+   ```bash
+   docker compose exec backend python -m migrations.add_allowed_sites
+   ```
+
+3. **Point domain to VPS:**
+   - In Account 2 (domain), add A record: `swiftor.online` → `46.202.160.112`
+
+4. **Set up SSL certificate:**
+   ```bash
+   # On VPS, after domain is pointing
+   apt install certbot
+   certbot certonly --standalone -d swiftor.online
+   ```
+
+5. **Configure nginx for SSL** (update docker/nginx.conf)
+
+---
+
+## Quick Reference Commands
+
+### Check Status
+```bash
+docker compose ps
+docker compose logs backend --tail 20
+docker compose logs frontend --tail 20
+```
+
+### Restart Services
+```bash
+docker compose restart backend
+docker compose restart frontend
+```
+
+### Rebuild After Code Changes
+```bash
+git pull origin master
+docker compose build --no-cache frontend
+docker compose up -d frontend
+```
+
+### Test API Locally
+```bash
+curl http://localhost:8080/api/health
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+---
+
 *Last Updated: 2026-01-24*
