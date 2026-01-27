@@ -34,6 +34,7 @@ class SupportTicket(Base):
     # Relationships
     user = relationship("User", back_populates="support_tickets")
     replies = relationship("TicketReply", back_populates="ticket", cascade="all, delete-orphan", order_by="TicketReply.created_at")
+    attachments = relationship("TicketAttachment", back_populates="ticket", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<SupportTicket(id={self.id}, subject={self.subject[:30]}, status={self.status})>"
@@ -80,5 +81,35 @@ class TicketReply(Base):
     ticket = relationship("SupportTicket", back_populates="replies")
     user = relationship("User")
 
+    # Relationships
+    attachments = relationship("TicketAttachment", back_populates="reply", cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<TicketReply(id={self.id}, ticket_id={self.ticket_id}, is_admin={self.is_admin_reply})>"
+
+
+class TicketAttachment(Base):
+    """
+    File attachment for support tickets and replies
+    """
+    __tablename__ = "ticket_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=True, index=True)
+    reply_id = Column(Integer, ForeignKey("ticket_replies.id", ondelete="CASCADE"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    filename = Column(String(255), nullable=False)
+    stored_filename = Column(String(255), nullable=False, unique=True)
+    file_type = Column(String(100), nullable=False)
+    file_size = Column(Integer, nullable=False)  # bytes
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    ticket = relationship("SupportTicket", back_populates="attachments")
+    reply = relationship("TicketReply", back_populates="attachments")
+    user = relationship("User")
+
+    def __repr__(self):
+        return f"<TicketAttachment(id={self.id}, filename={self.filename})>"

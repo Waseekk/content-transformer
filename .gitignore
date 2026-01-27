@@ -37,6 +37,7 @@ yarn.lock
 
 # Vite cache
 .vite/
+**/.vite/
 
 # IDEs and Editors
 .vscode/

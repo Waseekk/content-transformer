@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     ARCHIVE_DIR: Path = _BASE_DIR / 'data' / 'archive'
     ENHANCED_DATA_DIR: Path = _BASE_DIR / 'data' / 'enhanced'
     TRANSLATIONS_DIR: Path = _BASE_DIR / 'translations'
+    UPLOADS_DIR: Path = _BASE_DIR / 'uploads' / 'support'
     LOGS_DIR: Path = _BASE_DIR / 'logs'
 
     # Configuration files
@@ -171,6 +172,7 @@ class Settings(BaseSettings):
             self.ARCHIVE_DIR,
             self.ENHANCED_DATA_DIR,
             self.TRANSLATIONS_DIR,
+            self.UPLOADS_DIR,
             self.LOGS_DIR
         ]
         for directory in directories:
