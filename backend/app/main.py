@@ -6,6 +6,7 @@ Swiftor - Hard News & Soft News Backend API
 import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -67,6 +68,11 @@ app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
 app.include_router(extraction.router, prefix="/api/extract", tags=["extraction"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(support.router, prefix="/api/support", tags=["support"])
+
+# Mount uploads directory for serving attachments
+uploads_dir = settings.UPLOADS_DIR
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads/support", StaticFiles(directory=str(uploads_dir)), name="support_uploads")
 
 
 @app.get("/")

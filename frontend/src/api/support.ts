@@ -3,6 +3,7 @@ import type {
   SupportTicket,
   TicketWithUser,
   TicketReply,
+  TicketAttachment,
   CreateTicketRequest,
   TicketReplyRequest,
   UpdateTicketStatusRequest,
@@ -12,9 +13,22 @@ import type {
 } from '../types/support';
 
 export const supportApi = {
-  // User: Create a new ticket
+  // User: Create a new ticket (JSON, no files)
   createTicket: async (data: CreateTicketRequest): Promise<SupportTicket> => {
     const response = await api.post<SupportTicket>('/api/support/tickets', data);
+    return response.data;
+  },
+
+  // User: Create a new ticket with files (multipart)
+  createTicketWithFiles: async (data: CreateTicketRequest, files: File[]): Promise<SupportTicket> => {
+    const formData = new FormData();
+    formData.append('subject', data.subject);
+    formData.append('message', data.message);
+    formData.append('priority', data.priority);
+    files.forEach((file) => formData.append('files', file));
+    const response = await api.post<SupportTicket>('/api/support/tickets/with-files', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 
@@ -31,9 +45,34 @@ export const supportApi = {
     return response.data;
   },
 
-  // User: Reply to ticket
+  // User: Reply to ticket (JSON, no files)
   replyToTicket: async (ticketId: number, data: TicketReplyRequest): Promise<TicketReply> => {
     const response = await api.post<TicketReply>(`/api/support/tickets/${ticketId}/reply`, data);
+    return response.data;
+  },
+
+  // User: Reply to ticket with files (multipart)
+  replyToTicketWithFiles: async (ticketId: number, message: string, files: File[]): Promise<TicketReply> => {
+    const formData = new FormData();
+    formData.append('message', message);
+    files.forEach((file) => formData.append('files', file));
+    const response = await api.post<TicketReply>(
+      `/api/support/tickets/${ticketId}/reply-with-files`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  // User: Upload attachments to existing ticket
+  uploadAttachments: async (ticketId: number, files: File[]): Promise<TicketAttachment[]> => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    const response = await api.post<TicketAttachment[]>(
+      `/api/support/tickets/${ticketId}/attachments`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
     return response.data;
   },
 
@@ -56,9 +95,22 @@ export const supportApi = {
     return response.data;
   },
 
-  // Admin: Respond to ticket
+  // Admin: Respond to ticket (JSON, no files)
   adminRespond: async (ticketId: number, data: TicketReplyRequest): Promise<TicketReply> => {
     const response = await api.post<TicketReply>(`/api/support/admin/tickets/${ticketId}/respond`, data);
+    return response.data;
+  },
+
+  // Admin: Respond with files (multipart)
+  adminRespondWithFiles: async (ticketId: number, message: string, files: File[]): Promise<TicketReply> => {
+    const formData = new FormData();
+    formData.append('message', message);
+    files.forEach((file) => formData.append('files', file));
+    const response = await api.post<TicketReply>(
+      `/api/support/admin/tickets/${ticketId}/respond-with-files`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
     return response.data;
   },
 
@@ -75,5 +127,21 @@ export const supportApi = {
   adminGetStats: async (): Promise<SupportStats> => {
     const response = await api.get<SupportStats>('/api/support/admin/stats');
     return response.data;
+  },
+
+  // Download attachment (authenticated, triggers browser download)
+  downloadAttachment: async (attachmentId: number, filename: string): Promise<void> => {
+    const response = await api.get(`/api/support/attachments/${attachmentId}`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };

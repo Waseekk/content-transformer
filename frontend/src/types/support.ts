@@ -3,6 +3,15 @@
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'medium' | 'high';
 
+export interface TicketAttachment {
+  id: number;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  created_at: string;
+  download_url: string;
+}
+
 export interface TicketReply {
   id: number;
   message: string;
@@ -10,6 +19,7 @@ export interface TicketReply {
   user_email: string | null;
   user_name: string | null;
   created_at: string;
+  attachments?: TicketAttachment[];
 }
 
 export interface SupportTicket {
@@ -21,6 +31,7 @@ export interface SupportTicket {
   created_at: string;
   updated_at: string;
   replies: TicketReply[];
+  attachments?: TicketAttachment[];
 }
 
 export interface TicketWithUser extends SupportTicket {

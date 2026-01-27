@@ -1,15 +1,15 @@
 /**
- * Support Page - Contact form and ticket history
+ * Support Page - Contact form, ticket history, file attachments
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { supportApi } from '../api/support';
 import { useAuth } from '../contexts/AuthContext';
 import { AILoader } from '../components/ui';
-import type { SupportTicket, TicketStatus, TicketPriority, CreateTicketRequest, TicketWithUser } from '../types/support';
+import type { SupportTicket, TicketStatus, TicketPriority, CreateTicketRequest, TicketWithUser, TicketAttachment } from '../types/support';
 import {
   HiQuestionMarkCircle,
   HiPaperAirplane,
@@ -23,7 +23,31 @@ import {
   HiFilter,
   HiReply,
   HiShieldCheck,
+  HiPaperClip,
+  HiDownload,
+  HiPhotograph,
+  HiDocumentText,
+  HiDocument,
 } from 'react-icons/hi';
+
+// File size formatter
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+// Get file icon based on type
+const FileIcon = ({ fileType, className = 'w-4 h-4' }: { fileType: string; className?: string }) => {
+  if (fileType.startsWith('image/')) return <HiPhotograph className={`${className} text-green-500`} />;
+  if (fileType === 'application/pdf') return <HiDocumentText className={`${className} text-red-500`} />;
+  if (fileType.includes('word') || fileType.includes('document')) return <HiDocumentText className={`${className} text-blue-500`} />;
+  return <HiDocument className={`${className} text-gray-500`} />;
+};
+
+// Allowed file extensions for client-side validation
+const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.gif'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const SupportPage = () => {
   const { user } = useAuth();
@@ -32,8 +56,13 @@ export const SupportPage = () => {
   const [expandedTicket, setExpandedTicket] = useState<number | null>(null);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('');
+
+  // File refs
+  const createFileInputRef = useRef<HTMLInputElement>(null);
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formData, setFormData] = useState<CreateTicketRequest>({
@@ -41,6 +70,7 @@ export const SupportPage = () => {
     message: '',
     priority: 'medium',
   });
+  const [createFiles, setCreateFiles] = useState<File[]>([]);
 
   // Fetch user's tickets
   const { data: myTickets, isLoading: ticketsLoading, refetch: refetchTickets } = useQuery({
@@ -67,10 +97,16 @@ export const SupportPage = () => {
 
   // Create ticket mutation
   const createTicketMutation = useMutation({
-    mutationFn: supportApi.createTicket,
+    mutationFn: async (data: CreateTicketRequest) => {
+      if (createFiles.length > 0) {
+        return supportApi.createTicketWithFiles(data, createFiles);
+      }
+      return supportApi.createTicket(data);
+    },
     onSuccess: () => {
       toast.success('Support ticket created successfully');
       setFormData({ subject: '', message: '', priority: 'medium' });
+      setCreateFiles([]);
       setActiveTab('history');
       queryClient.invalidateQueries({ queryKey: ['myTickets'] });
     },
@@ -81,12 +117,17 @@ export const SupportPage = () => {
 
   // User reply mutation
   const replyMutation = useMutation({
-    mutationFn: ({ ticketId, message }: { ticketId: number; message: string }) =>
-      supportApi.replyToTicket(ticketId, { message }),
+    mutationFn: ({ ticketId, message, files }: { ticketId: number; message: string; files: File[] }) => {
+      if (files.length > 0) {
+        return supportApi.replyToTicketWithFiles(ticketId, message, files);
+      }
+      return supportApi.replyToTicket(ticketId, { message });
+    },
     onSuccess: () => {
       toast.success('Reply sent');
       setReplyingTo(null);
       setReplyMessage('');
+      setReplyFiles([]);
       queryClient.invalidateQueries({ queryKey: ['myTickets'] });
     },
     onError: (error: Error) => {
@@ -96,12 +137,17 @@ export const SupportPage = () => {
 
   // Admin respond mutation
   const adminRespondMutation = useMutation({
-    mutationFn: ({ ticketId, message }: { ticketId: number; message: string }) =>
-      supportApi.adminRespond(ticketId, { message }),
+    mutationFn: ({ ticketId, message, files }: { ticketId: number; message: string; files: File[] }) => {
+      if (files.length > 0) {
+        return supportApi.adminRespondWithFiles(ticketId, message, files);
+      }
+      return supportApi.adminRespond(ticketId, { message });
+    },
     onSuccess: () => {
       toast.success('Response sent');
       setReplyingTo(null);
       setReplyMessage('');
+      setReplyFiles([]);
       queryClient.invalidateQueries({ queryKey: ['adminTickets'] });
     },
     onError: (error: Error) => {
@@ -122,6 +168,49 @@ export const SupportPage = () => {
       toast.error(error.message || 'Failed to update status');
     },
   });
+
+  // File validation
+  const validateFiles = (files: FileList | File[]): File[] => {
+    const valid: File[] = [];
+    const fileArr = Array.from(files);
+    for (const file of fileArr) {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        toast.error(`"${file.name}" - File type not allowed. Use: ${ALLOWED_EXTENSIONS.join(', ')}`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`"${file.name}" - File too large. Max 10MB.`);
+        continue;
+      }
+      valid.push(file);
+    }
+    return valid;
+  };
+
+  const handleCreateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const valid = validateFiles(e.target.files);
+      setCreateFiles((prev) => [...prev, ...valid]);
+    }
+    e.target.value = '';
+  };
+
+  const handleReplyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const valid = validateFiles(e.target.files);
+      setReplyFiles((prev) => [...prev, ...valid]);
+    }
+    e.target.value = '';
+  };
+
+  const removeCreateFile = (index: number) => {
+    setCreateFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeReplyFile = (index: number) => {
+    setReplyFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,10 +273,70 @@ export const SupportPage = () => {
     });
   };
 
+  // Download handler
+  const handleDownload = async (att: TicketAttachment) => {
+    try {
+      await supportApi.downloadAttachment(att.id, att.filename);
+    } catch {
+      toast.error('Failed to download file');
+    }
+  };
+
+  // Render attachment list
+  const renderAttachments = (attachments: TicketAttachment[] | undefined) => {
+    if (!attachments || attachments.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {attachments.map((att) => (
+          <button
+            key={att.id}
+            type="button"
+            onClick={() => handleDownload(att)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-700 transition-colors border border-gray-200 cursor-pointer"
+            title={`Download ${att.filename} (${formatFileSize(att.file_size)})`}
+          >
+            <FileIcon fileType={att.file_type} className="w-3.5 h-3.5" />
+            <span className="max-w-[120px] truncate">{att.filename}</span>
+            <span className="text-gray-400">{formatFileSize(att.file_size)}</span>
+            <HiDownload className="w-3 h-3 text-gray-400" />
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Render file preview list (for uploads before submit)
+  const renderFilePreview = (files: File[], onRemove: (index: number) => void) => {
+    if (files.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {files.map((file, index) => (
+          <div
+            key={index}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 rounded-lg text-xs text-indigo-700 border border-indigo-200"
+          >
+            <FileIcon fileType={file.type} className="w-3.5 h-3.5" />
+            <span className="max-w-[120px] truncate">{file.name}</span>
+            <span className="text-indigo-400">{formatFileSize(file.size)}</span>
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="ml-1 text-indigo-400 hover:text-red-500"
+            >
+              <HiX className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // Render ticket card
   const renderTicketCard = (ticket: SupportTicket | TicketWithUser, isAdmin: boolean = false) => {
     const isExpanded = expandedTicket === ticket.id;
     const ticketWithUser = ticket as TicketWithUser;
+    const replies = ticket.replies || [];
+    const ticketAttachments = ticket.attachments || [];
 
     return (
       <motion.div
@@ -211,10 +360,16 @@ export const SupportPage = () => {
                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getPriorityColor(ticket.priority)}`}>
                   {ticket.priority}
                 </span>
-                {ticket.replies.length > 0 && (
+                {replies.length > 0 && (
                   <span className="flex items-center gap-1 text-xs text-gray-500">
                     <HiChat className="w-3 h-3" />
-                    {ticket.replies.length}
+                    {replies.length}
+                  </span>
+                )}
+                {ticketAttachments.length > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-gray-500">
+                    <HiPaperClip className="w-3 h-3" />
+                    {ticketAttachments.length}
                   </span>
                 )}
               </div>
@@ -247,12 +402,13 @@ export const SupportPage = () => {
               {/* Original Message */}
               <div className="p-4 bg-gray-50">
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{ticket.message}</p>
+                {renderAttachments(ticketAttachments)}
               </div>
 
               {/* Replies */}
-              {ticket.replies.length > 0 && (
+              {replies.length > 0 && (
                 <div className="border-t border-gray-200">
-                  {ticket.replies.map((reply) => (
+                  {replies.map((reply) => (
                     <div
                       key={reply.id}
                       className={`p-4 border-b border-gray-100 last:border-b-0 ${
@@ -269,6 +425,7 @@ export const SupportPage = () => {
                         <span className="text-xs text-gray-500">{formatDate(reply.created_at)}</span>
                       </div>
                       <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.message}</p>
+                      {renderAttachments(reply.attachments)}
                     </div>
                   ))}
                 </div>
@@ -286,6 +443,27 @@ export const SupportPage = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                         rows={3}
                       />
+                      {/* File attachment area */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => replyFileInputRef.current?.click()}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <HiPaperClip className="w-3.5 h-3.5" />
+                          Attach Files
+                        </button>
+                        <input
+                          ref={replyFileInputRef}
+                          type="file"
+                          multiple
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif"
+                          onChange={handleReplyFileChange}
+                          className="hidden"
+                        />
+                        <span className="text-xs text-gray-400">PDF, DOC, Images (max 10MB)</span>
+                      </div>
+                      {renderFilePreview(replyFiles, removeReplyFile)}
                       <div className="flex gap-2">
                         <motion.button
                           whileHover={{ scale: 1.02 }}
@@ -296,9 +474,9 @@ export const SupportPage = () => {
                               return;
                             }
                             if (isAdmin) {
-                              adminRespondMutation.mutate({ ticketId: ticket.id, message: replyMessage });
+                              adminRespondMutation.mutate({ ticketId: ticket.id, message: replyMessage, files: replyFiles });
                             } else {
-                              replyMutation.mutate({ ticketId: ticket.id, message: replyMessage });
+                              replyMutation.mutate({ ticketId: ticket.id, message: replyMessage, files: replyFiles });
                             }
                           }}
                           disabled={replyMutation.isPending || adminRespondMutation.isPending}
@@ -311,6 +489,7 @@ export const SupportPage = () => {
                           onClick={() => {
                             setReplyingTo(null);
                             setReplyMessage('');
+                            setReplyFiles([]);
                           }}
                           className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg"
                         >
@@ -538,6 +717,43 @@ export const SupportPage = () => {
                   <p className="text-xs text-gray-500 mt-1">{formData.message.length}/5000 characters</p>
                 </div>
 
+                {/* File Attachments */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Attachments (optional)
+                  </label>
+                  <div
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-indigo-400 transition-colors cursor-pointer"
+                    onClick={() => createFileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.dataTransfer.files) {
+                        const valid = validateFiles(e.dataTransfer.files);
+                        setCreateFiles((prev) => [...prev, ...valid]);
+                      }
+                    }}
+                  >
+                    <HiPaperClip className="w-6 h-6 mx-auto text-gray-400 mb-1" />
+                    <p className="text-sm text-gray-500">
+                      Click or drag files here
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      PDF, DOC, DOCX, PNG, JPG, GIF (max 10MB each)
+                    </p>
+                  </div>
+                  <input
+                    ref={createFileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif"
+                    onChange={handleCreateFileChange}
+                    className="hidden"
+                  />
+                  {renderFilePreview(createFiles, removeCreateFile)}
+                </div>
+
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -554,6 +770,11 @@ export const SupportPage = () => {
                     <>
                       <HiPaperAirplane className="w-5 h-5 inline mr-2" />
                       Submit Ticket
+                      {createFiles.length > 0 && (
+                        <span className="ml-2 text-sm opacity-80">
+                          ({createFiles.length} file{createFiles.length > 1 ? 's' : ''})
+                        </span>
+                      )}
                     </>
                   )}
                 </motion.button>
