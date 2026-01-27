@@ -604,4 +604,151 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 ---
 
+---
+
+## Issue 9: Hostinger Firewall - External Access Blocked Despite Correct Rules
+
+### Problem
+After creating a Hostinger panel firewall with correct allow rules, external access to the VPS is completely blocked. Connection attempts timeout on ALL ports (22, 80, 443, 8080).
+
+### Environment
+- **VPS IP**: 46.202.160.112
+- **Server Location**: India - Mumbai
+- **Hostname**: srv1217751.hstgr.cloud
+- **Port**: 8080 (Swiftor frontend)
+
+### What We Verified Works
+1. ✅ VPS is running (status: Running in panel)
+2. ✅ Docker containers running (4 containers: frontend, backend, postgres, redis)
+3. ✅ Port 8080 listening: `ss -tlnp | grep 8080` shows docker-proxy listening
+4. ✅ Internal access works: `curl localhost:8080/api/health` returns healthy
+5. ✅ UFW disabled: `ufw status` shows inactive
+6. ✅ iptables not blocking: INPUT chain policy is ACCEPT
+7. ✅ Outbound works: VPS can reach internet (`curl https://api.ipify.org`)
+
+### What Doesn't Work
+- ❌ External access from ANY location times out
+- ❌ All ports blocked: 22 (SSH), 80, 443, 8080
+- ❌ Both IP and hostname access fail
+
+### Hostinger Firewall Configuration
+Created firewall named "swiftor" with 5 rules:
+
+| Action | Protocol | Port | Source |
+|--------|----------|------|--------|
+| Accept | SSH | 22 | Any |
+| Accept | HTTP | 80 | Any |
+| Accept | HTTPS | 443 | Any |
+| Accept | TCP | 8080 | Any |
+| Drop | Any | Any | Any |
+
+### Troubleshooting Steps Attempted
+
+1. **Deleted old firewall** - External access still blocked
+2. **Created new firewall with allow rules** - Still blocked
+3. **Reset firewall configuration** (Settings → Reset firewall configuration) - Still blocked
+4. **Verified firewall is "Active"** in panel - Shows active with toggle ON
+5. **Checked Incoming traffic metric** - Shows 38.9 MB (some traffic getting through)
+6. **Reviewed frontend logs** - Shows some external IPs connected earlier (before firewall creation)
+
+### Nginx Config Fix Applied
+Fixed `/api/*` proxy issue:
+```nginx
+# Changed from:
+proxy_pass http://backend/api/;
+# To:
+proxy_pass http://backend/;
+```
+This fix works internally - `curl localhost:8080/api/health` now returns healthy.
+
+### Possible Causes
+1. **Firewall not properly assigned to VPS** - Even though it shows "Active", it may not be linked to the specific VPS
+2. **Hostinger network-level block** - Separate from the panel firewall
+3. **Firewall propagation delay** - Rules may take time to apply
+4. **Geographic/ISP blocking** - Unlikely since multiple locations tested
+
+### Recommended Next Steps
+
+#### Option 1: Contact Hostinger Support
+Contact Hostinger support with this information:
+- VPS: srv1217751.hstgr.cloud (46.202.160.112)
+- Issue: Cannot access VPS externally on any port despite firewall rules allowing traffic
+- Firewall "swiftor" is Active with correct rules
+- Internal access works, external doesn't
+
+#### Option 2: Reboot VPS
+1. Go to Hostinger panel → VPS Overview
+2. Click "Reboot VPS"
+3. Wait 3-5 minutes
+4. Test access again
+
+#### Option 3: Delete Firewall Completely
+1. Go to Security → Firewall
+2. Delete the "swiftor" firewall completely
+3. Test if traffic flows (some Hostinger VPS work without panel firewall)
+4. If works, rely on UFW for security instead
+
+#### Option 4: Use Host-Level Nginx (Port 80/443)
+If port 8080 is blocked but standard ports work differently:
+1. Stop Traefik/n8n or change their ports
+2. Configure Swiftor on port 80 directly
+3. This might bypass firewall issues
+
+### Commands for Testing (On VPS)
+```bash
+# Check firewall status
+ufw status
+
+# Check what's listening
+ss -tlnp
+
+# Check iptables
+iptables -L -n
+
+# Test internal access
+curl -s localhost:8080/api/health
+
+# Check Docker containers
+docker ps
+
+# View frontend logs for external requests
+docker logs swiftor-frontend --tail 50
+```
+
+### Commands for Testing (From Local Machine)
+```powershell
+# Test connection
+curl.exe -v --connect-timeout 10 http://46.202.160.112:8080/
+
+# Test port 80
+curl.exe -v --connect-timeout 10 http://46.202.160.112/
+
+# Test hostname
+curl.exe -v --connect-timeout 10 http://srv1217751.hstgr.cloud:8080/
+```
+
+---
+
+## Current Status (2026-01-24)
+
+### ✅ Completed
+1. Docker containers built and running
+2. Backend healthy, database connected
+3. Frontend serves static files
+4. Nginx proxy configuration fixed (`/api/*` routes work)
+5. Port 8080 mapped correctly
+6. Hostinger firewall created with correct rules
+
+### ❌ Blocked
+- **External access not working** - Hostinger network issue
+- Cannot proceed with domain setup, SSL, or user creation until this is resolved
+
+### ⏳ Pending (After External Access Works)
+1. Create admin user
+2. Point domain `swiftor.online` to VPS
+3. Set up SSL certificate
+4. Configure nginx for HTTPS
+
+---
+
 *Last Updated: 2026-01-24*
