@@ -1,0 +1,51 @@
+# ============================================================
+# Swiftor Caddyfile - Static Files + Reverse Proxy
+# ============================================================
+
+{
+    # Global options
+    admin off
+}
+
+:80 {
+    # Health check endpoint
+    respond /health "OK" 200
+
+    # API routes - proxy to backend
+    handle /api/* {
+        reverse_proxy backend:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # SSE support - disable buffering
+            flush_interval -1
+        }
+    }
+
+    # API docs - proxy to backend
+    handle /docs* {
+        reverse_proxy backend:8000
+    }
+
+    handle /redoc* {
+        reverse_proxy backend:8000
+    }
+
+    handle /openapi.json {
+        reverse_proxy backend:8000
+    }
+
+    # Uploads - proxy to backend
+    handle /uploads/* {
+        reverse_proxy backend:8000
+    }
+
+    # Static files - React app (SPA routing)
+    handle {
+        root * /srv
+        encode gzip
+        try_files {path} /index.html
+        file_server
+    }
+}
