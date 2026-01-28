@@ -106,7 +106,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.swiftor.rule=Host(`swiftor.online`) || Host(`www.swiftor.online`)"
+      - "traefik.http.routers.swiftor.rule=Host(`swiftor.online`)"
       - "traefik.http.routers.swiftor.tls=true"
       - "traefik.http.routers.swiftor.entrypoints=web,websecure"
       - "traefik.http.routers.swiftor.tls.certresolver=mytlschallenge"
