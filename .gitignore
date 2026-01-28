@@ -128,3 +128,6 @@ frontend/public/logo-*.html
 # Uncomment the line below when deploying to Streamlit Cloud
 # backend/
 nul
+
+# Crash dumps
+*.stackdump
