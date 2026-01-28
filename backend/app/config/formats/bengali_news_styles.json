@@ -18,10 +18,11 @@
     "max_tokens": 3000
   },
   "meta": {
-    "version": "4.0",
-    "last_updated": "2026-01-21",
+    "version": "4.1",
+    "last_updated": "2026-01-28",
     "client": "Asad / Banglar Columbus",
     "changes": [
+      "v4.1: Fixed orphaned closing quotes - sentence splitter now preserves quotes as complete units",
       "v4.0: 2-sentence rule (২ লাইন = ২ বাক্য) - clearer than line-based",
       "v4.0: Quotation placement rule - quotes at end of body paragraphs",
       "v3.9: Soft news - no fixed word limit, write based on content depth/context",

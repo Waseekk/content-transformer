@@ -459,6 +459,63 @@ def split_quotes(text: str) -> str:
 # PARAGRAPH LENGTH ENFORCER (Max 2 lines on A4)
 # ============================================================================
 
+def split_sentences_preserving_quotes(text: str) -> list:
+    """
+    Split text into sentences while preserving quotes as complete units.
+
+    Splits on Bengali sentence endings (।?!) but NOT when inside quotation marks.
+    This prevents orphaned closing quotes from appearing on new lines.
+
+    Handles multiple quote styles:
+    - Curly quotes: " (U+201C) and " (U+201D)
+    - Straight quotes: " (U+0022)
+
+    Example:
+        Input:  'বাক্য এক। বাক্য দুই "এটা উদ্ধৃতি।"'
+        Output: ['বাক্য এক।', 'বাক্য দুই "এটা উদ্ধৃতি।"']
+
+    Args:
+        text: Bengali text to split into sentences
+
+    Returns:
+        list: List of complete sentences with punctuation preserved
+    """
+    if not text:
+        return []
+
+    # Quote characters to track (curly and straight)
+    OPENING_QUOTES = '"\u201C'  # straight " and left curly "
+    CLOSING_QUOTES = '"\u201D'  # straight " and right curly "
+    ALL_QUOTES = OPENING_QUOTES + CLOSING_QUOTES
+
+    sentences = []
+    current = []
+    in_quote = False
+
+    for char in text:
+        current.append(char)
+
+        # Track quote state
+        if char in OPENING_QUOTES:
+            in_quote = True
+        elif char in CLOSING_QUOTES:
+            in_quote = False
+
+        # Check for sentence ending (only if NOT inside a quote)
+        if char in '।?!' and not in_quote:
+            sentence = ''.join(current).strip()
+            if sentence:
+                sentences.append(sentence)
+            current = []
+
+    # Add remaining text as last sentence (handles text without ending punctuation)
+    remaining = ''.join(current).strip()
+    if remaining:
+        sentences.append(remaining)
+
+    return sentences
+
+
 def enforce_paragraph_length(text: str, max_words: int = 38) -> str:
     """
     Enforce maximum paragraph length by splitting long paragraphs at sentence boundaries.
@@ -506,20 +563,8 @@ def enforce_paragraph_length(text: str, max_words: int = 38) -> str:
             result.append(para)
             continue
 
-        # Need to split - find sentence boundaries
-        # Bengali sentence endings: । (dari), ? (question), ! (exclamation)
-        sentences = re.split(r'(।|\?|!)', para)
-
-        # Rebuild sentences with their punctuation
-        full_sentences = []
-        for i in range(0, len(sentences) - 1, 2):
-            if i + 1 < len(sentences):
-                full_sentences.append(sentences[i] + sentences[i + 1])
-            else:
-                full_sentences.append(sentences[i])
-        # Handle last part if no punctuation
-        if len(sentences) % 2 == 1 and sentences[-1].strip():
-            full_sentences.append(sentences[-1])
+        # Need to split - find sentence boundaries (preserves quotes as complete units)
+        full_sentences = split_sentences_preserving_quotes(para)
 
         # Group sentences into paragraphs of max_words
         current_para = []
@@ -590,22 +635,9 @@ def fix_three_line_paragraphs(text: str) -> str:
             result.append(para)
             continue
 
-        # Split into sentences
-        # Bengali sentence endings: । (dari), ? (question), ! (exclamation)
-        sentences = re.split(r'([।?!])', para)
-
-        # Rebuild sentences with their punctuation
-        full_sentences = []
-        for i in range(0, len(sentences) - 1, 2):
-            if i + 1 < len(sentences):
-                full_sentences.append((sentences[i] + sentences[i + 1]).strip())
-            elif sentences[i].strip():
-                full_sentences.append(sentences[i].strip())
-        if len(sentences) % 2 == 1 and sentences[-1].strip():
-            full_sentences.append(sentences[-1].strip())
-
-        # Filter empty sentences
-        full_sentences = [s for s in full_sentences if s]
+        # Split into sentences (preserves quotes as complete units)
+        # Uses state machine to avoid splitting on ।?! inside quotation marks
+        full_sentences = split_sentences_preserving_quotes(para)
 
         # If 2 or fewer sentences, keep as is
         if len(full_sentences) <= 2:
