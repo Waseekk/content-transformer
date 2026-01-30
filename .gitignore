@@ -113,7 +113,7 @@ code-review-*.md
 !docs/*.md
 
 # Claude Code
-.claude/
+.claude/    
 app_copy.py
 
 # Documentation and Setup Files (excluding CLAUDE.md which is needed)

@@ -57,7 +57,7 @@ export function LoginPage() {
               transition={{ delay: 1.5 }}
               className="text-xl font-semibold tagline-shimmer"
             >
-              AI powered clean and credible news
+              AI Powered Clean And Credible News
             </motion.p>
           </motion.div>
         </div>

@@ -106,11 +106,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="w-0.5 h-[26px] bg-indigo-600 rounded-sm"
                 />
               </motion.div>
-
-              {/* Tagline */}
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold tagline-shimmer">AI Powered Clean and Credible News</span>
-              </div>
             </Link>
 
             {/* Navigation - Absolutely Centered on Page */}

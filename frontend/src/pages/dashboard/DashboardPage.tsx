@@ -71,7 +71,7 @@ export function DashboardPage() {
                   r
                 </span>
               </div>
-              <p className="text-sm tagline-shimmer">AI powered clean and credible news</p>
+              <p className="text-sm tagline-shimmer">AI Powered Clean And Credible News</p>
             </div>
             <Button variant="secondary" onClick={logout} size="sm">
               Logout

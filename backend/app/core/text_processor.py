@@ -598,6 +598,661 @@ def enforce_paragraph_length(text: str, max_words: int = 38) -> str:
     return '\n\n'.join(result)
 
 
+def normalize_line_breaks(text: str) -> str:
+    """
+    Normalize markdown line breaks to paragraph breaks.
+
+    AI sometimes uses '  \\n' (markdown line break) instead of '\\n\\n' (paragraph break).
+    This merges byline + intro 1 + intro 2 into one "paragraph".
+
+    Fix: Convert markdown line breaks after byline and bold sections to paragraph breaks.
+
+    Args:
+        text: Generated Bengali text
+
+    Returns:
+        str: Text with normalized paragraph breaks
+    """
+    if not text:
+        return text
+
+    original = text
+
+    # Pattern 1: Byline followed by markdown line break + bold intro
+    # "নিউজ ডেস্ক, বাংলার কলম্বাস  \n**" → "নিউজ ডেস্ক, বাংলার কলম্বাস\n\n**"
+    text = re.sub(r'(বাংলার কলম্বাস)\s*\n(\*\*)', r'\1\n\n\2', text)
+
+    # Pattern 2: Bold section ending with **  \n followed by non-bold text
+    # "...হবে।**  \nনতুন এই" → "...হবে।**\n\nনতুন এই"
+    text = re.sub(r'\*\*\s*\n([^*\n])', r'**\n\n\1', text)
+
+    # Pattern 3: Non-bold text followed by markdown line break + bold subhead
+    # "...করে তোলে।  \n**সাবহেড**" → "...করে তোলে।\n\n**সাবহেড**"
+    text = re.sub(r'([।!?])\s*\n(\*\*)', r'\1\n\n\2', text)
+
+    if text != original:
+        logger.info("Normalized markdown line breaks to paragraph breaks")
+
+    return text
+
+
+# ============================================================================
+# INTRO STRUCTURE FIXER (Complete Rewrite v3.0)
+# ============================================================================
+
+def make_fully_bold(text: str) -> str:
+    """
+    Make entire paragraph FULLY bold, removing any partial bold.
+
+    Args:
+        text: Text that may have partial or no bold markers
+
+    Returns:
+        str: Text wrapped in ** at both ends
+    """
+    # Remove existing ** markers
+    clean = text.replace('**', '').strip()
+    return f'**{clean}**'
+
+
+def remove_bold(text: str) -> str:
+    """
+    Remove all bold markers from text.
+
+    Args:
+        text: Text with potential ** markers
+
+    Returns:
+        str: Clean text without ** markers
+    """
+    return text.replace('**', '').strip()
+
+
+def find_byline_index(paragraphs: list) -> int:
+    """
+    Find index of byline paragraph.
+
+    Args:
+        paragraphs: List of paragraph strings
+
+    Returns:
+        int: Index of byline paragraph, or -1 if not found
+    """
+    for i, p in enumerate(paragraphs):
+        if 'নিউজ ডেস্ক' in p and 'বাংলার কলম্বাস' in p:
+            return i
+    return -1
+
+
+def find_first_subhead(paragraphs: list, start_idx: int) -> int:
+    """
+    Find first subhead after start_idx.
+
+    Subhead = FULLY bold paragraph (starts AND ends with **) that is relatively short.
+
+    Args:
+        paragraphs: List of paragraph strings
+        start_idx: Index to start searching from
+
+    Returns:
+        int: Index of first subhead, or -1 if not found
+    """
+    for i in range(start_idx, min(len(paragraphs), start_idx + 10)):
+        p = paragraphs[i].strip()
+        # Check if FULLY bold (starts and ends with **)
+        if p.startswith('**') and p.endswith('**'):
+            clean = p[2:-2].strip()
+            # Subheads are typically < 100 chars
+            if len(clean) < 100:
+                return i
+    return -1
+
+
+def split_into_sentences(text: str) -> list:
+    """
+    Split text into sentences at Bengali sentence endings.
+
+    Preserves quotes as complete units - doesn't split inside quotations.
+
+    Args:
+        text: Bengali text to split
+
+    Returns:
+        list: List of sentences
+    """
+    if not text:
+        return []
+
+    # Quote characters to track
+    OPENING_QUOTES = '"\u201C'
+    CLOSING_QUOTES = '"\u201D'
+
+    sentences = []
+    current = []
+    in_quote = False
+
+    for char in text:
+        current.append(char)
+
+        # Track quote state
+        if char in OPENING_QUOTES:
+            in_quote = True
+        elif char in CLOSING_QUOTES:
+            in_quote = False
+
+        # Check for sentence ending (only if NOT inside a quote)
+        if char in '।?!' and not in_quote:
+            sentence = ''.join(current).strip()
+            if sentence:
+                sentences.append(sentence)
+            current = []
+
+    # Add remaining text
+    remaining = ''.join(current).strip()
+    if remaining:
+        sentences.append(remaining)
+
+    return sentences
+
+
+def split_intro(intro: str) -> tuple:
+    """
+    Split single intro into Intro 1 and Intro 2.
+
+    Intro 1: First 2 sentences (will be bold)
+    Intro 2: Remaining sentences (not bold)
+
+    Args:
+        intro: Single intro paragraph text
+
+    Returns:
+        tuple: (intro1, intro2) - intro2 may be empty string if can't split
+    """
+    clean = intro.replace('**', '').strip()
+    sentences = split_into_sentences(clean)
+
+    if len(sentences) <= 2:
+        # Can't split meaningfully, return as-is
+        return (clean, '')
+
+    intro1 = ' '.join(sentences[:2])
+    intro2 = ' '.join(sentences[2:])
+    return (intro1, intro2)
+
+
+def fix_intro_structure(content: str, format_type: str) -> str:
+    """
+    Fix intro structure to match exact requirements.
+
+    Hard News: P3 (Intro) must be FULLY bold
+    Soft News:
+        - P3 (Intro 1) must be FULLY bold
+        - P4 (Intro 2) must NOT be bold
+        - P5 = First Subhead
+        - EXACTLY 2 intro paragraphs before first subhead
+
+    This function handles:
+    1. Partial bold in intro → make FULLY bold
+    2. Only 1 intro exists → split into 2
+    3. More than 2 intros → merge extras into Intro 2
+
+    Args:
+        content: Generated Bengali text
+        format_type: 'hard_news' or 'soft_news'
+
+    Returns:
+        str: Content with fixed intro structure
+    """
+    if not content:
+        return content
+
+    paragraphs = content.split('\n\n')
+
+    # Find byline index
+    byline_idx = find_byline_index(paragraphs)
+    if byline_idx == -1:
+        logger.warning("Byline not found, cannot fix intro structure")
+        return content
+
+    intro_idx = byline_idx + 1
+    if intro_idx >= len(paragraphs):
+        logger.warning("No intro paragraph found after byline")
+        return content
+
+    if format_type == 'hard_news':
+        # Hard news: Just make intro FULLY bold
+        paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+        logger.info("Fixed hard news intro: made FULLY bold")
+        return '\n\n'.join(paragraphs)
+
+    # ========================================
+    # SOFT NEWS: Need exactly 2 intros
+    # ========================================
+
+    # Find first subhead (bold, short text after intro area)
+    first_subhead_idx = find_first_subhead(paragraphs, intro_idx + 1)
+
+    if first_subhead_idx == -1:
+        # No subhead found, just fix intro 1
+        paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+        logger.info("Fixed soft news: made intro 1 FULLY bold (no subhead found)")
+        return '\n\n'.join(paragraphs)
+
+    # Count paragraphs between intro_idx and first_subhead_idx
+    intros_between = first_subhead_idx - intro_idx  # Should be exactly 2
+
+    if intros_between == 2:
+        # Perfect! Just ensure intro 1 is FULLY bold, intro 2 is NOT bold
+        paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+        paragraphs[intro_idx + 1] = remove_bold(paragraphs[intro_idx + 1])
+        logger.info("Fixed soft news: exactly 2 intros found, fixed formatting")
+
+    elif intros_between == 1:
+        # Only 1 intro exists, need to SPLIT it into 2
+        intro1, intro2 = split_intro(paragraphs[intro_idx])
+
+        if intro2:
+            # Successfully split
+            paragraphs[intro_idx] = make_fully_bold(intro1)
+            paragraphs.insert(intro_idx + 1, intro2)
+            logger.info(f"Fixed soft news: split single intro into 2 paragraphs")
+        else:
+            # Couldn't split (too few sentences), just make it bold
+            paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+            logger.warning("Soft news: only 1 intro, couldn't split (too few sentences)")
+
+    elif intros_between > 2:
+        # Too many intros, MERGE extras into intro 2
+        intro1 = paragraphs[intro_idx]
+        intro2_parts = paragraphs[intro_idx + 1 : first_subhead_idx]
+        intro2_merged = ' '.join([remove_bold(p) for p in intro2_parts])
+
+        # Remove extra paragraphs (from intro_idx+2 to first_subhead_idx-1)
+        # We keep intro_idx, intro_idx+1 (merged), and first_subhead_idx onwards
+        del paragraphs[intro_idx + 2 : first_subhead_idx]
+
+        # Fix formatting
+        paragraphs[intro_idx] = make_fully_bold(intro1)
+        paragraphs[intro_idx + 1] = intro2_merged  # Already cleaned by remove_bold
+
+        logger.info(f"Fixed soft news: merged {intros_between - 1} paragraphs into Intro 2")
+
+    elif intros_between == 0:
+        # Subhead immediately after intro - need to split intro
+        intro1, intro2 = split_intro(paragraphs[intro_idx])
+
+        if intro2:
+            paragraphs[intro_idx] = make_fully_bold(intro1)
+            paragraphs.insert(intro_idx + 1, intro2)
+            logger.info("Fixed soft news: split intro before immediate subhead")
+        else:
+            paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+            logger.warning("Soft news: subhead immediately after intro, couldn't split")
+
+    return '\n\n'.join(paragraphs)
+
+
+def check_intro2_missing(content: str, format_type: str) -> tuple[bool, int, str]:
+    """
+    Check if Intro 2 is missing in soft news.
+
+    For soft_news: After bold Intro 1, there should be a non-bold Intro 2
+    before the first subhead.
+
+    Args:
+        content: Generated Bengali text
+        format_type: 'hard_news' or 'soft_news'
+
+    Returns:
+        tuple: (is_missing: bool, insert_position: int, intro1_text: str)
+        - is_missing: True if Intro 2 is missing
+        - insert_position: Paragraph index where Intro 2 should be inserted
+        - intro1_text: The Intro 1 text (for context when generating Intro 2)
+    """
+    if format_type != 'soft_news':
+        return (False, -1, '')
+
+    paragraphs = content.split('\n\n')
+
+    # Find byline position
+    byline_idx = -1
+    for i, para in enumerate(paragraphs):
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            byline_idx = i
+            break
+
+    if byline_idx == -1 or byline_idx + 2 >= len(paragraphs):
+        return (False, -1, '')
+
+    # Get intro 1 (first para after byline)
+    intro1_idx = byline_idx + 1
+    intro1 = paragraphs[intro1_idx].strip()
+
+    # Check if intro 1 is bold
+    if not (intro1.startswith('**') and '**' in intro1[2:]):
+        return (False, -1, '')  # Intro 1 not bold, can't determine structure
+
+    # Get next paragraph (should be Intro 2 or subhead)
+    next_idx = intro1_idx + 1
+    next_para = paragraphs[next_idx].strip()
+
+    # Check if next paragraph is bold (likely a subhead)
+    is_next_bold = next_para.startswith('**') and '**' in next_para[2:]
+
+    # If next paragraph is bold and short (< 80 chars without **), it's a subhead
+    # This means Intro 2 is missing
+    if is_next_bold:
+        clean_next = next_para.replace('**', '').strip()
+        if len(clean_next) < 80:  # Subheads are typically short
+            logger.info(f"Intro 2 missing: Found subhead '{clean_next[:30]}...' right after Intro 1")
+            return (True, next_idx, intro1)
+
+    return (False, -1, '')
+
+
+def generate_intro2_with_ai(intro1_text: str, openai_client) -> str:
+    """
+    Generate Intro 2 using AI based on Intro 1 context.
+
+    Args:
+        intro1_text: The bold Intro 1 text (for context)
+        openai_client: OpenAI client instance
+
+    Returns:
+        str: Generated Intro 2 paragraph (non-bold)
+    """
+    # Remove ** from intro1 for cleaner context
+    clean_intro1 = intro1_text.replace('**', '').strip()
+
+    prompt = f"""তুমি একজন বাংলা ফিচার লেখক। নিচের ভূমিকা ১ এর পর একটি ভূমিকা ২ লিখো।
+
+ভূমিকা ১: {clean_intro1}
+
+ভূমিকা ২ এর নিয়ম:
+- ২-৩ বাক্য
+- বোল্ড নয় (সাধারণ টেক্সট)
+- প্রেক্ষাপট ও পটভূমি দাও
+- ভূমিকা ১ এর বিষয়বস্তু সম্প্রসারণ করো
+
+শুধু ভূমিকা ২ লিখো, অন্য কিছু নয়:"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "তুমি একজন দক্ষ বাংলা ফিচার লেখক।"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        intro2 = response.choices[0].message.content.strip()
+
+        # Remove any ** if AI added them
+        intro2 = intro2.replace('**', '').strip()
+
+        logger.info(f"Generated Intro 2 with AI: {intro2[:50]}...")
+        return intro2
+
+    except Exception as e:
+        logger.error(f"Failed to generate Intro 2 with AI: {e}")
+        return ""
+
+
+def insert_intro2(content: str, intro2_text: str, insert_position: int) -> str:
+    """
+    Insert generated Intro 2 at the specified position.
+
+    Args:
+        content: Original content
+        intro2_text: Generated Intro 2 text
+        insert_position: Paragraph index where to insert
+
+    Returns:
+        str: Content with Intro 2 inserted
+    """
+    if not intro2_text or insert_position < 0:
+        return content
+
+    paragraphs = content.split('\n\n')
+
+    if insert_position > len(paragraphs):
+        return content
+
+    # Insert intro2 at the specified position
+    paragraphs.insert(insert_position, intro2_text)
+
+    logger.info(f"Inserted Intro 2 at position {insert_position}")
+    return '\n\n'.join(paragraphs)
+
+
+def ensure_intro2_exists(content: str, format_type: str, openai_client=None) -> str:
+    """
+    Ensure Intro 2 exists for soft news. If missing, generate with AI.
+
+    Args:
+        content: Generated Bengali text
+        format_type: 'hard_news' or 'soft_news'
+        openai_client: Optional OpenAI client for AI generation
+
+    Returns:
+        str: Content with Intro 2 guaranteed (if AI client provided)
+    """
+    if format_type != 'soft_news':
+        return content
+
+    is_missing, insert_pos, intro1_text = check_intro2_missing(content, format_type)
+
+    if not is_missing:
+        return content
+
+    if openai_client is None:
+        logger.warning("Intro 2 is missing but no OpenAI client provided for generation")
+        return content
+
+    # Generate Intro 2 with AI
+    intro2 = generate_intro2_with_ai(intro1_text, openai_client)
+
+    if intro2:
+        content = insert_intro2(content, intro2, insert_pos)
+
+    return content
+
+
+def ensure_intro_bold(content: str, format_type: str) -> str:
+    """
+    Ensure intro paragraph is ALWAYS bold (hardcoded rule).
+
+    For both hard_news and soft_news:
+    - Find the first paragraph after byline
+    - If it's not bold, make it bold
+
+    Args:
+        content: Generated Bengali text
+        format_type: 'hard_news' or 'soft_news'
+
+    Returns:
+        str: Text with intro guaranteed to be bold
+    """
+    if not content:
+        return content
+
+    paragraphs = content.split('\n\n')
+
+    # Find byline position
+    byline_idx = -1
+    for i, para in enumerate(paragraphs):
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            byline_idx = i
+            break
+
+    if byline_idx == -1 or byline_idx + 1 >= len(paragraphs):
+        return content
+
+    # Get intro paragraph (first after byline)
+    intro_idx = byline_idx + 1
+    intro = paragraphs[intro_idx].strip()
+
+    # Check if intro is already bold
+    if intro.startswith('**') and intro.endswith('**'):
+        return content  # Already bold, nothing to do
+
+    # Check if intro starts with ** but doesn't end with ** (partial bold)
+    if intro.startswith('**'):
+        # Find where the bold ends and make the whole thing bold
+        if '**' in intro[2:]:
+            # Has closing **, might have text after - handled by fix_broken_intro_bold
+            return content
+        else:
+            # No closing **, add it at the end
+            paragraphs[intro_idx] = intro + '**'
+            logger.info("Fixed unclosed intro bold")
+    else:
+        # Intro is not bold at all - make it bold
+        paragraphs[intro_idx] = f'**{intro}**'
+        logger.info("Made intro bold (was not bold)")
+
+    return '\n\n'.join(paragraphs)
+
+
+def fix_broken_intro_bold(content: str, format_type: str) -> str:
+    """
+    Fix intro paragraph where only first line/sentence is bold.
+
+    Problem: AI sometimes generates:
+        **প্রথম বাক্য।**
+        দ্বিতীয় বাক্য। তৃতীয় বাক্য।
+
+    Instead of:
+        **প্রথম বাক্য। দ্বিতীয় বাক্য। তৃতীয় বাক্য।**
+
+    This function merges broken bold intro into single **...** block.
+    Works for both hard_news (intro) and soft_news (intro 1).
+
+    Args:
+        content: Generated Bengali text
+        format_type: 'hard_news' or 'soft_news'
+
+    Returns:
+        str: Text with fixed intro bold formatting
+    """
+    if not content:
+        return content
+
+    lines = content.split('\n')
+    result_lines = []
+
+    # Find byline position
+    byline_index = -1
+    for i, line in enumerate(lines):
+        if 'নিউজ ডেস্ক' in line and 'বাংলার কলম্বাস' in line:
+            byline_index = i
+            break
+
+    if byline_index == -1:
+        # No byline found, return as-is
+        return content
+
+    # Copy lines up to and including byline
+    result_lines = lines[:byline_index + 1]
+
+    # Process lines after byline
+    remaining_lines = lines[byline_index + 1:]
+
+    # Skip empty lines after byline
+    start_idx = 0
+    while start_idx < len(remaining_lines) and not remaining_lines[start_idx].strip():
+        result_lines.append(remaining_lines[start_idx])
+        start_idx += 1
+
+    if start_idx >= len(remaining_lines):
+        return content
+
+    # Check if first non-empty line after byline starts with ** and ends with **
+    first_line = remaining_lines[start_idx].strip()
+
+    if first_line.startswith('**') and first_line.endswith('**'):
+        # Intro is properly formatted, check if there are orphan lines
+        # Look for non-empty, non-bold lines immediately after (before next empty line)
+        result_lines.append(remaining_lines[start_idx])
+
+        orphan_lines = []
+        idx = start_idx + 1
+
+        while idx < len(remaining_lines):
+            line = remaining_lines[idx].strip()
+
+            # Empty line = paragraph break, stop collecting
+            if not line:
+                break
+
+            # Bold line = new section, stop collecting
+            if line.startswith('**') and '**' in line[2:]:
+                break
+
+            # Non-bold line immediately after bold intro = orphan
+            orphan_lines.append(line)
+            idx += 1
+
+        if orphan_lines:
+            # Merge orphan lines into the bold intro
+            # Remove closing ** from intro, add orphan text, then close **
+            intro_text = result_lines[-1].strip()
+            intro_content = intro_text[2:-2]  # Remove ** from both ends
+
+            merged_content = intro_content + ' ' + ' '.join(orphan_lines)
+            result_lines[-1] = f'**{merged_content}**'
+
+            logger.info(f"Fixed broken intro bold: merged {len(orphan_lines)} orphan line(s)")
+
+            # Continue from where we stopped
+            result_lines.extend(remaining_lines[idx:])
+        else:
+            # No orphan lines, just add remaining
+            result_lines.extend(remaining_lines[start_idx + 1:])
+
+    elif first_line.startswith('**') and not first_line.endswith('**'):
+        # Intro starts with ** but doesn't close - find where it should close
+        # Collect all lines until next empty line or bold line
+        intro_parts = [first_line[2:]]  # Remove opening **
+        idx = start_idx + 1
+
+        while idx < len(remaining_lines):
+            line = remaining_lines[idx].strip()
+
+            # Empty line = paragraph break
+            if not line:
+                break
+
+            # Bold line = new section
+            if line.startswith('**') and '**' in line[2:]:
+                break
+
+            # Check if line ends with ** (malformed closing)
+            if line.endswith('**'):
+                intro_parts.append(line[:-2])  # Remove closing **
+                idx += 1
+                break
+
+            intro_parts.append(line)
+            idx += 1
+
+        # Reconstruct as proper bold paragraph
+        merged_intro = ' '.join(intro_parts)
+        result_lines.append(f'**{merged_intro}**')
+
+        logger.info(f"Fixed unclosed intro bold: merged {len(intro_parts)} line(s)")
+
+        # Add remaining lines
+        result_lines.extend(remaining_lines[idx:])
+
+    else:
+        # Intro doesn't start with **, return as-is
+        result_lines.extend(remaining_lines[start_idx:])
+
+    return '\n'.join(result_lines)
+
+
 def fix_three_line_paragraphs(text: str) -> str:
     """
     Enforce max 2 sentences per body paragraph (2 lines = 2 sentences).
@@ -689,12 +1344,12 @@ def fix_three_line_paragraphs(text: str) -> str:
 
 def validate_hard_news_structure(content: str) -> dict:
     """
-    Validate hard news structure according to client rules.
+    Validate hard news structure according to client rules (v3.0).
 
     Rules:
-    - Headline should be bold
+    - Headline should be FULLY bold (starts AND ends with **)
     - Byline should NOT be bold
-    - Intro should be bold (first paragraph after byline)
+    - Intro should be FULLY bold (starts AND ends with **)
     - No subheads allowed
     - Body paragraphs should not be bold
 
@@ -702,18 +1357,30 @@ def validate_hard_news_structure(content: str) -> dict:
         dict: {valid: bool, warnings: list}
     """
     warnings = []
+    paragraphs = content.split('\n\n')
+
+    # Find byline and intro
+    byline_idx = find_byline_index(paragraphs)
+    if byline_idx != -1 and byline_idx + 1 < len(paragraphs):
+        intro = paragraphs[byline_idx + 1].strip()
+
+        # Check if intro is FULLY bold
+        if not (intro.startswith('**') and intro.endswith('**')):
+            if intro.startswith('**'):
+                warnings.append(f"Intro is PARTIAL bold (should be FULLY bold): {intro[:50]}...")
+            else:
+                warnings.append(f"Intro is NOT bold (should be FULLY bold)")
 
     # Check for subheads (bold lines that look like headers, not intro)
-    lines = content.split('\n')
     bold_count = 0
-    for i, line in enumerate(lines):
-        line = line.strip()
-        if line.startswith('**') and line.endswith('**'):
+    for i, para in enumerate(paragraphs):
+        para = para.strip()
+        if para.startswith('**') and para.endswith('**'):
             bold_count += 1
-            # After the headline and intro, any bold line is likely a subhead
-            if bold_count > 2:  # headline + intro = 2
-                if 'নিউজ ডেস্ক' not in line:  # Not byline
-                    warnings.append(f"Possible subhead found (hard news should not have subheads): {line[:50]}...")
+            # After headline + intro = 2, any additional bold is a subhead
+            if bold_count > 2:
+                if 'নিউজ ডেস্ক' not in para:
+                    warnings.append(f"Possible subhead found (hard news should not have subheads): {para[:50]}...")
 
     # Check if byline is bold (it shouldn't be)
     if '**নিউজ ডেস্ক' in content or '**নিউজ ডেস্ক, বাংলার কলম্বাস**' in content:
@@ -730,56 +1397,65 @@ def validate_hard_news_structure(content: str) -> dict:
 
 def validate_soft_news_structure(content: str) -> dict:
     """
-    Validate soft news structure according to client rules.
+    Validate soft news structure according to client rules (v3.0).
 
     Rules:
-    - Headline should be bold
+    - Headline should be FULLY bold
     - Byline should NOT be bold
-    - Intro 1 should be bold
+    - Intro 1 should be FULLY bold (starts AND ends with **)
     - Intro 2 (non-bold) MUST exist before first subhead
-    - Subheads should be bold
+    - EXACTLY 2 intro paragraphs before first subhead
+    - Subheads should be FULLY bold
     - Body paragraphs should not be bold
 
     Returns:
         dict: {valid: bool, warnings: list}
     """
     warnings = []
+    paragraphs = content.split('\n\n')
 
     # Check if byline is bold (it shouldn't be)
     if '**নিউজ ডেস্ক' in content or '**নিউজ ডেস্ক, বাংলার কলম্বাস**' in content:
         warnings.append("Byline appears to be bold (should NOT be bold)")
 
-    # Check for non-bold paragraph before first subhead
-    # Pattern: After bold intro, there should be non-bold text before next bold
-    lines = content.split('\n')
+    # Find byline and check intro structure
+    byline_idx = find_byline_index(paragraphs)
+    if byline_idx == -1:
+        warnings.append("Byline not found")
+        return {'valid': False, 'warnings': warnings}
 
-    found_intro = False
-    found_non_bold_after_intro = False
+    intro_idx = byline_idx + 1
+    if intro_idx >= len(paragraphs):
+        warnings.append("No intro found after byline")
+        return {'valid': False, 'warnings': warnings}
 
-    for i, line in enumerate(lines):
-        line = line.strip()
-        if not line:
-            continue
+    # Check if Intro 1 is FULLY bold
+    intro1 = paragraphs[intro_idx].strip()
+    if not (intro1.startswith('**') and intro1.endswith('**')):
+        if intro1.startswith('**'):
+            warnings.append(f"Intro 1 is PARTIAL bold (should be FULLY bold): {intro1[:50]}...")
+        else:
+            warnings.append("Intro 1 is NOT bold (should be FULLY bold)")
 
-        # Skip headline and byline
-        if i < 3:
-            continue
+    # Find first subhead and count intros
+    first_subhead_idx = find_first_subhead(paragraphs, intro_idx + 1)
 
-        is_bold = line.startswith('**') and ('**' in line[2:])
+    if first_subhead_idx == -1:
+        warnings.append("No subhead found after intro")
+    else:
+        intros_count = first_subhead_idx - intro_idx
 
-        if is_bold and not found_intro:
-            # This is the intro
-            found_intro = True
-            continue
-
-        if found_intro and not found_non_bold_after_intro:
-            if is_bold:
-                # Found bold line right after intro - ERROR
-                warnings.append(f"Missing non-bold paragraph between intro and first subhead. Found: {line[:50]}...")
-            else:
-                # Found non-bold text after intro - GOOD
-                found_non_bold_after_intro = True
-            break
+        if intros_count == 0:
+            warnings.append("Subhead immediately after Intro 1 (missing Intro 2)")
+        elif intros_count == 1:
+            warnings.append("Only 1 intro before subhead (should be exactly 2)")
+        elif intros_count > 2:
+            warnings.append(f"Too many intros ({intros_count}) before subhead (should be exactly 2)")
+        else:
+            # Exactly 2 intros - check Intro 2 is NOT bold
+            intro2 = paragraphs[intro_idx + 1].strip()
+            if intro2.startswith('**'):
+                warnings.append("Intro 2 is bold (should NOT be bold)")
 
     if warnings:
         logger.warning(f"Soft news structure warnings: {warnings}")
@@ -809,42 +1485,56 @@ def validate_structure(content: str, format_type: str) -> dict:
         return {'valid': True, 'warnings': []}
 
 
-def process_enhanced_content(content: str, format_type: str, max_paragraph_words: int = 35) -> tuple[str, dict]:
+def process_enhanced_content(content: str, format_type: str, max_paragraph_words: int = 35, openai_client=None) -> tuple[str, dict]:
     """
     Full post-processing pipeline for enhanced content.
 
     Processing Order:
-    1. Apply word corrections (শিগগিরই, date suffixes)
-    2. Fix সহ joining (smart - preserves সহায়ক, সহযোগী, etc.)
-    3. Replace English words with Bengali equivalents
-    4. Split quotes (CRITICAL - paragraph ends at quote)
-    5. Enforce paragraph length (max 2 lines on A4)
-    6. Validate structure
+    0. Normalize markdown line breaks to paragraph breaks
+    1. FIX INTRO STRUCTURE (single comprehensive function - v3.0)
+       - Makes intro FULLY bold (not partial)
+       - For soft news: ensures exactly 2 intros before first subhead
+    2. Apply word corrections (শিগগিরই, date suffixes)
+    3. Fix সহ joining (smart - preserves সহায়ক, সহযোগী, etc.)
+    4. Replace English words with Bengali equivalents
+    5. Split quotes (CRITICAL - paragraph ends at quote)
+    6. Fix 3-line paragraphs (max 2 sentences per body paragraph)
+    7. Validate structure
 
     Args:
         content: AI-generated content
         format_type: 'hard_news' or 'soft_news'
         max_paragraph_words: Max words per paragraph (default 35 for ~2 lines on A4)
+        openai_client: DEPRECATED - no longer used (no AI calls in pipeline)
 
     Returns:
         tuple: (processed_content, validation_result)
     """
-    # Step 1: Apply word corrections (শীঘ্রই → শিগগিরই, date suffixes)
-    processed_content = apply_word_corrections(content)
+    # Step 0: Normalize markdown line breaks to paragraph breaks (must be first!)
+    processed_content = normalize_line_breaks(content)
 
-    # Step 2: Fix সহ joining (smart - won't break সহায়ক, সহযোগী, etc.)
+    # Step 1: FIX INTRO STRUCTURE (single comprehensive function - v3.0)
+    # Replaces: ensure_intro_bold, fix_broken_intro_bold, ensure_intro2_exists
+    # - Makes intro FULLY bold
+    # - For soft news: ensures exactly 2 intros before first subhead
+    processed_content = fix_intro_structure(processed_content, format_type)
+
+    # Step 2: Apply word corrections (শীঘ্রই → শিগগিরই, date suffixes)
+    processed_content = apply_word_corrections(processed_content)
+
+    # Step 3: Fix সহ joining (smart - won't break সহায়ক, সহযোগী, etc.)
     processed_content = fix_saho_joining(processed_content)
 
-    # Step 3: Replace English words with Bengali equivalents
+    # Step 4: Replace English words with Bengali equivalents
     processed_content = replace_english_words(processed_content)
 
-    # Step 4: Split quotes (CRITICAL - text after quote → new paragraph)
+    # Step 5: Split quotes (CRITICAL - text after quote → new paragraph)
     processed_content = split_quotes(processed_content)
 
-    # Step 5: Fix 3-line paragraphs (move last sentence to new paragraph)
+    # Step 6: Fix 3-line paragraphs (move last sentence to new paragraph)
     processed_content = fix_three_line_paragraphs(processed_content)
 
-    # Step 6: Validate structure (logging only, doesn't modify)
+    # Step 7: Validate structure (logging only, doesn't modify)
     validation = validate_structure(processed_content, format_type)
 
     return processed_content, validation

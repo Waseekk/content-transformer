@@ -1,8 +1,8 @@
 """
 Comprehensive Test: Generate Hard News and Soft News for all 7 PDF articles
 Output to Word document with proper formatting
-v2.6: Code-based post-processing (100% reliable, no AI checker)
-      - Includes enforce_paragraph_length() for max 35 words per paragraph
+v3.0: Code-based post-processing (100% reliable, no AI checker)
+      - fix_intro_structure() ensures FULLY bold intro + exactly 2 intros for soft news
 """
 import os
 import sys
@@ -161,108 +161,237 @@ def split_quotes(text):
     return '\n\n'.join(result)
 
 
-def enforce_paragraph_length(text, max_words=38):
+def normalize_line_breaks(text):
     """
-    Enforce maximum paragraph length by splitting long paragraphs at sentence boundaries.
-    Target: Max 2 lines on A4 (12pt font) ≈ 30-35 Bengali words per paragraph.
+    Normalize markdown line breaks to paragraph breaks.
 
-    Rules:
-    - Skip bold paragraphs (headlines, intros, subheads)
-    - Skip byline
-    - Split at sentence boundaries (।, ?, !)
-    - Keep sentences together if they fit within max_words
+    AI sometimes uses '  \\n' (markdown line break) instead of '\\n\\n' (paragraph break).
+    This merges byline + intro 1 + intro 2 into one "paragraph".
+
+    Fix: Convert markdown line breaks after byline and bold sections to paragraph breaks.
     """
     if not text:
         return text
 
-    paragraphs = text.split('\n\n')
-    result = []
-    splits_made = 0
+    # Pattern 1: Byline followed by markdown line break + bold intro
+    # "নিউজ ডেস্ক, বাংলার কলম্বাস  \n**" → "নিউজ ডেস্ক, বাংলার কলম্বাস\n\n**"
+    text = re.sub(r'(বাংলার কলম্বাস)\s*\n(\*\*)', r'\1\n\n\2', text)
 
-    for para in paragraphs:
-        para = para.strip()
-        if not para:
-            continue
+    # Pattern 2: Bold section ending with **  \n followed by non-bold text
+    # "...হবে।**  \nনতুন এই" → "...হবে।**\n\nনতুন এই"
+    text = re.sub(r'\*\*\s*\n([^*\n])', r'**\n\n\1', text)
 
-        # Skip bold paragraphs (headlines, intros, subheads)
-        if para.startswith('**') and '**' in para[2:]:
-            result.append(para)
-            continue
+    # Pattern 3: Non-bold text followed by markdown line break + bold subhead
+    # "...করে তোলে।  \n**সাবহেড**" → "...করে তোলে।\n\n**সাবহেড**"
+    text = re.sub(r'([।!?])\s*\n(\*\*)', r'\1\n\n\2', text)
 
-        # Skip byline
-        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
-            result.append(para)
-            continue
+    return text
 
-        # Check word count
-        words = para.split()
-        if len(words) <= max_words:
-            result.append(para)
-            continue
 
-        # Need to split - find sentence boundaries (।, ?, !)
-        sentences = re.split(r'(।|\?|!)', para)
+# ============================================================================
+# INTRO STRUCTURE FIXER (v3.0 - Complete Rewrite)
+# ============================================================================
 
-        # Rebuild sentences with their punctuation
-        full_sentences = []
-        for i in range(0, len(sentences) - 1, 2):
-            if i + 1 < len(sentences):
-                full_sentences.append(sentences[i] + sentences[i + 1])
-            else:
-                full_sentences.append(sentences[i])
-        if len(sentences) % 2 == 1 and sentences[-1].strip():
-            full_sentences.append(sentences[-1])
+def make_fully_bold(text):
+    """Make entire paragraph FULLY bold, removing any partial bold."""
+    clean = text.replace('**', '').strip()
+    return f'**{clean}**'
 
-        # Group sentences into paragraphs of max_words
-        current_para = []
-        current_word_count = 0
 
-        for sentence in full_sentences:
-            sentence = sentence.strip()
-            if not sentence:
-                continue
+def remove_bold(text):
+    """Remove all bold markers from text."""
+    return text.replace('**', '').strip()
 
-            sentence_words = len(sentence.split())
 
-            if current_word_count + sentence_words <= max_words:
-                current_para.append(sentence)
-                current_word_count += sentence_words
-            else:
-                if current_para:
-                    result.append(' '.join(current_para))
-                    splits_made += 1
-                current_para = [sentence]
-                current_word_count = sentence_words
+def find_byline_index(paragraphs):
+    """Find index of byline paragraph."""
+    for i, p in enumerate(paragraphs):
+        if 'নিউজ ডেস্ক' in p and 'বাংলার কলম্বাস' in p:
+            return i
+    return -1
 
-        # Add remaining sentences
-        if current_para:
-            result.append(' '.join(current_para))
 
-    if splits_made > 0:
-        print(f"      [POST] Split {splits_made} long paragraph(s) at sentence boundaries")
+def find_first_subhead(paragraphs, start_idx):
+    """
+    Find first subhead after start_idx.
+    Subhead = FULLY bold paragraph (starts AND ends with **) that is relatively short.
+    """
+    for i in range(start_idx, min(len(paragraphs), start_idx + 10)):
+        p = paragraphs[i].strip()
+        # Check if FULLY bold (starts and ends with **)
+        if p.startswith('**') and p.endswith('**'):
+            clean = p[2:-2].strip()
+            # Subheads are typically < 100 chars
+            if len(clean) < 100:
+                return i
+    return -1
 
-    return '\n\n'.join(result)
+
+def split_into_sentences(text):
+    """
+    Split text into sentences at Bengali sentence endings.
+    Preserves quotes as complete units.
+    """
+    if not text:
+        return []
+
+    OPENING_QUOTES = '"\u201C'
+    CLOSING_QUOTES = '"\u201D'
+
+    sentences = []
+    current = []
+    in_quote = False
+
+    for char in text:
+        current.append(char)
+        if char in OPENING_QUOTES:
+            in_quote = True
+        elif char in CLOSING_QUOTES:
+            in_quote = False
+
+        if char in '।?!' and not in_quote:
+            sentence = ''.join(current).strip()
+            if sentence:
+                sentences.append(sentence)
+            current = []
+
+    remaining = ''.join(current).strip()
+    if remaining:
+        sentences.append(remaining)
+
+    return sentences
+
+
+def split_intro(intro):
+    """
+    Split single intro into Intro 1 and Intro 2.
+    Intro 1: First 2 sentences
+    Intro 2: Remaining sentences
+    """
+    clean = intro.replace('**', '').strip()
+    sentences = split_into_sentences(clean)
+
+    if len(sentences) <= 2:
+        return (clean, '')
+
+    intro1 = ' '.join(sentences[:2])
+    intro2 = ' '.join(sentences[2:])
+    return (intro1, intro2)
+
+
+def fix_intro_structure(content, format_type):
+    """
+    Fix intro structure to match exact requirements (v3.0).
+
+    Hard News: P3 (Intro) must be FULLY bold
+    Soft News:
+        - P3 (Intro 1) must be FULLY bold
+        - P4 (Intro 2) must NOT be bold
+        - P5 = First Subhead
+        - EXACTLY 2 intro paragraphs before first subhead
+
+    Handles:
+    1. Partial bold in intro → make FULLY bold
+    2. Only 1 intro exists → split into 2
+    3. More than 2 intros → merge extras into Intro 2
+    """
+    if not content:
+        return content
+
+    paragraphs = content.split('\n\n')
+
+    # Find byline index
+    byline_idx = find_byline_index(paragraphs)
+    if byline_idx == -1:
+        return content
+
+    intro_idx = byline_idx + 1
+    if intro_idx >= len(paragraphs):
+        return content
+
+    if format_type == 'hard_news':
+        # Hard news: Just make intro FULLY bold
+        paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+        print("      [POST] Fixed hard news intro: made FULLY bold")
+        return '\n\n'.join(paragraphs)
+
+    # SOFT NEWS: Need exactly 2 intros
+    first_subhead_idx = find_first_subhead(paragraphs, intro_idx + 1)
+
+    if first_subhead_idx == -1:
+        paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+        print("      [POST] Fixed soft news: made intro 1 FULLY bold (no subhead found)")
+        return '\n\n'.join(paragraphs)
+
+    intros_between = first_subhead_idx - intro_idx
+
+    if intros_between == 2:
+        # Perfect! Fix formatting only
+        paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+        paragraphs[intro_idx + 1] = remove_bold(paragraphs[intro_idx + 1])
+        print("      [POST] Fixed soft news: exactly 2 intros found, fixed formatting")
+
+    elif intros_between == 1:
+        # Split single intro into 2
+        intro1, intro2 = split_intro(paragraphs[intro_idx])
+        if intro2:
+            paragraphs[intro_idx] = make_fully_bold(intro1)
+            paragraphs.insert(intro_idx + 1, intro2)
+            print("      [POST] Fixed soft news: split single intro into 2 paragraphs")
+        else:
+            paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+            print("      [POST] Soft news: only 1 intro, couldn't split (too few sentences)")
+
+    elif intros_between > 2:
+        # Merge extras into intro 2
+        intro1 = paragraphs[intro_idx]
+        intro2_parts = paragraphs[intro_idx + 1 : first_subhead_idx]
+        intro2_merged = ' '.join([remove_bold(p) for p in intro2_parts])
+
+        del paragraphs[intro_idx + 2 : first_subhead_idx]
+
+        paragraphs[intro_idx] = make_fully_bold(intro1)
+        paragraphs[intro_idx + 1] = intro2_merged
+
+        print(f"      [POST] Fixed soft news: merged {intros_between - 1} paragraphs into Intro 2")
+
+    elif intros_between == 0:
+        # Subhead immediately after intro - split intro
+        intro1, intro2 = split_intro(paragraphs[intro_idx])
+        if intro2:
+            paragraphs[intro_idx] = make_fully_bold(intro1)
+            paragraphs.insert(intro_idx + 1, intro2)
+            print("      [POST] Fixed soft news: split intro before immediate subhead")
+        else:
+            paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
+            print("      [POST] Soft news: subhead immediately after intro, couldn't split")
+
+    return '\n\n'.join(paragraphs)
 
 
 def process_content(text, format_type):
     """
-    Full code-based post-processing pipeline (v2.6)
+    Full code-based post-processing pipeline (v3.0)
 
-    1. Apply word corrections (শিগগিরই, date suffixes)
-    2. Fix সহ joining (smart)
-    3. Replace English words
-    4. Split quotes (CRITICAL)
-    5. Enforce paragraph length (max 35 words = ~2 lines on A4)
+    0. Normalize markdown line breaks to paragraph breaks
+    1. FIX INTRO STRUCTURE (single comprehensive function - v3.0)
+       - Makes intro FULLY bold (not partial)
+       - For soft news: ensures exactly 2 intros before first subhead
+    2. Apply word corrections (শিগগিরই, date suffixes)
+    3. Fix সহ joining (smart)
+    4. Replace English words
+    5. Split quotes (CRITICAL)
     """
+    text = normalize_line_breaks(text)
+    text = fix_intro_structure(text, format_type)
     text = apply_word_corrections(text)
     text = fix_saho_joining(text)
     text = replace_english_words(text)
     text = split_quotes(text)
-    text = enforce_paragraph_length(text, max_words=38)
     return text
 
 
-def detect_issues(content, format_type, max_words=38):
+def detect_issues(content, format_type):
     """Detect issues for logging (no longer triggers AI checker)"""
     issues = []
     paragraphs = content.split('\n\n')
@@ -277,10 +406,7 @@ def detect_issues(content, format_type, max_words=38):
         if 'নিউজ ডেস্ক' in para:
             continue
 
-        word_count = len(para.split())
-        if word_count > max_words:
-            issues.append(f"P{i+1}: {word_count} words")
-
+        # Check: Text after closing quote (should be split)
         if '"' in para:
             last_quote = para.rfind('"')
             text_after = para[last_quote+1:].strip()
@@ -536,7 +662,7 @@ def generate_soft_news(translated_text, article_info):
 
 
 def analyze_structure(content, news_type):
-    """Analyze the structure of news content"""
+    """Analyze the structure of news content (v3.0)"""
     paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
 
     result = {
@@ -546,53 +672,67 @@ def analyze_structure(content, news_type):
     }
 
     for i, para in enumerate(paragraphs[:8], 1):
-        is_bold = para.startswith('**')
+        # Check if FULLY bold (starts AND ends with **)
+        is_fully_bold = para.startswith('**') and para.endswith('**')
+        is_partial_bold = para.startswith('**') and not para.endswith('**')
         words = len(para.split())
         result["structure"].append({
             "paragraph": i,
-            "bold": is_bold,
+            "bold": is_fully_bold,
+            "partial_bold": is_partial_bold,
             "words": words,
             "preview": para[:60].replace('\n', ' ') + ("..." if len(para) > 60 else "")
         })
 
     if news_type == "soft_news" and len(paragraphs) >= 5:
-        # Check 2-paragraph rule for soft news (SMART detection)
-        # Structure: P1=Headline, P2=Byline, P3=Intro1(bold), P4+=Intro2(not bold), then Subhead(bold)
+        # Check 2-paragraph rule for soft news (v3.0)
+        # Structure: P1=Headline, P2=Byline, P3=Intro1(FULLY bold), P4=Intro2(NOT bold), P5=Subhead
         #
-        # After paragraph splitting, Intro2 may span multiple paragraphs.
-        # Rule: After bold Intro1 (P3), there must be at least ONE non-bold paragraph
-        #       before the first subhead (bold, short text - not full paragraph)
+        # Rule: EXACTLY 2 intro paragraphs before first subhead
+        # - P3 (Intro 1) must be FULLY bold (starts AND ends with **)
+        # - P4 (Intro 2) must NOT be bold
+        # - P5 should be the first subhead
 
-        p3_bold = paragraphs[2].startswith('**') if len(paragraphs) > 2 else False
+        p3 = paragraphs[2] if len(paragraphs) > 2 else ""
+        p3_fully_bold = p3.startswith('**') and p3.endswith('**')
+        p3_partial_bold = p3.startswith('**') and not p3.endswith('**')
 
         # Find first subhead after P3 (index 2)
-        # Subhead = bold, typically short (< 50 chars without **)
+        # Subhead = FULLY bold (starts AND ends with **), typically short (< 100 chars)
         first_subhead_idx = None
         non_bold_count_after_intro1 = 0
 
         for i in range(3, min(len(paragraphs), 10)):  # Check up to P10
             para = paragraphs[i]
-            is_bold = para.startswith('**')
+            is_fully_bold = para.startswith('**') and para.endswith('**')
 
-            if not is_bold:
+            if not para.startswith('**'):  # Not bold at all
                 non_bold_count_after_intro1 += 1
-            elif is_bold:
+            elif is_fully_bold:
                 # Check if it looks like a subhead (short bold text)
-                clean_text = para.replace('**', '').strip()
-                if len(clean_text) < 80:  # Subheads are typically short
+                clean_text = para[2:-2].strip()  # Remove ** from both ends
+                if len(clean_text) < 100:  # Subheads are typically short
                     first_subhead_idx = i
                     break
 
-        # PASS if: P3 is bold AND there's at least 1 non-bold para before first subhead
-        if p3_bold and non_bold_count_after_intro1 >= 1 and first_subhead_idx is not None:
+        # PASS conditions:
+        # 1. P3 is FULLY bold (not partial)
+        # 2. There's at least 1 non-bold paragraph (Intro 2) before first subhead
+        #    Note: enforce_paragraph_length() may split long Intro 2 into multiple paragraphs
+        # 3. First subhead exists
+        if p3_fully_bold and non_bold_count_after_intro1 >= 1 and first_subhead_idx is not None:
             result["validation"]["2_paragraph_rule"] = "PASS"
-            result["validation"]["intro2_paragraphs"] = non_bold_count_after_intro1
+            result["validation"]["intro1_fully_bold"] = True
+            result["validation"]["intro2_count"] = non_bold_count_after_intro1
             result["validation"]["first_subhead_at"] = f"P{first_subhead_idx + 1}"
         else:
             result["validation"]["2_paragraph_rule"] = "FAIL"
-            result["validation"]["p3_bold"] = p3_bold
+            result["validation"]["p3_fully_bold"] = p3_fully_bold
+            result["validation"]["p3_partial_bold"] = p3_partial_bold
             result["validation"]["non_bold_after_intro1"] = non_bold_count_after_intro1
             result["validation"]["first_subhead_found"] = first_subhead_idx is not None
+            if first_subhead_idx is not None:
+                result["validation"]["first_subhead_at"] = f"P{first_subhead_idx + 1}"
 
     return result
 
