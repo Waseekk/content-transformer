@@ -148,7 +148,7 @@ export const UserDashboardPage = () => {
   };
 
   // Fetch user stats
-  const { data: stats, isLoading: statsLoading, isFetching: statsFetching, refetch: refetchStats } = useQuery({
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['usageStats'],
     queryFn: authApi.getUsageStats,
     staleTime: 0, // Always fetch fresh data
