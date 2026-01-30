@@ -61,7 +61,7 @@ export const SwiftorLogo: React.FC<SwiftorLogoProps> = ({
             transition={{ delay: 1.5 }}
             className="text-sm font-semibold tagline-shimmer mt-2"
           >
-            AI powered clean and credible news
+            AI Powered Clean and Credible News
           </motion.p>
         )}
       </div>
@@ -85,7 +85,7 @@ export const SwiftorLogo: React.FC<SwiftorLogoProps> = ({
             transition={{ delay: 1.2 }}
             className="text-sm font-semibold tagline-shimmer mt-2"
           >
-            AI powered clean and credible news
+            AI Powered Clean and Credible News
           </motion.p>
         )}
       </div>

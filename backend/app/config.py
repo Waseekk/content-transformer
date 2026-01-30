@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = Field(..., env="SECRET_KEY")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 90  # 1.5 hours
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Redis / Celery
@@ -111,14 +111,14 @@ class Settings(BaseSettings):
     AUTO_ASSIGN_TOKENS_AMOUNT: int = 100000  # Amount to auto-assign
 
     # Enhancement Limits
-    DEFAULT_MONTHLY_ENHANCEMENTS: int = 600
-    FREE_TIER_ENHANCEMENTS: int = 600
-    PREMIUM_TIER_ENHANCEMENTS: int = 600
+    DEFAULT_MONTHLY_ENHANCEMENTS: int = 450
+    FREE_TIER_ENHANCEMENTS: int = 450
+    PREMIUM_TIER_ENHANCEMENTS: int = 450
 
-    # Translation Limits
-    DEFAULT_MONTHLY_TRANSLATIONS: int = 600
-    FREE_TIER_TRANSLATIONS: int = 600
-    PREMIUM_TIER_TRANSLATIONS: int = 600
+    # Translation Limits (Extractions)
+    DEFAULT_MONTHLY_TRANSLATIONS: int = 450
+    FREE_TIER_TRANSLATIONS: int = 450
+    PREMIUM_TIER_TRANSLATIONS: int = 450
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")

@@ -24,9 +24,11 @@ else:
     # For PostgreSQL and other databases
     engine = create_engine(
         DATABASE_URL,
-        pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20
+        pool_pre_ping=True,       # Verify connections before use
+        pool_size=10,             # Number of connections to keep open
+        max_overflow=20,          # Max additional connections
+        pool_recycle=3600,        # Recycle connections after 1 hour
+        pool_timeout=30,          # Timeout waiting for connection (seconds)
     )
 
 # Create SessionLocal class

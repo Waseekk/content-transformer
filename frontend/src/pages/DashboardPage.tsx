@@ -177,7 +177,7 @@ export const DashboardPage = () => {
               transition={{ delay: 1.5 }}
               className="text-xl tracking-widest uppercase ai-header-gradient ai-header-sparkle"
             >
-              Your AI News Editor
+              AI Powered Clean and Credible News
             </motion.p>
 
           </motion.div>

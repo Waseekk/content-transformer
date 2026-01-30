@@ -142,6 +142,7 @@ class PlaywrightExtractor:
         logger.info(f"Extracting content from {url} using Playwright")
 
         page = None
+        context = None
         try:
             await self._ensure_browser()
 
@@ -195,9 +196,15 @@ class PlaywrightExtractor:
             logger.error(f"Playwright extraction error: {e}")
             raise PlaywrightExtractionError(f"Extraction failed: {str(e)}")
         finally:
+            # Close page first, then context to prevent memory leaks
             if page:
                 try:
                     await page.close()
+                except:
+                    pass
+            if context:
+                try:
+                    await context.close()
                 except:
                     pass
 

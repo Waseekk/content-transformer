@@ -92,6 +92,9 @@ backend/data/
 translations/*.txt
 translations/
 
+# User uploads (support attachments, etc.)
+backend/uploads/
+
 # Test and utility scripts
 test_bengali_news.py
 verify_6_formats.py

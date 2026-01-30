@@ -148,9 +148,11 @@ export const UserDashboardPage = () => {
   };
 
   // Fetch user stats
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+  const { data: stats, isLoading: statsLoading, isFetching: statsFetching, refetch: refetchStats } = useQuery({
     queryKey: ['usageStats'],
     queryFn: authApi.getUsageStats,
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always', // Refetch when component mounts
   });
 
   // Fetch scraping history
@@ -289,7 +291,7 @@ export const UserDashboardPage = () => {
                     <HiTranslate className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-white/80 text-sm font-medium">Monthly Translations</p>
+                    <p className="text-white/80 text-sm font-medium">Monthly Extractions</p>
                     {stats?.translation_limit_exceeded && (
                       <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium">
                         Limit Exceeded
@@ -301,13 +303,13 @@ export const UserDashboardPage = () => {
               <p className="text-4xl font-bold mb-3">
                 {stats?.translations_used_this_month || 0}
                 <span className="text-xl font-normal opacity-70">
-                  {' '}/ {stats?.monthly_translation_limit || 600}
+                  {' '}/ {stats?.monthly_translation_limit || 450}
                 </span>
               </p>
               <div className="bg-white/20 rounded-full h-3 overflow-hidden backdrop-blur-sm">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(((stats?.translations_used_this_month || 0) / (stats?.monthly_translation_limit || 600)) * 100, 100)}%` }}
+                  animate={{ width: `${Math.min(((stats?.translations_used_this_month || 0) / (stats?.monthly_translation_limit || 450)) * 100, 100)}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   className={`h-full rounded-full ${
                     stats?.translation_limit_exceeded ? 'bg-red-200' : 'bg-white'
@@ -316,7 +318,7 @@ export const UserDashboardPage = () => {
               </div>
               <p className="text-sm opacity-80 mt-3 flex items-center gap-2">
                 <HiLightningBolt className="w-4 h-4" />
-                {stats?.translations_remaining || 0} translations remaining
+                {stats?.translations_remaining || 0} extractions remaining
               </p>
             </div>
           </motion.div>
@@ -353,13 +355,13 @@ export const UserDashboardPage = () => {
               <p className="text-4xl font-bold mb-3">
                 {stats?.enhancements_used_this_month || 0}
                 <span className="text-xl font-normal opacity-70">
-                  {' '}/ {stats?.monthly_enhancement_limit || 600}
+                  {' '}/ {stats?.monthly_enhancement_limit || 450}
                 </span>
               </p>
               <div className="bg-white/20 rounded-full h-3 overflow-hidden backdrop-blur-sm">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(((stats?.enhancements_used_this_month || 0) / (stats?.monthly_enhancement_limit || 600)) * 100, 100)}%` }}
+                  animate={{ width: `${Math.min(((stats?.enhancements_used_this_month || 0) / (stats?.monthly_enhancement_limit || 450)) * 100, 100)}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   className={`h-full rounded-full ${
                     stats?.enhancement_limit_exceeded ? 'bg-red-200' : 'bg-white'
@@ -425,7 +427,7 @@ export const UserDashboardPage = () => {
         )}
 
         {/* Usage Stats Grid */}
-        {statsLoading ? (
+        {(statsLoading || !stats) ? (
           <div className="flex justify-center py-16">
             <AILoader variant="neural" size="lg" text="Loading your statistics..." />
           </div>
@@ -434,7 +436,7 @@ export const UserDashboardPage = () => {
             variants={containerVariants}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
           >
-            {/* Total Translations */}
+            {/* Total Extractions */}
             <motion.div
               variants={itemVariants}
               whileHover={cardHover}
@@ -453,7 +455,7 @@ export const UserDashboardPage = () => {
                 >
                   {stats?.total_translations || 0}
                 </motion.p>
-                <p className="text-blue-100 text-sm">Total Translations</p>
+                <p className="text-blue-100 text-sm">Total Extractions</p>
               </div>
             </motion.div>
 
@@ -529,7 +531,7 @@ export const UserDashboardPage = () => {
         )}
 
         {/* Additional Stats Row */}
-        {!statsLoading && (
+        {!statsLoading && stats && (
           <motion.div
             variants={containerVariants}
             className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"

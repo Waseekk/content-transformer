@@ -3,7 +3,6 @@ FastAPI Application Entry Point
 Swiftor - Hard News & Soft News Backend API
 """
 
-import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,13 +13,10 @@ from sqlalchemy import text
 from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search, support
 from app.config import get_settings
 from app.database import get_db
+from app.utils.logger import LoggerManager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Use centralized LoggerManager (no duplicate basicConfig)
+logger = LoggerManager.get_logger('main')
 
 settings = get_settings()
 
@@ -143,11 +139,47 @@ async def startup_event():
                 logger.info("job_id column added successfully")
             else:
                 logger.debug("job_id column already exists")
+
+        # Update user limits from old default (600) to new default (450)
+        if 'users' in inspector.get_table_names():
+            result = conn.execute(text("""
+                UPDATE users
+                SET monthly_translation_limit = :new_limit,
+                    monthly_enhancement_limit = :new_limit
+                WHERE monthly_translation_limit = :old_limit
+                   OR monthly_enhancement_limit = :old_limit
+            """), {"old_limit": 600, "new_limit": 450})
+            conn.commit()
+            if result.rowcount > 0:
+                logger.info(f"Updated {result.rowcount} users' limits from 600 to 450")
+            else:
+                logger.debug("No users needed limit updates")
+
     logger.info("Migrations complete")
 
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on shutdown"""
+    """Cleanup on shutdown - close scheduler and database connections"""
     logger.info("Swiftor API shutting down...")
+
+    # Stop scheduler service
+    try:
+        from app.services.scheduler_service import SchedulerService
+        scheduler_service = SchedulerService()
+        if scheduler_service.is_running:
+            scheduler_service.stop()
+            logger.info("Scheduler stopped successfully")
+    except Exception as e:
+        logger.warning(f"Error stopping scheduler: {e}")
+
+    # Close database connections
+    try:
+        from app.database import engine
+        engine.dispose()
+        logger.info("Database connections closed successfully")
+    except Exception as e:
+        logger.warning(f"Error closing database connections: {e}")
+
+    logger.info("Swiftor API shutdown complete")
