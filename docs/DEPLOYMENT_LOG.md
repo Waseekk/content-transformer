@@ -349,6 +349,38 @@ print('Password reset!')
 **Fix:** Restart Traefik: `cd /docker/n8n && docker compose restart traefik`
 **Note:** If HTTPS works in browser, ignore old log entries
 
+### Issue: Gateway Timeout (502/504) after running for extended period
+
+**Cause:** Traefik's internal routing state and SSL certificate cache becomes stale after running for 24+ hours without any configuration changes. This can cause intermittent gateway timeouts even when all containers are healthy.
+
+**Symptoms:**
+- https://swiftor.online shows "Gateway Timeout"
+- `docker compose ps` shows all containers as "healthy"
+- `curl -I http://localhost:8080` works (direct access succeeds)
+- Traefik logs show no new errors
+
+**Diagnosis:**
+```bash
+# Check containers are healthy
+docker compose ps
+
+# Test direct access (bypass Traefik)
+curl -I http://localhost:8080
+
+# Check frontend is on Traefik's network
+docker network inspect n8n_default | grep -A2 swiftor
+
+# Check Traefik sees the router
+docker exec n8n-traefik-1 wget -qO- http://localhost:8080/api/http/routers 2>/dev/null | grep -i swiftor
+```
+
+**Fix:** Restart Traefik to refresh its internal state:
+```bash
+cd /docker/n8n && docker compose restart traefik
+```
+
+**Prevention:** Consider setting up a periodic Traefik restart via cron (e.g., weekly) or monitoring for gateway timeouts.
+
 ---
 
 ## Coexisting Services
@@ -387,4 +419,4 @@ print('Password reset!')
 
 ---
 
-*Last updated: 2026-01-29*
+*Last updated: 2026-01-30*
