@@ -1,11 +1,13 @@
 /**
  * Operation Status Bar - Global floating bar showing pending operations
  * Appears on all pages when operations are in progress
+ * Note: Error notifications are hidden from users - only pending/completed shown
  */
 
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { HiSparkles, HiCheckCircle, HiExclamationCircle, HiX, HiArrowRight } from 'react-icons/hi';
+import { HiSparkles, HiCheckCircle, HiX, HiArrowRight } from 'react-icons/hi';
 import { useAppStore } from '../../store/useAppStore';
 import type { PendingOperation } from '../../store/useAppStore';
 
@@ -20,8 +22,12 @@ export const OperationStatusBar: React.FC = () => {
   const completed = operations.filter(op => op.status === 'completed');
   const errors = operations.filter(op => op.status === 'error');
 
-  // Auto-clear completed operations after 10 seconds
-  // This is handled in useEffect in the component that uses this
+  // Auto-clear error operations silently (don't show to users)
+  useEffect(() => {
+    if (errors.length > 0) {
+      errors.forEach(op => clearOperation(op.id));
+    }
+  }, [errors, clearOperation]);
 
   const getOperationLabel = (type: PendingOperation['type']) => {
     switch (type) {
@@ -32,8 +38,8 @@ export const OperationStatusBar: React.FC = () => {
     }
   };
 
-  // Show nothing if no operations
-  if (operations.length === 0) return null;
+  // Show nothing if no pending or completed operations
+  if (pending.length === 0 && completed.length === 0) return null;
 
   return (
     <AnimatePresence>
@@ -99,39 +105,7 @@ export const OperationStatusBar: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Error Operations */}
-      {pending.length === 0 && completed.length === 0 && errors.length > 0 && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
-        >
-          <div className="bg-red-500 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-4">
-            <HiExclamationCircle className="w-5 h-5" />
-            <div>
-              <p className="font-medium">
-                {errors.length} operation{errors.length > 1 ? 's' : ''} failed
-              </p>
-              <p className="text-sm text-white/80">
-                {errors[0]?.error || 'Please try again'}
-              </p>
-            </div>
-            <Link
-              to="/translation"
-              className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
-            >
-              Retry
-            </Link>
-            <button
-              onClick={() => errors.forEach(op => clearOperation(op.id))}
-              className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <HiX className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.div>
-      )}
+      {/* Error operations are auto-cleared silently - not shown to users */}
     </AnimatePresence>
   );
 };
