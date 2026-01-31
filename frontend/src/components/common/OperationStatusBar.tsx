@@ -31,8 +31,8 @@ export const OperationStatusBar: React.FC = () => {
 
   const getOperationLabel = (type: PendingOperation['type']) => {
     switch (type) {
-      case 'translation': return 'Processing content';
-      case 'enhancement': return 'Generating news articles';
+      case 'translation': return 'Processing Content';
+      case 'enhancement': return 'Generating News Articles';
       case 'url_extraction': return 'Extracting from URL';
       default: return 'Processing';
     }
@@ -49,7 +49,7 @@ export const OperationStatusBar: React.FC = () => {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
+          className="fixed bottom-4 left-0 right-0 flex justify-center z-50"
         >
           <div className="bg-gradient-to-r from-ai-primary to-ai-secondary text-white px-6 py-3 rounded-2xl shadow-glow-md flex items-center gap-3">
             <motion.div
@@ -77,7 +77,7 @@ export const OperationStatusBar: React.FC = () => {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
+          className="fixed bottom-4 left-0 right-0 flex justify-center z-50"
         >
           <div className="bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-4">
             <HiCheckCircle className="w-5 h-5" />

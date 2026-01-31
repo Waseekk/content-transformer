@@ -110,4 +110,10 @@ export const authApi = {
     const response = await api.post<AdminAssignResponse>(`/api/auth/admin/users/${userId}/set-tier`, data);
     return response.data;
   },
+
+  // Admin: Reset user's monthly usage counts
+  adminResetMonthlyUsage: async (userId: number): Promise<AdminAssignResponse> => {
+    const response = await api.post<AdminAssignResponse>(`/api/auth/admin/users/${userId}/reset-monthly`);
+    return response.data;
+  },
 };

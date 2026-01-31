@@ -119,7 +119,7 @@ async def startup_event():
 
     # Create database tables
     from app.database import engine, Base
-    from app.models import user, article, job, translation, enhancement, token_usage, user_config, support_ticket
+    from app.models import user, article, job, translation, enhancement, token_usage, user_config, support_ticket, password_reset
     from sqlalchemy import text, inspect
 
     logger.info("Creating database tables...")

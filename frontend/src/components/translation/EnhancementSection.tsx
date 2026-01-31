@@ -24,7 +24,13 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
     toggleFormat,
     currentEnhancements,
     addEnhancement,
+    pendingOperations,
   } = useAppStore();
+
+  // Check if there's an enhancement operation pending in global store
+  const hasEnhancementPending = Object.values(pendingOperations).some(
+    (op) => op.type === 'enhancement' && op.status === 'pending'
+  );
 
   // Format definitions
   const formats = [
@@ -135,16 +141,16 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
         {/* Generate Button */}
         <button
           onClick={handleEnhance}
-          disabled={isDisabled || enhance.isPending}
+          disabled={isDisabled || enhance.isPending || hasEnhancementPending}
           className={`
             inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all
-            ${isDisabled || enhance.isPending
+            ${isDisabled || enhance.isPending || hasEnhancementPending
               ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
               : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:scale-[1.02]'
             }
           `}
         >
-          {enhance.isPending ? (
+          {enhance.isPending || hasEnhancementPending ? (
             <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               Generating...
@@ -178,7 +184,7 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
                 description={format.description}
                 content={result?.content}
                 englishContent={englishContent}
-                isLoading={enhance.isPending && !result}
+                isLoading={(enhance.isPending || hasEnhancementPending) && !result}
                 color={format.color}
                 onContentUpdate={handleContentUpdate}
               />

@@ -28,9 +28,11 @@ interface FormatCardProps {
 
 /**
  * Convert markdown text to HTML string (handles **bold** formatting)
+ * Uses 's' flag to match across newlines
  */
 const markdownToHtml = (markdown: string): string => {
-  let html = markdown.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Replace ** markers - use [\s\S] to match across newlines
+  let html = markdown.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
   const paragraphs = html.split(/\n\n+/).filter(p => p.trim());
   html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
   return html;

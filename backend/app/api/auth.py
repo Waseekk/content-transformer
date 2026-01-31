@@ -12,6 +12,7 @@ from pydantic import BaseModel, EmailStr, Field, field_serializer
 
 from app.database import get_db
 from app.models.user import User
+from app.models.password_reset import PasswordResetToken
 from app.middleware.auth import (
     verify_password,
     get_password_hash,
@@ -22,6 +23,7 @@ from app.middleware.auth import (
     get_current_active_user
 )
 from app.config import settings
+from app.services.email import email_service
 
 router = APIRouter()
 
@@ -219,6 +221,23 @@ class AdminAssignResponse(BaseModel):
     new_value: int
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request"""
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class MessageResponse(BaseModel):
+    """Simple message response"""
+    success: bool
+    message: str
+
+
 # ============================================================================
 # AUTHENTICATION ENDPOINTS
 # ============================================================================
@@ -342,6 +361,104 @@ async def login(
             "is_admin": user.is_admin,
             "created_at": user.created_at.isoformat() if user.created_at else ""
         }
+    }
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Request password reset email
+
+    - **email**: User's registered email address
+
+    Always returns success to prevent email enumeration attacks.
+    If the email exists, a password reset link will be sent.
+    """
+    # Find user by email
+    user = db.query(User).filter(User.email == request.email).first()
+
+    if user and user.is_active:
+        # Invalidate any existing tokens for this user
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used == False
+        ).update({"used": True})
+
+        # Create new reset token
+        reset_token = PasswordResetToken.create_token(user.id)
+        db.add(reset_token)
+        db.commit()
+
+        # Build reset URL
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token.token}"
+
+        # Send email (fire and forget - don't block on email failure)
+        try:
+            await email_service.send_password_reset_email(
+                to=user.email,
+                reset_url=reset_url,
+                user_name=user.full_name
+            )
+        except Exception:
+            pass  # Log but don't expose email failures
+
+    # Always return success to prevent email enumeration
+    return {
+        "success": True,
+        "message": "If an account with that email exists, we've sent a password reset link."
+    }
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using token from email
+
+    - **token**: Password reset token from email link
+    - **new_password**: New password (min 8 characters)
+    """
+    # Find token
+    reset_token = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == request.token
+    ).first()
+
+    if not reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link"
+        )
+
+    if not reset_token.is_valid():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link has expired or already been used"
+        )
+
+    # Get user
+    user = db.query(User).filter(User.id == reset_token.user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link"
+        )
+
+    # Update password
+    user.hashed_password = get_password_hash(request.new_password)
+
+    # Mark token as used
+    reset_token.mark_used()
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Your password has been reset successfully. You can now log in with your new password."
     }
 
 
@@ -976,6 +1093,45 @@ async def admin_toggle_admin_status(
         "message": f"Admin privileges {action} successfully",
         "user_id": target_user.id,
         "new_status": target_user.is_admin
+    }
+
+
+@router.post("/admin/users/{user_id}/reset-monthly", response_model=AdminAssignResponse)
+async def admin_reset_user_monthly(
+    user_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin only: Reset user's monthly usage counts (translations and enhancements)
+
+    - **user_id**: Target user ID
+
+    Resets translations_used and enhancements_used to 0, keeping limits unchanged.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Reset translation and enhancement counts only (NOT tokens)
+    target_user.reset_monthly_translations()
+    target_user.reset_monthly_enhancements()
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Monthly usage counts reset successfully",
+        "user_id": target_user.id,
+        "new_value": 0
     }
 
 

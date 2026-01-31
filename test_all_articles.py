@@ -193,8 +193,15 @@ def normalize_line_breaks(text):
 # ============================================================================
 
 def make_fully_bold(text):
-    """Make entire paragraph FULLY bold, removing any partial bold."""
-    clean = text.replace('**', '').strip()
+    """
+    Make entire paragraph FULLY bold, removing any partial bold.
+    CRITICAL: Removes all newlines so markdown parser works correctly.
+    """
+    clean = text.replace('**', '')
+    # Remove ALL newlines (critical for markdown to work!)
+    clean = clean.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+    # Collapse multiple spaces to single space
+    clean = ' '.join(clean.split())
     return f'**{clean}**'
 
 
@@ -204,10 +211,30 @@ def remove_bold(text):
 
 
 def find_byline_index(paragraphs):
-    """Find index of byline paragraph."""
+    """Find index of byline paragraph with fallbacks."""
+    # Primary check: both keywords present
     for i, p in enumerate(paragraphs):
         if 'নিউজ ডেস্ক' in p and 'বাংলার কলম্বাস' in p:
             return i
+
+    # Fallback 1: just "বাংলার কলম্বাস"
+    for i, p in enumerate(paragraphs):
+        if 'বাংলার কলম্বাস' in p:
+            return i
+
+    # Fallback 2: just "নিউজ ডেস্ক"
+    for i, p in enumerate(paragraphs):
+        if 'নিউজ ডেস্ক' in p:
+            return i
+
+    # Fallback 3: Assume P2 is byline if structure looks right
+    if len(paragraphs) >= 3:
+        p1 = paragraphs[0].strip()
+        p2 = paragraphs[1].strip()
+        if p1.startswith('**') and len(p2) < 50 and not p2.startswith('**'):
+            print("      [POST] Byline assumed at P2 via structure fallback")
+            return 1
+
     return -1
 
 
@@ -351,6 +378,82 @@ def fix_three_line_paragraphs(text):
     return '\n\n'.join(result)
 
 
+def enforce_intro_sentence_count(content, format_type):
+    """
+    Enforce exact sentence count for intro paragraphs.
+
+    Hard News: Intro must have EXACTLY 3 sentences (3 lines)
+    - If more than 3: First 3 stay as bold intro, rest become first body paragraph
+    - If fewer than 3: Keep as-is
+
+    Soft News: Intro 1 must have 3-4 sentences
+    - If more than 4: First 4 stay as bold intro 1, rest go to intro 2
+    """
+    if not content:
+        return content
+
+    paragraphs = content.split('\n\n')
+
+    # Find byline index
+    byline_idx = find_byline_index(paragraphs)
+    if byline_idx == -1:
+        return content
+
+    intro_idx = byline_idx + 1
+    if intro_idx >= len(paragraphs):
+        return content
+
+    intro = paragraphs[intro_idx]
+
+    # Remove bold markers to count sentences
+    clean_intro = intro.replace('**', '').strip()
+    sentences = split_into_sentences(clean_intro)
+
+    if format_type == 'hard_news':
+        # Hard news: EXACTLY 3 sentences
+        if len(sentences) > 3:
+            # Keep first 3 for intro, move rest to new body paragraph
+            intro_sentences = sentences[:3]
+            overflow_sentences = sentences[3:]
+
+            # Rebuild intro (bold)
+            new_intro = ' '.join(intro_sentences)
+            paragraphs[intro_idx] = f'**{new_intro}**'
+
+            # Create new body paragraph from overflow (not bold)
+            overflow_para = ' '.join(overflow_sentences)
+            paragraphs.insert(intro_idx + 1, overflow_para)
+
+            print(f"      [POST] Enforced hard news intro: kept 3 sentences, moved {len(overflow_sentences)} to body")
+
+    elif format_type == 'soft_news':
+        # Soft news: Intro 1 should be 3-4 sentences
+        # If more than 4, trim to 4
+        if len(sentences) > 4:
+            intro_sentences = sentences[:4]
+            overflow_sentences = sentences[4:]
+
+            # Rebuild intro 1 (bold)
+            new_intro = ' '.join(intro_sentences)
+            paragraphs[intro_idx] = f'**{new_intro}**'
+
+            # Check if there's an intro 2 after this
+            if intro_idx + 1 < len(paragraphs):
+                next_para = paragraphs[intro_idx + 1]
+                # If next para is not bold (intro 2), prepend overflow to it
+                if not (next_para.startswith('**') and next_para.endswith('**')):
+                    overflow_text = ' '.join(overflow_sentences)
+                    paragraphs[intro_idx + 1] = overflow_text + ' ' + next_para.replace('**', '').strip()
+                    print(f"      [POST] Enforced soft news intro 1: kept 4 sentences, merged {len(overflow_sentences)} into intro 2")
+                else:
+                    # Next is a subhead, insert overflow as intro 2
+                    overflow_para = ' '.join(overflow_sentences)
+                    paragraphs.insert(intro_idx + 1, overflow_para)
+                    print(f"      [POST] Enforced soft news intro 1: kept 4 sentences, created intro 2 from overflow")
+
+    return '\n\n'.join(paragraphs)
+
+
 def count_body_words(content):
     """
     Count words in hard news body (excluding headline and byline).
@@ -472,27 +575,76 @@ def fix_intro_structure(content, format_type):
     return '\n\n'.join(paragraphs)
 
 
+def final_intro_bold_check(content, format_type):
+    """
+    FINAL FUNCTION - Guarantees intro is bold.
+    Finds byline by looking for "বাংলার কলম্বাস" - the paragraph AFTER it is the intro.
+    """
+    if not content:
+        return content
+
+    paragraphs = content.split('\n\n')
+
+    # Find byline - look for "বাংলার কলম্বাস"
+    byline_idx = -1
+    for i, p in enumerate(paragraphs):
+        if 'বাংলার কলম্বাস' in p:
+            byline_idx = i
+            break
+
+    # If byline not found, try "নিউজ ডেস্ক"
+    if byline_idx == -1:
+        for i, p in enumerate(paragraphs):
+            if 'নিউজ ডেস্ক' in p:
+                byline_idx = i
+                break
+
+    # If still not found, assume index 1
+    if byline_idx == -1:
+        byline_idx = 1
+
+    # Intro is the paragraph AFTER byline
+    intro_idx = byline_idx + 1
+
+    if intro_idx >= len(paragraphs):
+        return content
+
+    intro = paragraphs[intro_idx]
+
+    # Make it bold: remove **, remove newlines, wrap in **
+    clean = intro.replace('**', '')
+    clean = clean.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+    clean = ' '.join(clean.split())
+    paragraphs[intro_idx] = f'**{clean}**'
+
+    print(f"      [FINAL] Intro at index {intro_idx} is now **bold**")
+
+    return '\n\n'.join(paragraphs)
+
+
 def process_content(text, format_type):
     """
-    Full code-based post-processing pipeline (v3.0)
+    Full code-based post-processing pipeline (v3.2)
 
     0. Normalize markdown line breaks to paragraph breaks
-    1. FIX INTRO STRUCTURE (single comprehensive function - v3.0)
-       - Makes intro FULLY bold (not partial)
-       - For soft news: ensures exactly 2 intros before first subhead
-    2. Apply word corrections (শিগগিরই, date suffixes)
-    3. Fix সহ joining (smart)
-    4. Replace English words
-    5. Split quotes (CRITICAL)
-    6. Fix 3-line paragraphs (max 2 sentences per body paragraph)
+    1. ENFORCE INTRO SENTENCE COUNT
+    2. FIX INTRO STRUCTURE (make intro FULLY bold)
+    3. Apply word corrections
+    4. Fix সহ joining
+    5. Replace English words
+    6. Split quotes
+    7. Fix 3-line paragraphs
+    8. FINAL SAFETY CHECK - Guarantee intro is bold (no exceptions!)
     """
     text = normalize_line_breaks(text)
+    text = enforce_intro_sentence_count(text, format_type)
     text = fix_intro_structure(text, format_type)
     text = apply_word_corrections(text)
     text = fix_saho_joining(text)
     text = replace_english_words(text)
     text = split_quotes(text)
     text = fix_three_line_paragraphs(text)
+    text = final_intro_bold_check(text, format_type)  # FINAL SAFETY CHECK
     return text
 
 

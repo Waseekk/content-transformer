@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None, env="GOOGLE_CLIENT_SECRET")
     FRONTEND_URL: str = Field(default="http://localhost:5173", env="FRONTEND_URL")
 
+    # Email (Resend)
+    RESEND_API_KEY: Optional[str] = Field(default=None, env="RESEND_API_KEY")
+    FROM_EMAIL: str = Field(default="noreply@swiftor.io", env="FROM_EMAIL")
+    PASSWORD_RESET_EXPIRE_HOURS: int = 1
+
     # Paths - use module-level computed values for reliability
     BASE_DIR: Path = _BASE_DIR
     PROJECT_ROOT: Path = _PROJECT_ROOT

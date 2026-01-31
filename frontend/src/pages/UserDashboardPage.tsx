@@ -42,6 +42,7 @@ export const UserDashboardPage = () => {
   const [showAdminStats, setShowAdminStats] = useState(false);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<AdminUserStats | null>(null);
   const [tierChangeUser, setTierChangeUser] = useState<AdminUserStats | null>(null);
+  const [resetConfirmUser, setResetConfirmUser] = useState<AdminUserStats | null>(null);
   const [siteManageUser, setSiteManageUser] = useState<AdminUserStats | null>(null);
   const [userSitesData, setUserSitesData] = useState<AdminUserSitesResponse | null>(null);
   const [selectedAllowedSites, setSelectedAllowedSites] = useState<string[]>([]);
@@ -91,6 +92,18 @@ export const UserDashboardPage = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to change tier');
+    },
+  });
+
+  const resetMonthlyMutation = useMutation({
+    mutationFn: authApi.adminResetMonthlyUsage,
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setResetConfirmUser(null);
+      queryClient.invalidateQueries({ queryKey: ['adminUsersStats'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to reset usage');
     },
   });
 
@@ -946,6 +959,17 @@ export const UserDashboardPage = () => {
                                       <HiSparkles className="w-5 h-5" />
                                     </motion.button>
 
+                                    {/* Reset Monthly Usage */}
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => setResetConfirmUser(userStat)}
+                                      className="p-2 rounded-lg text-cyan-600 hover:bg-cyan-50 transition-colors"
+                                      title="Reset monthly usage (450)"
+                                    >
+                                      <HiRefresh className="w-5 h-5" />
+                                    </motion.button>
+
                                     {/* Manage Sites */}
                                     <motion.button
                                       whileHover={{ scale: 1.1 }}
@@ -1115,6 +1139,69 @@ export const UserDashboardPage = () => {
                     </div>
                   </motion.button>
                 ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reset Monthly Usage Confirmation Modal */}
+      <AnimatePresence>
+        {resetConfirmUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setResetConfirmUser(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center">
+                  <HiRefresh className="w-6 h-6 text-cyan-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Reset Monthly Usage</h3>
+                  <p className="text-sm text-gray-500">Reset all usage counters to 0</p>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to reset monthly usage for <span className="font-semibold">{resetConfirmUser.email}</span>?
+              </p>
+              <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Translations Used:</span>
+                  <span className="font-semibold text-blue-600">{resetConfirmUser.translations_used_this_month} → 0</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Enhancements Used:</span>
+                  <span className="font-semibold text-orange-600">{resetConfirmUser.enhancements_used_this_month} → 0</span>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setResetConfirmUser(null)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => resetMonthlyMutation.mutate(resetConfirmUser.user_id)}
+                  disabled={resetMonthlyMutation.isPending}
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                >
+                  {resetMonthlyMutation.isPending ? 'Resetting...' : 'Reset Usage'}
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
