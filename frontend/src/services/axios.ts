@@ -15,6 +15,7 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 120000, // 2 minutes timeout for long operations like extraction/enhancement
   // Serialize arrays as repeated params (sources=a&sources=b) for FastAPI
   paramsSerializer: {
     indexes: null, // This removes the brackets from array params

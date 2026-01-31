@@ -20,7 +20,7 @@
         "intro_max_lines": 3,
         "intro_min_lines": 2,
         "body_para_max_lines": 2,
-        "min_total_words": 200,
+        "min_total_words": 220,
         "has_subheads": false
       }
     },
@@ -234,8 +234,8 @@
       "applies_to": "all"
     },
     "C09": {
-      "bn": "হার্ড স্টোরি ২০০ শব্দের বেশি হবে।",
-      "en": "Hard news: minimum 200 words",
+      "bn": "হার্ড স্টোরি ২২০ শব্দের বেশি হবে।",
+      "en": "Hard news: minimum 220 words",
       "applies_to": "hard_news"
     },
     "C12_C14": {
@@ -247,7 +247,7 @@
   },
   
   "prompt_templates": {
-    "hard_news": "Translate this HARD NEWS to Bengali for Banglar Columbus.\n\nSTRUCTURE:\n1. **HEADLINE** (bold)\n2. নিউজ ডেস্ক, বাংলার কলম্বাস (NOT bold)\n3. **INTRO** (bold, 2-3 lines max)\n4. Body paragraphs (NOT bold, 2 lines max each)\n\n⚠️ NO SUBHEADS in hard news\n⚠️ Minimum 200 words\n\nWORD CORRECTIONS:\n- শীঘ্রই → শিগগিরই\n- X সহ → Xসহ (join)\n- ১লা → ১ (no date suffix)\n- সংবাদ সংস্থা [name] format\n- End paragraph after quotation closes",
+    "hard_news": "Translate this HARD NEWS to Bengali for Banglar Columbus.\n\nSTRUCTURE:\n1. **HEADLINE** (bold)\n2. নিউজ ডেস্ক, বাংলার কলম্বাস (NOT bold)\n3. **INTRO** (bold, 2-3 lines max)\n4. Body paragraphs (NOT bold, 2 lines max each)\n\n⚠️ NO SUBHEADS in hard news\n⚠️ Minimum 220 words\n\nWORD CORRECTIONS:\n- শীঘ্রই → শিগগিরই\n- X সহ → Xসহ (join)\n- ১লা → ১ (no date suffix)\n- সংবাদ সংস্থা [name] format\n- End paragraph after quotation closes",
     
     "soft_news": "Translate this SOFT NEWS to Bengali for Banglar Columbus.\n\nSTRUCTURE:\n1. **HEADLINE** (bold)\n2. নিউজ ডেস্ক, বাংলার কলম্বাস (NOT bold)\n3. **INTRO 1** (bold, 2-4 lines max)\n4. Intro 2 (NOT bold) ← CRITICAL: MUST exist before any subhead\n5. **SUBHEAD** (bold)\n6. Body para (NOT bold, 2 lines max)\n7. Continue with more subheads and body...\n\n⚠️ CRITICAL: There MUST be a non-bold paragraph between bold intro and first subhead\n\nWORD CORRECTIONS:\n- শীঘ্রই → শিগগিরই\n- X সহ → Xসহ (join)\n- ১লা → ১ (no date suffix)\n- সংবাদ সংস্থা [name] format\n- End paragraph after quotation closes"
   }

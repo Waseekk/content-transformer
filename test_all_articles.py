@@ -279,6 +279,109 @@ def split_intro(intro):
     return (intro1, intro2)
 
 
+def fix_three_line_paragraphs(text):
+    """
+    Enforce max 2 sentences per body paragraph (2 lines = 2 sentences).
+
+    Rules:
+    1. Body paragraphs should have max 2 sentences
+    2. If 3+ sentences, split into groups of max 2
+    3. If quotation exists, keep it as the last sentence of its paragraph
+    """
+    if not text:
+        return text
+
+    paragraphs = text.split('\n\n')
+    result = []
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        # Skip bold paragraphs (headlines, intros, subheads)
+        if para.startswith('**') and '**' in para[2:]:
+            result.append(para)
+            continue
+
+        # Skip byline
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            result.append(para)
+            continue
+
+        # Split into sentences (preserves quotes as complete units)
+        full_sentences = split_into_sentences(para)
+
+        # If 2 or fewer sentences, keep as is
+        if len(full_sentences) <= 2:
+            result.append(para)
+            continue
+
+        # 3+ sentences: split into groups of max 2
+        # Special handling for quotations - keep quote sentence at end of its paragraph
+
+        # Group sentences: max 2 per paragraph, quotes at end of their paragraph
+        current_group = []
+        for i, sentence in enumerate(full_sentences):
+            current_group.append(sentence)
+
+            # Check if this is a good split point
+            should_split = False
+
+            if len(current_group) >= 2:
+                # Have 2 sentences, time to split
+                should_split = True
+
+                # But if next sentence has a quote and current doesn't, wait
+                if i + 1 < len(full_sentences) and '"' in full_sentences[i + 1] and '"' not in sentence:
+                    should_split = False
+
+            # If current sentence has a quote, always split after it
+            if '"' in sentence and len(current_group) >= 1:
+                should_split = True
+
+            if should_split:
+                result.append(' '.join(current_group))
+                current_group = []
+
+        # Add remaining sentences
+        if current_group:
+            result.append(' '.join(current_group))
+
+    return '\n\n'.join(result)
+
+
+def count_body_words(content):
+    """
+    Count words in hard news body (excluding headline and byline).
+    Counts from intro paragraph to conclusion.
+    """
+    if not content:
+        return 0
+
+    paragraphs = content.split('\n\n')
+    body_words = 0
+
+    for i, para in enumerate(paragraphs):
+        para = para.strip()
+        if not para:
+            continue
+
+        # Skip headline (first bold line, usually index 0)
+        if i == 0 and para.startswith('**'):
+            continue
+
+        # Skip byline
+        if 'নিউজ ডেস্ক' in para and 'বাংলার কলম্বাস' in para:
+            continue
+
+        # Count words in this paragraph (remove ** markers first)
+        clean_para = para.replace('**', '')
+        body_words += len(clean_para.split())
+
+    return body_words
+
+
 def fix_intro_structure(content, format_type):
     """
     Fix intro structure to match exact requirements (v3.0).
@@ -381,6 +484,7 @@ def process_content(text, format_type):
     3. Fix সহ joining (smart)
     4. Replace English words
     5. Split quotes (CRITICAL)
+    6. Fix 3-line paragraphs (max 2 sentences per body paragraph)
     """
     text = normalize_line_breaks(text)
     text = fix_intro_structure(text, format_type)
@@ -388,6 +492,7 @@ def process_content(text, format_type):
     text = fix_saho_joining(text)
     text = replace_english_words(text)
     text = split_quotes(text)
+    text = fix_three_line_paragraphs(text)
     return text
 
 
@@ -581,7 +686,7 @@ def translate_to_bengali(text):
     return response.choices[0].message.content
 
 
-def generate_hard_news(translated_text, article_info):
+def generate_hard_news(translated_text, article_info, retry_count=0):
     """Generate Hard News format with code-based post-processing (v2.5)"""
     style = STYLES["hard_news"]
 
@@ -613,6 +718,13 @@ def generate_hard_news(translated_text, article_info):
 
     # Apply ALL code-based fixes (100% reliable)
     content = process_content(raw_content, 'hard_news')
+
+    # HARD NEWS MINIMUM WORD CHECK (220 words from intro to conclusion)
+    if retry_count < 2:
+        word_count = count_body_words(content)
+        if word_count < 220:
+            print(f"      [REGEN] Hard news too short: {word_count} words (min 220). Regenerating (attempt {retry_count + 2}/3)...")
+            return generate_hard_news(translated_text, article_info, retry_count + 1)
 
     # Verify issues were fixed
     remaining_issues = detect_issues(content, 'hard_news')
@@ -857,8 +969,10 @@ def main():
         print(f"  [2/3] Generating Hard News...")
         hard_news, hard_code_fixed, hard_original_issues = generate_hard_news(translated, article)
         analysis_hard = analyze_structure(hard_news, "hard_news")
+        hard_word_count = count_body_words(hard_news)
         fix_status_hard = "CODE FIXED" if hard_code_fixed else "Clean"
-        print(f"  [OK] Hard News: {analysis_hard['total_paragraphs']} paragraphs ({fix_status_hard})")
+        word_status = "PASS" if hard_word_count >= 220 else "FAIL"
+        print(f"  [OK] Hard News: {analysis_hard['total_paragraphs']} paragraphs, {hard_word_count} words [{word_status}] ({fix_status_hard})")
 
         # Step 3: Generate Soft News
         print(f"  [3/3] Generating Soft News...")
@@ -880,7 +994,8 @@ def main():
             "hard_code_fixed": hard_code_fixed,
             "hard_original_issues": hard_original_issues,
             "soft_code_fixed": soft_code_fixed,
-            "soft_original_issues": soft_original_issues
+            "soft_original_issues": soft_original_issues,
+            "hard_word_count": hard_word_count
         })
 
     # Save to Word document
@@ -906,6 +1021,9 @@ def main():
 
             f.write("-" * 40 + "\n")
             f.write("HARD NEWS:\n")
+            hard_wc = result.get('hard_word_count', 0)
+            wc_status = "PASS" if hard_wc >= 220 else "FAIL"
+            f.write(f"[Word Count: {hard_wc} words - {wc_status} (min 220)]\n")
             if result.get('hard_code_fixed'):
                 f.write(f"[CODE FIXED - Original issues: {', '.join(result.get('hard_original_issues', []))}]\n")
             f.write("-" * 40 + "\n")

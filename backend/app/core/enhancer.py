@@ -113,7 +113,7 @@ class ContentEnhancer:
            - Quote splitting (CRITICAL - paragraph ends at quote)
            - 3-line paragraph fixer
         3. Validate structure
-        4. For hard_news: Check minimum 200 words, regenerate if needed
+        4. For hard_news: Check minimum 220 words, regenerate if needed
         5. Log any issues that were in original AI output (for analytics)
 
         Args:
@@ -160,11 +160,11 @@ class ContentEnhancer:
                 format_type
             )
 
-            # HARD NEWS MINIMUM WORD CHECK (200 words from intro to conclusion)
+            # HARD NEWS MINIMUM WORD CHECK (220 words from intro to conclusion)
             if format_type == 'hard_news' and retry_count < 2:
                 word_count = self._count_body_words(processed_content)
-                if word_count < 200:
-                    logger.warning(f"Hard news too short: {word_count} words (min 200). Regenerating...")
+                if word_count < 220:
+                    logger.warning(f"Hard news too short: {word_count} words (min 220). Regenerating...")
                     return self.enhance_single_format(
                         translated_text, article_info, format_type, retry_count + 1
                     )

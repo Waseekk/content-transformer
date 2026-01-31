@@ -276,7 +276,7 @@ export const useAppStore = create<AppState>()(
         translationHistory: state.translationHistory,
         selectedFormats: state.selectedFormats,
         currentEnhancements: state.currentEnhancements,
-        pendingOperations: state.pendingOperations, // Persist pending operations
+        // Don't persist pendingOperations - start fresh on page reload
       }),
     }
   )
