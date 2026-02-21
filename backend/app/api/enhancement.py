@@ -17,6 +17,8 @@ from app.models.user import User
 from app.models.enhancement import Enhancement
 from app.models.translation import Translation
 from app.models.user_config import UserConfig
+from app.models.format_config import FormatConfig
+from app.models.client_config import ClientConfig
 from app.middleware.auth import get_current_active_user
 from app.core.enhancer import ContentEnhancer, EnhancementResult
 
@@ -175,14 +177,38 @@ async def enhance_content(
         content_text = request.text
         headline_text = request.headline or "Travel News"
 
-    # All formats are available to all users
-    valid_formats = ["hard_news", "soft_news"]
+    # Validate formats against active formats in database
+    active_formats = db.query(FormatConfig.slug).filter(FormatConfig.is_active == True).all()
+    valid_formats = [f.slug for f in active_formats]
+    # Fallback if no formats in DB
+    if not valid_formats:
+        valid_formats = ["hard_news", "soft_news"]
     invalid_formats = [fmt for fmt in request.formats if fmt not in valid_formats]
     if invalid_formats:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid formats: {', '.join(invalid_formats)}. Valid formats: {', '.join(valid_formats)}"
         )
+
+    # Enforce client-level format access
+    if current_user.client_config_id:
+        client_config = db.query(ClientConfig).filter(
+            ClientConfig.id == current_user.client_config_id
+        ).first()
+        if client_config and client_config.allowed_format_ids:
+            # Resolve requested format slugs to IDs
+            requested_format_records = db.query(FormatConfig).filter(
+                FormatConfig.slug.in_(request.formats)
+            ).all()
+            requested_ids = {f.id for f in requested_format_records}
+            allowed_ids = set(client_config.allowed_format_ids)
+            forbidden_ids = requested_ids - allowed_ids
+            if forbidden_ids:
+                forbidden_slugs = [f.slug for f in requested_format_records if f.id in forbidden_ids]
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Your account does not have access to format(s): {', '.join(forbidden_slugs)}"
+                )
 
     # Check enhancement quota (warn but don't block)
     enhancement_limit_exceeded = current_user.is_enhancement_limit_exceeded()
@@ -243,7 +269,9 @@ async def enhance_content(
         )
 
     # Track enhancement usage (count each format as one enhancement)
-    current_user.use_enhancement(len(request.formats))
+    within_quota = current_user.use_enhancement(len(request.formats))
+    if not within_quota:
+        logger.warning(f"User {current_user.id} ({current_user.email}) exceeded enhancement quota: {current_user.enhancements_used_this_month}/{current_user.monthly_enhancement_limit}")
 
     # Save to database
     enhancement_records = []

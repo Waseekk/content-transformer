@@ -7,6 +7,7 @@ import time
 import hashlib
 import requests
 import re
+import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from urllib.parse import quote_plus, urlparse, parse_qs
@@ -47,6 +48,36 @@ class GoogleNewsSearcher:
 
     def __init__(self):
         pass
+
+    def _is_bengali(self, text: str) -> bool:
+        """Check if text contains Bengali Unicode characters (U+0980–U+09FF)"""
+        return bool(re.search(r'[\u0980-\u09FF]', text))
+
+    def _translate_keyword_to_english(self, keyword: str) -> str:
+        """Translate a Bengali keyword to English using OpenAI."""
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a translator. Translate the given Bengali word or phrase to English. Reply with ONLY the English translation, nothing else."
+                    },
+                    {
+                        "role": "user",
+                        "content": keyword
+                    }
+                ],
+                max_tokens=50,
+                temperature=0
+            )
+            translated = response.choices[0].message.content.strip()
+            return translated
+        except Exception as e:
+            # If translation fails, return original keyword so search still runs
+            return keyword
 
     def _get_cache_key(self, keyword: str, time_filter: str, user_id: Optional[int] = None) -> str:
         """Generate cache key from search parameters"""
@@ -213,8 +244,13 @@ class GoogleNewsSearcher:
             time_filter = "24h"
         time_hours = self.TIME_FILTERS[time_filter]
 
+        # Auto-translate Bengali keyword to English before searching
+        search_keyword = keyword
+        if self._is_bengali(keyword):
+            search_keyword = self._translate_keyword_to_english(keyword)
+
         # Check cache first
-        cache_key = self._get_cache_key(keyword, time_filter, user_id)
+        cache_key = self._get_cache_key(search_keyword, time_filter, user_id)
         cached = self._get_cached_results(cache_key)
         if cached:
             cached['cached'] = True
@@ -222,7 +258,7 @@ class GoogleNewsSearcher:
             return cached
 
         # Build RSS URL
-        rss_url = self._build_rss_url(keyword)
+        rss_url = self._build_rss_url(search_keyword)
 
         try:
             # Make HTTP request
@@ -246,7 +282,7 @@ class GoogleNewsSearcher:
 
             result_data = {
                 'success': True,
-                'keyword': keyword,
+                'keyword': keyword,  # original (Bengali) keyword for display
                 'total_results': len(results),
                 'results': results,
                 'search_time_ms': int((time.time() - start_time) * 1000),

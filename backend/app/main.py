@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search, support
+from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search, support, admin_formats, admin_clients, user_config
 from app.config import get_settings
 from app.database import get_db
 from app.utils.logger import LoggerManager
@@ -64,6 +64,9 @@ app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
 app.include_router(extraction.router, prefix="/api/extract", tags=["extraction"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(support.router, prefix="/api/support", tags=["support"])
+app.include_router(admin_formats.router, prefix="/api/admin/formats", tags=["admin-formats"])
+app.include_router(admin_clients.router, prefix="/api/admin/clients", tags=["admin-clients"])
+app.include_router(user_config.router, prefix="/api/user", tags=["user-config"])
 
 # Mount uploads directory for serving attachments
 uploads_dir = settings.UPLOADS_DIR
@@ -119,7 +122,7 @@ async def startup_event():
 
     # Create database tables
     from app.database import engine, Base
-    from app.models import user, article, job, translation, enhancement, token_usage, user_config, support_ticket, password_reset
+    from app.models import user, article, job, translation, enhancement, token_usage, user_config, support_ticket, password_reset, format_config, client_config
     from sqlalchemy import text, inspect
 
     logger.info("Creating database tables...")
@@ -156,6 +159,13 @@ async def startup_event():
                 logger.debug("No users needed limit updates")
 
     logger.info("Migrations complete")
+
+    # Pre-warm Playwright browser — eliminates cold-start latency on first URL request
+    try:
+        from app.services.playwright_extractor import warm_up_browser
+        await warm_up_browser()
+    except Exception as e:
+        logger.warning(f"Playwright browser pre-warm failed (non-fatal): {e}")
 
 
 # Shutdown event

@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
 import { OperationStatusBar } from './OperationStatusBar';
-import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX } from 'react-icons/hi';
+import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX, HiOfficeBuilding, HiDocumentText } from 'react-icons/hi';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,10 +19,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedArticle } = useAppStore();
+  const { user, logout } = useAuth();
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
 
+  const isAdmin = user?.is_admin || false;
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    logout();
     navigate('/login');
   };
 
@@ -56,7 +60,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       {/* Cursor Glow Effect */}
       <CursorGlow />
 
@@ -224,6 +228,39 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <HiQuestionMarkCircle className="w-5 h-5" />
                     <span className="font-medium">Support</span>
                   </Link>
+
+                  {/* Admin Section */}
+                  {isAdmin && (
+                    <>
+                      <div className="pt-4 pb-2">
+                        <span className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</span>
+                      </div>
+                      <Link
+                        to="/admin/formats"
+                        onClick={() => setIsUserPanelOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          location.pathname === '/admin/formats'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <HiDocumentText className="w-5 h-5" />
+                        <span className="font-medium">Formats</span>
+                      </Link>
+                      <Link
+                        to="/admin/clients"
+                        onClick={() => setIsUserPanelOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          location.pathname === '/admin/clients'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <HiOfficeBuilding className="w-5 h-5" />
+                        <span className="font-medium">Clients</span>
+                      </Link>
+                    </>
+                  )}
                 </div>
 
                 {/* Panel Footer - Logout */}

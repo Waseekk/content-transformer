@@ -360,9 +360,9 @@ async def get_enhancement_sessions(
             "created_at": enhancement.created_at.isoformat()
         }
 
-        if enhancement.format_type == "hard_news":
+        if enhancement.format_type and enhancement.format_type.startswith("hard_news"):
             sessions_by_date[date_str][session_key]["hard_news"] = enhancement_data
-        elif enhancement.format_type == "soft_news":
+        elif enhancement.format_type and enhancement.format_type.startswith("soft_news"):
             sessions_by_date[date_str][session_key]["soft_news"] = enhancement_data
 
     # Convert to response format: list of dates with sessions

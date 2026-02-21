@@ -107,10 +107,12 @@ test_all_articles.py
 test_soft_news_format.py
 code-review-*.md
 
-# Markdown files (except CLAUDE.md and docs/)
+# Markdown files (except CLAUDE.md)
 *.md
 !CLAUDE.md
-!docs/*.md
+
+# Local documentation — never commit
+docs/
 
 # Claude Code
 .claude/    

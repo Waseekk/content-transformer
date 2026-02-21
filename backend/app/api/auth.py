@@ -622,10 +622,10 @@ async def get_usage_statistics(
 
     for format_type, count in format_counts:
         total_enhancements += count
-        if format_type == "hard_news":
-            hard_news_count = count
-        elif format_type == "soft_news":
-            soft_news_count = count
+        if format_type and format_type.startswith("hard_news"):
+            hard_news_count += count
+        elif format_type and format_type.startswith("soft_news"):
+            soft_news_count += count
         else:
             other_formats_count += count
 
@@ -797,10 +797,10 @@ async def get_all_users_stats(
 
         for format_type, count in format_counts:
             total_enhancements += count
-            if format_type == "hard_news":
-                hard_news_count = count
-            elif format_type == "soft_news":
-                soft_news_count = count
+            if format_type and format_type.startswith("hard_news"):
+                hard_news_count += count
+            elif format_type and format_type.startswith("soft_news"):
+                soft_news_count += count
 
         # Count articles
         total_articles = db.query(Article).filter(

@@ -4,6 +4,7 @@ Extract article content from URLs using Playwright, Trafilatura, and Newspaper3k
 Cascade order: Playwright (JS-rendered) → Trafilatura → Newspaper3k
 """
 
+import time
 import requests
 import trafilatura
 from newspaper import Article
@@ -13,6 +14,25 @@ from datetime import datetime
 from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('content_extraction')
+
+# URL extraction cache — saves entire Step 1 (~5-15s) on repeated URLs
+_extraction_cache: dict = {}  # {url: (timestamp, result)}
+_CACHE_TTL = 3600  # 1 hour
+
+
+def _get_cached_extraction(url: str) -> Optional[dict]:
+    """Return cached extraction result, or None if missing/expired."""
+    if url in _extraction_cache:
+        ts, result = _extraction_cache[url]
+        if time.time() - ts < _CACHE_TTL:
+            return result
+        del _extraction_cache[url]
+    return None
+
+
+def _store_extraction(url: str, result: dict) -> None:
+    """Store extraction result in module-level cache."""
+    _extraction_cache[url] = (time.time(), result)
 
 
 class ExtractionError(Exception):
@@ -49,17 +69,14 @@ class ContentExtractor:
     async def _extract_with_playwright(self, url: str) -> Dict[str, str]:
         """
         Extract content using Playwright headless browser.
-        Best for JavaScript-rendered content.
+        Uses the module-level singleton browser (no cold-start per request).
         """
         try:
-            from app.services.playwright_extractor import PlaywrightExtractor, PlaywrightExtractionError
+            from app.services.playwright_extractor import get_global_extractor
 
-            extractor = PlaywrightExtractor(timeout=30)
-            try:
-                result = await extractor.extract(url)
-                return result
-            finally:
-                await extractor.close()
+            extractor = get_global_extractor()
+            result = await extractor.extract(url)
+            return result
 
         except Exception as e:
             logger.error(f"Playwright extraction error: {str(e)}")
@@ -93,12 +110,19 @@ class ContentExtractor:
         logger.info(f"Extracting content from: {url}")
 
         if method == 'auto':
+            # Cache check — skip full extraction for recently seen URLs
+            cached = _get_cached_extraction(url)
+            if cached:
+                logger.info(f"Cache hit for URL ({len(cached['text'])} chars): {url}")
+                return cached
+
             # Try Playwright first (handles JS-rendered sites)
             if await self._check_playwright_available():
                 try:
                     result = await self._extract_with_playwright(url)
                     if result and len(result['text']) > 200:
                         logger.info(f"Successfully extracted with Playwright: {len(result['text'])} chars")
+                        _store_extraction(url, result)
                         return result
                 except Exception as e:
                     logger.warning(f"Playwright extraction failed: {str(e)}")
@@ -108,6 +132,7 @@ class ContentExtractor:
                 result = await self._extract_with_trafilatura(url)
                 if result and len(result['text']) > 200:
                     logger.info(f"Successfully extracted with Trafilatura: {len(result['text'])} chars")
+                    _store_extraction(url, result)
                     return result
             except Exception as e:
                 logger.warning(f"Trafilatura extraction failed: {str(e)}")
@@ -117,6 +142,7 @@ class ContentExtractor:
                 result = await self._extract_with_newspaper(url)
                 if result and len(result['text']) > 200:
                     logger.info(f"Successfully extracted with Newspaper3k: {len(result['text'])} chars")
+                    _store_extraction(url, result)
                     return result
             except Exception as e:
                 logger.warning(f"Newspaper3k extraction failed: {str(e)}")

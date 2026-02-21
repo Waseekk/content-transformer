@@ -20,6 +20,10 @@ import { SchedulerPage } from './pages/SchedulerPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { SupportPage } from './pages/SupportPage';
 
+// Admin pages
+import { FormatsPage } from './pages/admin/FormatsPage';
+import { ClientsPage } from './pages/admin/ClientsPage';
+
 // Layout
 import { Layout } from './components/common/Layout';
 
@@ -98,6 +102,29 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SupportPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin routes */}
+          <Route
+            path="/admin/formats"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <FormatsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/clients"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <ClientsPage />
                 </Layout>
               </ProtectedRoute>
             }

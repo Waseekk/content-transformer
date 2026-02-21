@@ -1,6 +1,10 @@
 /**
  * AI Assistant Page - Premium Design
  * Generate Bengali news articles with AI-powered translation
+ *
+ * Supports adaptive UI based on user's client configuration:
+ * - Full workflow: Content preview, format selection (default)
+ * - Simple workflow: Direct processing with default format
  */
 
 import { useNavigate } from 'react-router-dom';
@@ -9,10 +13,12 @@ import { useAppStore } from '../store/useAppStore';
 import { useTranslate } from '../hooks/useTranslation';
 import { useEnhance } from '../hooks/useEnhancement';
 import { useNavigationWarning } from '../hooks/useNavigationWarning';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { AILoader, GlowButton, AnimatedCard } from '../components/ui';
 import { FormatCard } from '../components/translation/FormatCard';
 import { URLExtractor } from '../components/translation/URLExtractor';
+import { SimpleWorkflow } from '../components/translation/SimpleWorkflow';
 import {
   HiSparkles,
   HiPencilAlt,
@@ -33,6 +39,9 @@ import { detectLanguage, getLanguageInfo } from '../utils/languageDetection';
 
 export const TranslationPage = () => {
   const navigate = useNavigate();
+  const { userConfig } = useAuth();
+
+  // All hooks must be called before any conditional returns (React rules of hooks)
   const {
     selectedArticle,
     selectArticle,
@@ -65,9 +74,6 @@ export const TranslationPage = () => {
     if (!pastedContent || pastedContent.trim().length < 20) return null;
     return detectLanguage(pastedContent);
   }, [pastedContent]);
-
-  // Note: effectiveLanguage = languageOverride !== 'auto' ? languageOverride : detectedLanguage
-  // Reserved for future language toggle feature
 
   // Warn user when navigating away with pending operations
   useNavigationWarning();
@@ -120,6 +126,20 @@ export const TranslationPage = () => {
       setTimeout(() => clearOperation(op.id), 5000);
     });
   }, [pendingOperations]);
+
+  // Check for simple workflow mode (after all hooks)
+  const workflowType = userConfig?.ui_settings?.workflow_type || 'full';
+  const appTitle = userConfig?.ui_settings?.app_title || 'AI Assistant';
+
+  // If simple workflow and has default format, render SimpleWorkflow
+  if (workflowType === 'simple' && userConfig?.default_format) {
+    return (
+      <SimpleWorkflow
+        defaultFormat={userConfig.default_format}
+        appTitle={appTitle}
+      />
+    );
+  }
 
   const handleClearSelection = () => {
     selectArticle(null);
@@ -250,25 +270,47 @@ export const TranslationPage = () => {
     }
   };
 
-  // Format definitions
-  const formats = [
-    {
-      id: 'hard_news',
-      title: 'Hard News',
-      subtitle: 'হার্ড নিউজ',
-      icon: HiNewspaper,
-      description: 'Professional factual reporting',
-      color: 'blue',
-    },
-    {
-      id: 'soft_news',
-      title: 'Soft News',
-      subtitle: 'সফট নিউজ',
-      icon: HiBookOpen,
-      description: 'Literary travel feature',
-      color: 'purple',
-    },
-  ];
+  // Icon mapping for dynamic formats
+  const iconMap: Record<string, typeof HiNewspaper> = {
+    newspaper: HiNewspaper,
+    book: HiBookOpen,
+    sparkles: HiSparkles,
+    document: HiDocumentText,
+  };
+
+  // Format definitions - use user's config if available, otherwise defaults
+  const formats = useMemo(() => {
+    if (userConfig?.formats && userConfig.formats.length > 0) {
+      return userConfig.formats.map((f, index) => ({
+        id: f.slug,
+        title: f.display_name,
+        subtitle: f.display_name, // Bengali subtitle
+        icon: iconMap[f.icon] || HiDocumentText,
+        description: f.description || '',
+        color: index % 2 === 0 ? 'blue' : 'purple',
+      }));
+    }
+
+    // Default formats
+    return [
+      {
+        id: 'hard_news',
+        title: 'Hard News',
+        subtitle: 'হার্ড নিউজ',
+        icon: HiNewspaper,
+        description: 'Professional factual reporting',
+        color: 'blue',
+      },
+      {
+        id: 'soft_news',
+        title: 'Soft News',
+        subtitle: 'সফট নিউজ',
+        icon: HiBookOpen,
+        description: 'Literary travel feature',
+        color: 'purple',
+      },
+    ];
+  }, [userConfig?.formats]);
 
   const wordCount = pastedContent.split(/\s+/).filter(Boolean).length;
 

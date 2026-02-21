@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import type { EnhancementSession, EnhancementData } from '../../hooks/useEnhancementHistory';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface EnhancementSessionCardProps {
   session: EnhancementSession;
@@ -115,9 +116,21 @@ interface FormatBoxProps {
   data: EnhancementData;
   englishContent: string | null;
   fullWidth?: boolean;
+  hideFormatLabels?: boolean;
+  hideMainContentExport?: boolean;
+  downloadPrefix?: string;
 }
 
-const FormatBox: React.FC<FormatBoxProps> = ({ title, formatType, data, englishContent, fullWidth = false }) => {
+const FormatBox: React.FC<FormatBoxProps> = ({
+  title,
+  formatType,
+  data,
+  englishContent,
+  fullWidth = false,
+  hideFormatLabels = false,
+  hideMainContentExport = false,
+  downloadPrefix = 'Content',
+}) => {
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -151,8 +164,8 @@ const FormatBox: React.FC<FormatBoxProps> = ({ title, formatType, data, englishC
     try {
       const sections: Paragraph[] = [];
 
-      // Add Main Content section first (if available)
-      if (englishContent) {
+      // Add Main Content section first (if available and not hidden by client settings)
+      if (englishContent && !hideMainContentExport) {
         sections.push(new Paragraph({
           children: [new TextRun({ text: 'MAIN CONTENT', bold: true, size: 28 })],
           heading: HeadingLevel.HEADING_1,
@@ -183,18 +196,20 @@ const FormatBox: React.FC<FormatBoxProps> = ({ title, formatType, data, englishC
         }));
       }
 
-      // Add Bengali News section
-      const bengaliTitle = formatType === 'hard_news' ? 'হার্ড নিউজ (HARD NEWS)' : 'সফট নিউজ (SOFT NEWS)';
-      sections.push(new Paragraph({
-        children: [new TextRun({ text: bengaliTitle, bold: true, size: 28 })],
-        heading: HeadingLevel.HEADING_1,
-        spacing: { after: 300 },
-      }));
+      // Add Bengali News section header (only if not hiding format labels)
+      if (!hideFormatLabels) {
+        const bengaliTitle = formatType === 'hard_news' ? 'হার্ড নিউজ (HARD NEWS)' : 'সফট নিউজ (SOFT NEWS)';
+        sections.push(new Paragraph({
+          children: [new TextRun({ text: bengaliTitle, bold: true, size: 28 })],
+          heading: HeadingLevel.HEADING_1,
+          spacing: { after: 300 },
+        }));
 
-      sections.push(new Paragraph({
-        children: [new TextRun({ text: '─'.repeat(50), color: '999999', size: 20 })],
-        spacing: { after: 200 },
-      }));
+        sections.push(new Paragraph({
+          children: [new TextRun({ text: '─'.repeat(50), color: '999999', size: 20 })],
+          spacing: { after: 200 },
+        }));
+      }
 
       const bengaliParagraphs = parseMarkdownForWord(data.content);
       sections.push(...bengaliParagraphs);
@@ -207,10 +222,16 @@ const FormatBox: React.FC<FormatBoxProps> = ({ title, formatType, data, englishC
       });
 
       const blob = await Packer.toBlob(doc);
-      const formatTypeBengali = formatType === 'hard_news' ? 'হার্ড নিউজ' : 'সফট নিউজ';
-      const filename = `বাংলার কলম্বাস-${formatTypeBengali}-${getBengaliDate()}.docx`;
+      // Dynamic filename based on settings
+      let filename: string;
+      if (hideFormatLabels) {
+        filename = `${downloadPrefix}-${getBengaliDate()}.docx`;
+      } else {
+        const formatTypeBengali = formatType === 'hard_news' ? 'হার্ড নিউজ' : 'সফট নিউজ';
+        filename = `${downloadPrefix}-${formatTypeBengali}-${getBengaliDate()}.docx`;
+      }
       saveAs(blob, filename);
-      toast.success('Downloaded with Main Content!');
+      toast.success(hideMainContentExport ? 'Downloaded!' : 'Downloaded with Main Content!');
     } catch {
       toast.error('Failed to create Word document');
     }
@@ -230,7 +251,10 @@ const FormatBox: React.FC<FormatBoxProps> = ({ title, formatType, data, englishC
           ) : (
             <HiDocumentText className={`w-5 h-5 ${colorClasses.text}`} />
           )}
-          <span className={`font-semibold ${colorClasses.text}`}>{title}</span>
+          {/* Hide title if hideFormatLabels is enabled */}
+          {!hideFormatLabels && (
+            <span className={`font-semibold ${colorClasses.text}`}>{title}</span>
+          )}
           <span className="text-xs text-gray-500">{data.word_count} words</span>
         </div>
         <div className="flex items-center gap-2">
@@ -318,7 +342,13 @@ const toBangladeshTime = (dateStr: string): Date => {
 };
 
 export const EnhancementSessionCard: React.FC<EnhancementSessionCardProps> = ({ session }) => {
+  const { userConfig } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Get UI settings from user config
+  const hideFormatLabels = userConfig?.ui_settings?.hide_format_labels ?? false;
+  const hideMainContentExport = userConfig?.ui_settings?.hide_main_content_export ?? false;
+  const downloadPrefix = userConfig?.ui_settings?.download_prefix || userConfig?.client?.name || 'Content';
 
   const formatTime = (dateStr: string) => {
     const bdTime = toBangladeshTime(dateStr);
@@ -349,18 +379,21 @@ export const EnhancementSessionCard: React.FC<EnhancementSessionCardProps> = ({ 
         className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-4 text-left">
-          <div className="flex items-center gap-2">
-            {hasHardNews && (
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                Hard
-              </span>
-            )}
-            {hasSoftNews && (
-              <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-medium rounded-full">
-                Soft
-              </span>
-            )}
-          </div>
+          {/* Hide format type badges if hideFormatLabels is enabled */}
+          {!hideFormatLabels && (
+            <div className="flex items-center gap-2">
+              {hasHardNews && (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                  Hard
+                </span>
+              )}
+              {hasSoftNews && (
+                <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-medium rounded-full">
+                  Soft
+                </span>
+              )}
+            </div>
+          )}
           <div>
             <p className="font-medium text-gray-900">{getHeadlinePreview(session.headline)}</p>
             <p className="text-sm text-gray-500">{formatTime(session.created_at)}</p>
@@ -394,6 +427,9 @@ export const EnhancementSessionCard: React.FC<EnhancementSessionCardProps> = ({ 
                     data={session.hard_news}
                     englishContent={session.english_content}
                     fullWidth={!hasBoth}
+                    hideFormatLabels={hideFormatLabels}
+                    hideMainContentExport={hideMainContentExport}
+                    downloadPrefix={downloadPrefix}
                   />
                 )}
                 {hasSoftNews && session.soft_news && (
@@ -403,6 +439,9 @@ export const EnhancementSessionCard: React.FC<EnhancementSessionCardProps> = ({ 
                     data={session.soft_news}
                     englishContent={session.english_content}
                     fullWidth={!hasBoth}
+                    hideFormatLabels={hideFormatLabels}
+                    hideMainContentExport={hideMainContentExport}
+                    downloadPrefix={downloadPrefix}
                   />
                 )}
               </div>

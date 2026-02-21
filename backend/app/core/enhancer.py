@@ -144,30 +144,37 @@ class ContentEnhancer:
                 max_tokens=config['max_tokens']
             )
 
+            # Get rules from config for rules-driven pipeline
+            rules = config.get('rules', {})
+
+            # EARLY WORD COUNT CHECK — before expensive post-processing
+            # Avoids running 10-step pipeline on content that will be retried anyway
+            min_words = rules.get('min_words')
+            if min_words is None and format_type == 'hard_news':
+                min_words = 220  # Backward compatibility
+            if min_words and retry_count < 2:
+                raw_word_count = self._count_body_words(content)
+                if raw_word_count < min_words:
+                    logger.warning(f"{format_type} too short: ~{raw_word_count} words raw (min {min_words}). Regenerating before post-processing...")
+                    return self.enhance_single_format(
+                        translated_text, article_info, format_type, retry_count + 1
+                    )
+
             # LOG issues in original AI output BEFORE post-processing (for analytics)
             original_issues_needed = False
             original_issues = []
-            if format_type in ['hard_news', 'soft_news']:
-                original_issues_needed, original_issues = needs_checker(content.strip(), format_type)
+            if rules or format_type in ['hard_news', 'soft_news']:
+                original_issues_needed, original_issues = needs_checker(content.strip(), format_type, rules=rules)
                 if original_issues_needed:
                     logger.info(f"AI generated with issues (will be fixed by code): {original_issues}")
 
             # Apply post-processing (ALL fixes are code-based, 100% reliable)
-            # This includes: word corrections, সহ joining, English replacement,
-            # quote splitting, 3-line paragraph fixer, structure validation
+            # Rules from DB/config drive which steps run
             processed_content, validation = process_enhanced_content(
                 content.strip(),
-                format_type
+                format_type,
+                rules=rules
             )
-
-            # HARD NEWS MINIMUM WORD CHECK (220 words from intro to conclusion)
-            if format_type == 'hard_news' and retry_count < 2:
-                word_count = self._count_body_words(processed_content)
-                if word_count < 220:
-                    logger.warning(f"Hard news too short: {word_count} words (min 220). Regenerating...")
-                    return self.enhance_single_format(
-                        translated_text, article_info, format_type, retry_count + 1
-                    )
 
             # Log validation warnings if any
             if not validation['valid']:

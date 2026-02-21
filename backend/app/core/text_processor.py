@@ -811,19 +811,17 @@ def split_intro(intro: str) -> tuple:
     return (intro1, intro2)
 
 
-def enforce_intro_sentence_count(content: str, format_type: str) -> str:
+def enforce_intro_sentence_count(content: str, format_type: str, intro_max_sentences: int = None) -> str:
     """
     Enforce exact sentence count for intro paragraphs.
 
-    Hard News: Intro must have EXACTLY 3 sentences (3 lines)
-    - If more than 3: First 3 stay as bold intro, rest become first body paragraph
-    - If fewer than 3: Keep as-is (can't generate more without AI)
-
-    Soft News: Intro 1 must have 3-4 sentences (handled separately)
+    Uses intro_max_sentences from rules when provided.
+    Backward compatible: if intro_max_sentences is None, falls back to slug-based defaults.
 
     Args:
         content: Bengali text content
-        format_type: 'hard_news' or 'soft_news'
+        format_type: 'hard_news' or 'soft_news' or custom slug
+        intro_max_sentences: Max sentences in intro (from rules). None = use slug default.
 
     Returns:
         str: Content with enforced intro sentence count
@@ -848,70 +846,60 @@ def enforce_intro_sentence_count(content: str, format_type: str) -> str:
     clean_intro = intro.replace('**', '').strip()
     sentences = split_into_sentences(clean_intro)
 
-    if format_type == 'hard_news':
-        # Hard news: EXACTLY 3 sentences
-        if len(sentences) > 3:
-            # Keep first 3 for intro, move rest to new body paragraph
-            intro_sentences = sentences[:3]
-            overflow_sentences = sentences[3:]
+    # Determine max sentences: use param, fall back to slug-based default
+    max_sentences = intro_max_sentences
+    if max_sentences is None:
+        if format_type == 'hard_news':
+            max_sentences = 3
+        elif format_type == 'soft_news':
+            max_sentences = 4
+        else:
+            return content  # Unknown format, no rule, skip
 
-            # Rebuild intro (bold)
-            new_intro = ' '.join(intro_sentences)
-            paragraphs[intro_idx] = f'**{new_intro}**'
+    if len(sentences) > max_sentences:
+        intro_sentences = sentences[:max_sentences]
+        overflow_sentences = sentences[max_sentences:]
 
-            # Create new body paragraph from overflow (not bold)
+        # Rebuild intro (bold)
+        new_intro = ' '.join(intro_sentences)
+        paragraphs[intro_idx] = f'**{new_intro}**'
+
+        # Check if there's a next paragraph to merge overflow into
+        if intro_idx + 1 < len(paragraphs):
+            next_para = paragraphs[intro_idx + 1]
+            # If next para is not bold (intro 2 / body), prepend overflow to it
+            if not (next_para.startswith('**') and next_para.endswith('**')):
+                overflow_text = ' '.join(overflow_sentences)
+                paragraphs[intro_idx + 1] = overflow_text + ' ' + next_para.replace('**', '').strip()
+                logger.info(f"Enforced intro: kept {max_sentences} sentences, merged {len(overflow_sentences)} into next paragraph")
+            else:
+                # Next is a subhead/bold, insert overflow as new paragraph
+                overflow_para = ' '.join(overflow_sentences)
+                paragraphs.insert(intro_idx + 1, overflow_para)
+                logger.info(f"Enforced intro: kept {max_sentences} sentences, created new paragraph from overflow")
+        else:
+            # No next paragraph, create one
             overflow_para = ' '.join(overflow_sentences)
             paragraphs.insert(intro_idx + 1, overflow_para)
-
-            logger.info(f"Enforced hard news intro: kept 3 sentences, moved {len(overflow_sentences)} to body")
-
-    elif format_type == 'soft_news':
-        # Soft news: Intro 1 should be 3-4 sentences
-        # If more than 4, trim to 4
-        if len(sentences) > 4:
-            intro_sentences = sentences[:4]
-            overflow_sentences = sentences[4:]
-
-            # Rebuild intro 1 (bold)
-            new_intro = ' '.join(intro_sentences)
-            paragraphs[intro_idx] = f'**{new_intro}**'
-
-            # Check if there's an intro 2 after this
-            if intro_idx + 1 < len(paragraphs):
-                next_para = paragraphs[intro_idx + 1]
-                # If next para is not bold (intro 2), prepend overflow to it
-                if not (next_para.startswith('**') and next_para.endswith('**')):
-                    overflow_text = ' '.join(overflow_sentences)
-                    paragraphs[intro_idx + 1] = overflow_text + ' ' + next_para.replace('**', '').strip()
-                    logger.info(f"Enforced soft news intro 1: kept 4 sentences, merged {len(overflow_sentences)} into intro 2")
-                else:
-                    # Next is a subhead, insert overflow as intro 2
-                    overflow_para = ' '.join(overflow_sentences)
-                    paragraphs.insert(intro_idx + 1, overflow_para)
-                    logger.info(f"Enforced soft news intro 1: kept 4 sentences, created intro 2 from overflow")
+            logger.info(f"Enforced intro: kept {max_sentences} sentences, moved {len(overflow_sentences)} to body")
 
     return '\n\n'.join(paragraphs)
 
 
-def fix_intro_structure(content: str, format_type: str) -> str:
+def fix_intro_structure(content: str, format_type: str, intro_paragraphs: int = None) -> str:
     """
     Fix intro structure to match exact requirements.
 
-    Hard News: P3 (Intro) must be FULLY bold
-    Soft News:
-        - P3 (Intro 1) must be FULLY bold
-        - P4 (Intro 2) must NOT be bold
-        - P5 = First Subhead
-        - EXACTLY 2 intro paragraphs before first subhead
+    Behavior determined by intro_paragraphs param (from rules):
+    - None or 1: Simple bold intro (hard_news style)
+    - 2+: Multi-intro structure (soft_news style: bold intro 1 + non-bold intro 2)
 
-    This function handles:
-    1. Partial bold in intro → make FULLY bold
-    2. Only 1 intro exists → split into 2
-    3. More than 2 intros → merge extras into Intro 2
+    Backward compatible: if intro_paragraphs is None, falls back to slug-based defaults.
 
     Args:
         content: Generated Bengali text
-        format_type: 'hard_news' or 'soft_news'
+        format_type: 'hard_news' or 'soft_news' or custom slug
+        intro_paragraphs: Number of intro paragraphs before first subhead (from rules).
 
     Returns:
         str: Content with fixed intro structure
@@ -932,14 +920,24 @@ def fix_intro_structure(content: str, format_type: str) -> str:
         logger.warning("No intro paragraph found after byline")
         return content
 
-    if format_type == 'hard_news':
-        # Hard news: Just make intro FULLY bold
+    # Determine intro structure from param, fall back to slug-based default
+    effective_intro_paragraphs = intro_paragraphs
+    if effective_intro_paragraphs is None:
+        if format_type == 'hard_news':
+            effective_intro_paragraphs = 1
+        elif format_type == 'soft_news':
+            effective_intro_paragraphs = 2
+        else:
+            effective_intro_paragraphs = 1  # Default: simple bold intro
+
+    if effective_intro_paragraphs <= 1:
+        # Simple bold intro (hard_news style)
         paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
-        logger.info("Fixed hard news intro: made FULLY bold")
+        logger.info("Fixed intro: made FULLY bold (simple intro)")
         return '\n\n'.join(paragraphs)
 
     # ========================================
-    # SOFT NEWS: Need exactly 2 intros
+    # MULTI-INTRO: Need exactly N intros before subhead
     # ========================================
 
     # Find first subhead (bold, short text after intro area)
@@ -948,19 +946,20 @@ def fix_intro_structure(content: str, format_type: str) -> str:
     if first_subhead_idx == -1:
         # No subhead found, just fix intro 1
         paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
-        logger.info("Fixed soft news: made intro 1 FULLY bold (no subhead found)")
+        logger.info("Fixed intro: made intro 1 FULLY bold (no subhead found)")
         return '\n\n'.join(paragraphs)
 
     # Count paragraphs between intro_idx and first_subhead_idx
-    intros_between = first_subhead_idx - intro_idx  # Should be exactly 2
+    intros_between = first_subhead_idx - intro_idx  # Should be exactly effective_intro_paragraphs
 
-    if intros_between == 2:
-        # Perfect! Just ensure intro 1 is FULLY bold, intro 2 is NOT bold
+    if intros_between == effective_intro_paragraphs:
+        # Perfect! Ensure intro 1 is FULLY bold, intro 2 is NOT bold
         paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
-        paragraphs[intro_idx + 1] = remove_bold(paragraphs[intro_idx + 1])
-        logger.info("Fixed soft news: exactly 2 intros found, fixed formatting")
+        if effective_intro_paragraphs >= 2:
+            paragraphs[intro_idx + 1] = remove_bold(paragraphs[intro_idx + 1])
+        logger.info(f"Fixed intro: exactly {effective_intro_paragraphs} intros found, fixed formatting")
 
-    elif intros_between == 1:
+    elif intros_between == 1 and effective_intro_paragraphs >= 2:
         # Only 1 intro exists, need to SPLIT it into 2
         intro1, intro2 = split_intro(paragraphs[intro_idx])
 
@@ -968,27 +967,26 @@ def fix_intro_structure(content: str, format_type: str) -> str:
             # Successfully split
             paragraphs[intro_idx] = make_fully_bold(intro1)
             paragraphs.insert(intro_idx + 1, intro2)
-            logger.info(f"Fixed soft news: split single intro into 2 paragraphs")
+            logger.info(f"Fixed intro: split single intro into {effective_intro_paragraphs} paragraphs")
         else:
             # Couldn't split (too few sentences), just make it bold
             paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
-            logger.warning("Soft news: only 1 intro, couldn't split (too few sentences)")
+            logger.warning("Intro: only 1 intro, couldn't split (too few sentences)")
 
-    elif intros_between > 2:
+    elif intros_between > effective_intro_paragraphs:
         # Too many intros, MERGE extras into intro 2
         intro1 = paragraphs[intro_idx]
         intro2_parts = paragraphs[intro_idx + 1 : first_subhead_idx]
         intro2_merged = ' '.join([remove_bold(p) for p in intro2_parts])
 
-        # Remove extra paragraphs (from intro_idx+2 to first_subhead_idx-1)
-        # We keep intro_idx, intro_idx+1 (merged), and first_subhead_idx onwards
+        # Remove extra paragraphs
         del paragraphs[intro_idx + 2 : first_subhead_idx]
 
         # Fix formatting
         paragraphs[intro_idx] = make_fully_bold(intro1)
-        paragraphs[intro_idx + 1] = intro2_merged  # Already cleaned by remove_bold
+        paragraphs[intro_idx + 1] = intro2_merged
 
-        logger.info(f"Fixed soft news: merged {intros_between - 1} paragraphs into Intro 2")
+        logger.info(f"Fixed intro: merged {intros_between - 1} paragraphs into Intro 2")
 
     elif intros_between == 0:
         # Subhead immediately after intro - need to split intro
@@ -997,10 +995,10 @@ def fix_intro_structure(content: str, format_type: str) -> str:
         if intro2:
             paragraphs[intro_idx] = make_fully_bold(intro1)
             paragraphs.insert(intro_idx + 1, intro2)
-            logger.info("Fixed soft news: split intro before immediate subhead")
+            logger.info("Fixed intro: split intro before immediate subhead")
         else:
             paragraphs[intro_idx] = make_fully_bold(paragraphs[intro_idx])
-            logger.warning("Soft news: subhead immediately after intro, couldn't split")
+            logger.warning("Intro: subhead immediately after intro, couldn't split")
 
     return '\n\n'.join(paragraphs)
 
@@ -1605,10 +1603,10 @@ def final_intro_bold_check(content: str, format_type: str) -> str:
                 byline_idx = i
                 break
 
-    # If still not found, assume index 1
+    # If still not found, skip boldification instead of guessing
     if byline_idx == -1:
-        byline_idx = 1
-        logger.warning("Final bold: Byline not found, assuming index 1")
+        logger.warning("Final bold: Byline not found, skipping")
+        return content
 
     # Intro is the paragraph AFTER byline
     intro_idx = byline_idx + 1
@@ -1626,6 +1624,52 @@ def final_intro_bold_check(content: str, format_type: str) -> str:
     intro_check = paragraphs[intro_idx].strip()
     if not (intro_check.startswith('**') and intro_check.endswith('**')):
         logger.error(f"CRITICAL: Intro failed to become bold! Content: {intro_check[:50]}...")
+
+    return '\n\n'.join(paragraphs)
+
+
+def split_merged_byline_intro(content: str) -> str:
+    """
+    If the AI merged the byline and intro into one paragraph
+    (e.g. "নিউজ ডেস্ক, বাংলার কলম্বাস — intro text..."),
+    split it into two separate paragraphs so the pipeline can
+    correctly identify and bold the intro.
+
+    Safe to run for all formats — does nothing if byline and intro
+    are already properly separated.
+    """
+    if not content:
+        return content
+
+    BYLINE = 'নিউজ ডেস্ক, বাংলার কলম্বাস'
+    paragraphs = content.split('\n\n')
+
+    for i, para in enumerate(paragraphs):
+        para_stripped = para.strip()
+
+        # Only act on the byline paragraph
+        if 'বাংলার কলম্বাস' not in para_stripped and 'নিউজ ডেস্ক' not in para_stripped:
+            continue
+
+        # If the paragraph is roughly just the byline, nothing to split
+        if len(para_stripped) <= 60:
+            break
+
+        # Find where "বাংলার কলম্বাস" ends in the paragraph
+        idx = para_stripped.find('বাংলার কলম্বাস')
+        if idx == -1:
+            break
+
+        after_byline = para_stripped[idx + len('বাংলার কলম্বাস'):]
+
+        # Strip common separators the AI uses: " — ", " - ", ": ", "\n"
+        intro_text = after_byline.lstrip(' \u2014\u2013-:।\n')
+
+        if intro_text:
+            paragraphs[i] = BYLINE
+            paragraphs.insert(i + 1, intro_text)
+            logger.info(f"Split merged byline+intro: extracted intro of {len(intro_text)} chars")
+        break
 
     return '\n\n'.join(paragraphs)
 
@@ -1684,26 +1728,38 @@ def strip_hard_news_subheads(content: str) -> str:
     return '\n\n'.join(paragraphs)
 
 
-def validate_structure(content: str, format_type: str) -> dict:
+def validate_structure(content: str, format_type: str, rules: dict = None) -> dict:
     """
-    Validate output structure based on format type.
+    Validate output structure based on format type and rules.
+
+    Uses rules to determine validation type. Falls back to slug-based check.
 
     Args:
         content: Generated content
-        format_type: 'hard_news' or 'soft_news'
+        format_type: 'hard_news' or 'soft_news' or custom slug
+        rules: Post-processing rules dict
 
     Returns:
         dict: {valid: bool, warnings: list}
     """
-    if format_type == 'hard_news':
+    if rules is None:
+        rules = {}
+
+    # Determine validation type from rules, fall back to slug
+    allow_subheads = rules.get('allow_subheads')
+    intro_paragraphs = rules.get('intro_paragraphs_before_subhead')
+
+    if allow_subheads is False or format_type == 'hard_news':
+        # Hard news validation (no subheads allowed)
         return validate_hard_news_structure(content)
-    elif format_type == 'soft_news':
+    elif (intro_paragraphs is not None and intro_paragraphs >= 2) or format_type == 'soft_news':
+        # Soft news validation (multi-intro structure)
         return validate_soft_news_structure(content)
     else:
         return {'valid': True, 'warnings': []}
 
 
-def process_enhanced_content(content: str, format_type: str, max_paragraph_words: int = 35, openai_client=None) -> tuple[str, dict]:
+def process_enhanced_content(content: str, format_type: str, rules: dict = None, max_paragraph_words: int = 35, openai_client=None) -> tuple[str, dict]:
     """
     Full post-processing pipeline for enhanced content.
 
@@ -1725,50 +1781,72 @@ def process_enhanced_content(content: str, format_type: str, max_paragraph_words
 
     Args:
         content: AI-generated content
-        format_type: 'hard_news' or 'soft_news'
+        format_type: 'hard_news', 'soft_news', or custom slug
+        rules: Post-processing rules dict from format config. If None, derived from slug.
         max_paragraph_words: Max words per paragraph (default 35 for ~2 lines on A4)
         openai_client: DEPRECATED - no longer used (no AI calls in pipeline)
 
     Returns:
         tuple: (processed_content, validation_result)
     """
+    # Hardcoded rules per slug (safety net — DB rules take priority but these fill gaps)
+    _HARD_NEWS_RULES = {"allow_subheads": False, "intro_max_sentences": 3, "min_words": 220, "max_words": 450, "max_sentences_per_paragraph": 2}
+    _SOFT_NEWS_RULES = {"allow_subheads": True, "intro_max_sentences": 4, "intro_paragraphs_before_subhead": 2, "min_words": 400, "max_words": 800, "max_sentences_per_paragraph": 2}
+
+    # Backward compatibility: derive rules from slug if not provided
+    if rules is None:
+        if format_type == 'hard_news':
+            rules = _HARD_NEWS_RULES.copy()
+        elif format_type == 'soft_news':
+            rules = _SOFT_NEWS_RULES.copy()
+        else:
+            rules = {}
+    elif format_type == 'hard_news':
+        # Merge: DB rules take priority, but fill missing keys from hard_news defaults
+        for key, val in _HARD_NEWS_RULES.items():
+            if key not in rules:
+                rules[key] = val
+
     # Step 0: Normalize markdown line breaks to paragraph breaks (must be first!)
     processed_content = normalize_line_breaks(content)
 
-    # Step 1: STRIP SUBHEADS FROM HARD NEWS (hard news should never have subheads!)
-    if format_type == 'hard_news':
+    # Step 0.5: Split merged byline+intro if AI concatenated them onto one line
+    processed_content = split_merged_byline_intro(processed_content)
+
+    # Step 1: Strip subheads (only if rules say subheads not allowed)
+    if not rules.get('allow_subheads', True):
         processed_content = strip_hard_news_subheads(processed_content)
 
-    # Step 2: ENFORCE INTRO SENTENCE COUNT (v3.1)
-    # - Hard news: exactly 3 sentences in intro, move overflow to body
-    # - Soft news: max 4 sentences in intro 1, move overflow to intro 2
-    processed_content = enforce_intro_sentence_count(processed_content, format_type)
+    # Step 2: Enforce intro sentence count (only if rules define intro_max_sentences)
+    intro_max = rules.get('intro_max_sentences')
+    if intro_max:
+        processed_content = enforce_intro_sentence_count(processed_content, format_type, intro_max_sentences=intro_max)
 
-    # Step 3: FIX INTRO STRUCTURE (make intro FULLY bold)
-    # - Makes intro FULLY bold (not partial)
-    # - For soft news: ensures exactly 2 intros before first subhead
-    processed_content = fix_intro_structure(processed_content, format_type)
+    # Step 3: Fix intro structure (based on intro_paragraphs_before_subhead)
+    intro_paragraphs = rules.get('intro_paragraphs_before_subhead')
+    processed_content = fix_intro_structure(processed_content, format_type, intro_paragraphs=intro_paragraphs)
 
-    # Step 4: Apply word corrections (শীঘ্রই → শিগগিরই, date suffixes)
+    # Step 4: Apply word corrections — always
     processed_content = apply_word_corrections(processed_content)
 
-    # Step 5: Fix সহ joining (smart - won't break সহায়ক, সহযোগী, etc.)
+    # Step 5: Fix সহ joining — always
     processed_content = fix_saho_joining(processed_content)
 
-    # Step 6: Replace English words with Bengali equivalents
+    # Step 6: Replace English words — always
     processed_content = replace_english_words(processed_content)
 
-    # Step 7: Split quotes (CRITICAL - text after quote → new paragraph)
+    # Step 7: Split quotes — always
     processed_content = split_quotes(processed_content)
 
-    # Step 8: Fix 3-line paragraphs (move last sentence to new paragraph)
-    processed_content = fix_three_line_paragraphs(processed_content)
+    # Step 8: Fix 3-line paragraphs (only if rules define max_sentences_per_paragraph)
+    if rules.get('max_sentences_per_paragraph'):
+        processed_content = fix_three_line_paragraphs(processed_content)
 
-    # Step 9: FINAL SAFETY CHECK - Guarantee intro is bold (no exceptions!)
+    # Step 9: FINAL SAFETY CHECK - Guarantee intro is bold — always
     processed_content = final_intro_bold_check(processed_content, format_type)
 
-    # Step 10: Validate structure (logging only, doesn't modify)
-    validation = validate_structure(processed_content, format_type)
+    # Step 10: Validate structure (based on rules)
+    validation = validate_structure(processed_content, format_type, rules=rules)
 
     return processed_content, validation
 
@@ -1777,36 +1855,38 @@ def process_enhanced_content(content: str, format_type: str, max_paragraph_words
 # MAKER-CHECKER SYSTEM (Detect issues for secondary AI review)
 # ============================================================================
 
-def needs_checker(content: str, format_type: str, max_words: int = 38) -> tuple[bool, list]:
+def needs_checker(content: str, format_type: str, rules: dict = None, max_words: int = 38) -> tuple[bool, list]:
     """
     Detect if content needs Checker AI review.
 
-    Only checks BODY PARAGRAPHS:
-    - Hard News: P4+ (after headline, byline, intro)
-    - Soft News: P6+ (after headline, byline, intro1, intro2, subhead1)
-
-    Issues detected:
-    1. Text after closing quote in same paragraph
-    (Word count check DISABLED - AI writes up to 2 lines naturally)
+    Only checks BODY PARAGRAPHS (after headline, byline, intro area).
+    Uses rules to determine body start index.
 
     Args:
         content: Generated content
-        format_type: 'hard_news' or 'soft_news'
+        format_type: 'hard_news' or 'soft_news' or custom slug
+        rules: Post-processing rules dict
         max_words: DEPRECATED - no longer used
 
     Returns:
         tuple: (needs_check: bool, issues: list of issue descriptions)
     """
+    if rules is None:
+        rules = {}
+
     issues = []
     paragraphs = content.split('\n\n')
 
-    # Determine body paragraph start index
-    # Hard news: P1=headline, P2=byline, P3=intro, P4+=body
-    # Soft news: P1=headline, P2=byline, P3=intro1, P4=intro2, P5=subhead1, P6+=body
-    if format_type == 'hard_news':
-        body_start = 3  # P4+ (0-indexed: 3)
-    else:  # soft_news
-        body_start = 5  # P6+ (0-indexed: 5)
+    # Determine body paragraph start index from rules
+    allow_subheads = rules.get('allow_subheads')
+    intro_paragraphs = rules.get('intro_paragraphs_before_subhead')
+
+    if allow_subheads is False or format_type == 'hard_news':
+        body_start = 3  # P4+ (0-indexed: 3) — headline, byline, intro
+    elif (intro_paragraphs is not None and intro_paragraphs >= 2) or format_type == 'soft_news':
+        body_start = 5  # P6+ (0-indexed: 5) — headline, byline, intro1, intro2, subhead1
+    else:
+        body_start = 3  # Default: assume simple structure
 
     for i, para in enumerate(paragraphs):
         para = para.strip()

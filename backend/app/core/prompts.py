@@ -1,14 +1,20 @@
 """
 Prompt Templates for Hard News and Soft News
 Swiftor - Modern Bangladeshi Bengali Style
+
+Supports loading format configs from:
+1. Database (FormatConfig model) - primary source
+2. JSON file (fallback) - bengali_news_styles.json
+3. Hardcoded fallback - if both above fail
 """
 
 import json
 from pathlib import Path
+from typing import Optional
 
 
 # ============================================================================
-# LOAD BENGALI NEWS STYLES FROM JSON (Optional Override)
+# LOAD BENGALI NEWS STYLES FROM JSON (Fallback)
 # ============================================================================
 
 def _load_bengali_news_styles():
@@ -21,6 +27,50 @@ def _load_bengali_news_styles():
         return {}
 
 _BENGALI_STYLES = _load_bengali_news_styles()
+
+
+# ============================================================================
+# DATABASE CONFIG LOADER
+# ============================================================================
+
+def get_format_config_from_db(format_type: str, db_session=None):
+    """
+    Load format configuration from database.
+
+    Args:
+        format_type: Format slug (e.g., 'hard_news', 'soft_news')
+        db_session: Optional SQLAlchemy session (creates new one if not provided)
+
+    Returns:
+        dict: Format configuration or None if not found
+    """
+    try:
+        # Import here to avoid circular imports
+        from app.database import SessionLocal
+        from app.models.format_config import FormatConfig
+
+        # Use provided session or create new one
+        session = db_session
+        close_session = False
+        if session is None:
+            session = SessionLocal()
+            close_session = True
+
+        try:
+            format_config = session.query(FormatConfig).filter(
+                FormatConfig.slug == format_type,
+                FormatConfig.is_active == True
+            ).first()
+
+            if format_config:
+                return format_config.get_config_for_enhancer()
+            return None
+        finally:
+            if close_session:
+                session.close()
+    except Exception:
+        # Database not available or error - fall back to JSON
+        return None
 
 
 # ============================================================================
@@ -110,7 +160,14 @@ FORMAT_CONFIG = {
         'system_prompt': HARD_NEWS_SYSTEM_PROMPT,
         'temperature': _BENGALI_STYLES.get('hard_news', {}).get('temperature', 0.4),
         'max_tokens': _BENGALI_STYLES.get('hard_news', {}).get('max_tokens', 1500),
-        'description': _BENGALI_STYLES.get('hard_news', {}).get('description', 'পেশাদার তথ্যভিত্তিক সংবাদ')
+        'description': _BENGALI_STYLES.get('hard_news', {}).get('description', 'পেশাদার তথ্যভিত্তিক সংবাদ'),
+        'rules': {
+            "allow_subheads": False,
+            "intro_max_sentences": 3,
+            "min_words": 220,
+            "max_words": 450,
+            "max_sentences_per_paragraph": 2
+        }
     },
     'soft_news': {
         'name': 'সফট নিউজ (বাংলার কলম্বাস)',
@@ -118,11 +175,39 @@ FORMAT_CONFIG = {
         'system_prompt': SOFT_NEWS_SYSTEM_PROMPT,
         'temperature': _BENGALI_STYLES.get('soft_news', {}).get('temperature', 0.7),
         'max_tokens': _BENGALI_STYLES.get('soft_news', {}).get('max_tokens', 2500),
-        'description': _BENGALI_STYLES.get('soft_news', {}).get('description', 'বর্ণনামূলক ভ্রমণ ফিচার')
+        'description': _BENGALI_STYLES.get('soft_news', {}).get('description', 'বর্ণনামূলক ভ্রমণ ফিচার'),
+        'rules': {
+            "allow_subheads": True,
+            "intro_max_sentences": 4,
+            "intro_paragraphs_before_subhead": 2,
+            "min_words": 400,
+            "max_words": 800,
+            "max_sentences_per_paragraph": 2
+        }
     }
 }
 
 
-def get_format_config(format_type):
-    """Get configuration for a specific format"""
+def get_format_config(format_type: str, db_session=None):
+    """
+    Get configuration for a specific format.
+
+    Priority:
+    1. Database (FormatConfig model)
+    2. JSON file (bengali_news_styles.json)
+    3. Hardcoded fallback (FORMAT_CONFIG)
+
+    Args:
+        format_type: Format slug (e.g., 'hard_news', 'soft_news')
+        db_session: Optional database session
+
+    Returns:
+        dict: Format configuration
+    """
+    # Try database first
+    db_config = get_format_config_from_db(format_type, db_session)
+    if db_config:
+        return db_config
+
+    # Fall back to JSON/hardcoded config
     return FORMAT_CONFIG.get(format_type, FORMAT_CONFIG['hard_news'])

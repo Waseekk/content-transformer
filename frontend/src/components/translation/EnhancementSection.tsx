@@ -7,6 +7,7 @@ import React from 'react';
 import { FormatCard } from './FormatCard';
 import { useEnhance } from '../../hooks/useEnhancement';
 import { useAppStore } from '../../store/useAppStore';
+import { useAuth } from '../../contexts/AuthContext';
 import { HiSparkles, HiNewspaper, HiBookOpen } from 'react-icons/hi';
 
 interface EnhancementSectionProps {
@@ -18,6 +19,7 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
   translatedText,
   englishContent,
 }) => {
+  const { userConfig } = useAuth();
   const enhance = useEnhance();
   const {
     selectedFormats,
@@ -26,6 +28,9 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
     addEnhancement,
     pendingOperations,
   } = useAppStore();
+
+  // Get UI settings from user config
+  const hideFormatLabels = userConfig?.ui_settings?.hide_format_labels ?? false;
 
   // Check if there's an enhancement operation pending in global store
   const hasEnhancementPending = Object.values(pendingOperations).some(
@@ -127,12 +132,22 @@ export const EnhancementSection: React.FC<EnhancementSectionProps> = ({
                 `}
               >
                 <Icon className="w-5 h-5" />
-                <div className="text-left">
-                  <p className="font-semibold">{format.title}</p>
-                  <p className={`text-xs ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
-                    {format.subtitle}
-                  </p>
-                </div>
+                {/* Hide format labels if client setting enabled */}
+                {!hideFormatLabels && (
+                  <div className="text-left">
+                    <p className="font-semibold">{format.title}</p>
+                    <p className={`text-xs ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                      {format.subtitle}
+                    </p>
+                  </div>
+                )}
+                {hideFormatLabels && (
+                  <div className="text-left">
+                    <p className={`text-sm ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                      {format.description}
+                    </p>
+                  </div>
+                )}
               </button>
             );
           })}

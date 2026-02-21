@@ -33,12 +33,14 @@ export interface AuthResponse {
 
 export interface AuthContextType {
   user: User | null;
+  userConfig: UserClientConfig | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  refreshUserConfig: () => Promise<void>;
 }
 
 // Usage Statistics Types
@@ -140,4 +142,35 @@ export interface AdminDeleteResponse {
 
 export interface AdminSetTierRequest {
   tier: 'free' | 'premium' | 'enterprise';
+}
+
+// User Client Configuration Types (Multi-tenant support)
+export interface UserFormatConfig {
+  id: number;
+  slug: string;
+  display_name: string;
+  description?: string;
+  icon: string;
+}
+
+export interface UISettings {
+  show_content_preview?: boolean;
+  workflow_type?: 'full' | 'simple';
+  show_format_selection?: boolean;
+  app_title?: string;
+  hide_format_labels?: boolean;
+  hide_main_content_export?: boolean;
+  download_prefix?: string;
+}
+
+export interface UserClientConfig {
+  client: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
+  formats: UserFormatConfig[];
+  default_format: UserFormatConfig | null;
+  ui_settings: UISettings;
+  display_overrides: Record<string, string>;
 }

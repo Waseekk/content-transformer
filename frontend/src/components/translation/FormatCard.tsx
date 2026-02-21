@@ -12,6 +12,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import type { IconType } from 'react-icons';
 import { AILoader } from '../ui';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface FormatCardProps {
   title: string;
@@ -125,9 +126,15 @@ export const FormatCard: React.FC<FormatCardProps> = ({
   formatId,
   onContentUpdate,
 }) => {
+  const { userConfig } = useAuth();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content || '');
+
+  // Get UI settings from user config
+  const hideFormatLabels = userConfig?.ui_settings?.hide_format_labels ?? false;
+  const hideMainContentExport = userConfig?.ui_settings?.hide_main_content_export ?? false;
+  const downloadPrefix = userConfig?.ui_settings?.download_prefix || userConfig?.client?.name || 'Content';
 
   useEffect(() => {
     if (content) {
@@ -174,6 +181,7 @@ export const FormatCard: React.FC<FormatCardProps> = ({
 
   /**
    * Download content as Word document with English content included
+   * Respects client UI settings for hiding main content and custom filename prefix
    */
   const handleDownloadWord = async () => {
     const textToDownload = isEditing ? editedContent : (content || '');
@@ -182,8 +190,8 @@ export const FormatCard: React.FC<FormatCardProps> = ({
     try {
       const sections: Paragraph[] = [];
 
-      // Add Main Content section first (if available)
-      if (englishContent) {
+      // Add Main Content section first (if available and not hidden by client settings)
+      if (englishContent && !hideMainContentExport) {
         // Main content section header
         sections.push(new Paragraph({
           children: [new TextRun({ text: 'MAIN CONTENT', bold: true, size: 28 })],
@@ -219,19 +227,21 @@ export const FormatCard: React.FC<FormatCardProps> = ({
         }));
       }
 
-      // Add Bengali News section
-      const bengaliTitle = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ (HARD NEWS)' : 'সফট নিউজ (SOFT NEWS)';
-      sections.push(new Paragraph({
-        children: [new TextRun({ text: bengaliTitle, bold: true, size: 28 })],
-        heading: HeadingLevel.HEADING_1,
-        spacing: { after: 300 },
-      }));
+      // Add Bengali News section header (only if not hiding format labels)
+      if (!hideFormatLabels) {
+        const bengaliTitle = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ (HARD NEWS)' : 'সফট নিউজ (SOFT NEWS)';
+        sections.push(new Paragraph({
+          children: [new TextRun({ text: bengaliTitle, bold: true, size: 28 })],
+          heading: HeadingLevel.HEADING_1,
+          spacing: { after: 300 },
+        }));
 
-      // Divider line
-      sections.push(new Paragraph({
-        children: [new TextRun({ text: '─'.repeat(50), color: '999999', size: 20 })],
-        spacing: { after: 200 },
-      }));
+        // Divider line
+        sections.push(new Paragraph({
+          children: [new TextRun({ text: '─'.repeat(50), color: '999999', size: 20 })],
+          spacing: { after: 200 },
+        }));
+      }
 
       // Bengali content with markdown parsing
       const bengaliParagraphs = parseMarkdownForWord(textToDownload);
@@ -245,11 +255,18 @@ export const FormatCard: React.FC<FormatCardProps> = ({
       });
 
       const blob = await Packer.toBlob(doc);
-      // Bengali filename format: বাংলার কলম্বাস-হার্ড নিউজ-২০ জানুয়ারি ২০২৬.docx
-      const formatTypeBengali = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ' : 'সফট নিউজ';
-      const filename = `বাংলার কলম্বাস-${formatTypeBengali}-${getBengaliDate()}.docx`;
+      // Dynamic filename: uses download_prefix or client name, excludes format type if hidden
+      let filename: string;
+      if (hideFormatLabels) {
+        // Without format type: ClientName-২০ জানুয়ারি ২০২৬.docx
+        filename = `${downloadPrefix}-${getBengaliDate()}.docx`;
+      } else {
+        // With format type: বাংলার কলম্বাস-হার্ড নিউজ-২০ জানুয়ারি ২০২৬.docx
+        const formatTypeBengali = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ' : 'সফট নিউজ';
+        filename = `${downloadPrefix}-${formatTypeBengali}-${getBengaliDate()}.docx`;
+      }
       saveAs(blob, filename);
-      toast.success('Downloaded with Main Content!');
+      toast.success(hideMainContentExport ? 'Downloaded!' : 'Downloaded with Main Content!');
     } catch {
       toast.error('Failed to create Word document');
     }
@@ -315,10 +332,17 @@ export const FormatCard: React.FC<FormatCardProps> = ({
             <Icon className={`w-6 h-6 ${content ? 'text-white' : colorClasses.text}`} />
           </motion.div>
           <div>
-            <h4 className={`font-bold text-xl ${content ? 'text-white' : 'text-gray-900'}`}>
-              {title}
-            </h4>
-            {subtitle && (
+            {/* Hide title if hideFormatLabels is enabled */}
+            {!hideFormatLabels && (
+              <h4 className={`font-bold text-xl ${content ? 'text-white' : 'text-gray-900'}`}>
+                {title}
+              </h4>
+            )}
+            {hideFormatLabels ? (
+              <p className={`text-sm ${content ? 'text-white/80' : 'text-gray-500'}`}>
+                {description}
+              </p>
+            ) : subtitle && (
               <p className={`text-sm ${content ? 'text-white/80' : 'text-gray-500'}`}>
                 {subtitle} • {description}
               </p>

@@ -11,6 +11,8 @@ from app.models.token_usage import TokenUsage
 from app.models.user_config import UserConfig
 from app.models.support_ticket import SupportTicket, TicketReply, TicketAttachment
 from app.models.password_reset import PasswordResetToken
+from app.models.format_config import FormatConfig
+from app.models.client_config import ClientConfig
 
 __all__ = [
     "User",
@@ -24,4 +26,6 @@ __all__ = [
     "TicketReply",
     "TicketAttachment",
     "PasswordResetToken",
+    "FormatConfig",
+    "ClientConfig",
 ]

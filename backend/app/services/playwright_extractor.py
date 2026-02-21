@@ -364,6 +364,25 @@ class PlaywrightExtractor:
         await self._cleanup_browser()
 
 
+# Module-level singleton for browser pooling — launched once, reused across all requests
+_global_extractor: Optional[PlaywrightExtractor] = None
+
+
+def get_global_extractor() -> PlaywrightExtractor:
+    """Return (or create) the module-level singleton PlaywrightExtractor."""
+    global _global_extractor
+    if _global_extractor is None:
+        _global_extractor = PlaywrightExtractor(timeout=30)
+    return _global_extractor
+
+
+async def warm_up_browser() -> None:
+    """Pre-warm the global Playwright browser at app startup to eliminate cold-start latency."""
+    extractor = get_global_extractor()
+    await extractor._ensure_browser()
+    logger.info("Global Playwright browser warmed up — ready for requests")
+
+
 # Convenience function for direct usage
 async def extract_with_playwright(url: str) -> Dict[str, str]:
     """

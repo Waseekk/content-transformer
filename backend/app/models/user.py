@@ -3,13 +3,15 @@ User Model
 Database model for user accounts and token management
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import logging
 
 from app.database import Base
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -52,6 +54,9 @@ class User(Base):
     subscription_tier = Column(String(50), default="free", nullable=False)  # free, premium, enterprise
     subscription_status = Column(String(50), default="active", nullable=False)  # active, paused, cancelled
 
+    # Client Configuration (Multi-tenant support)
+    client_config_id = Column(Integer, ForeignKey("client_configs.id"), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -65,6 +70,7 @@ class User(Base):
     token_usage = relationship("TokenUsage", back_populates="user", cascade="all, delete-orphan")
     config = relationship("UserConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
     support_tickets = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
+    client_config = relationship("ClientConfig", back_populates="users")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, tier={self.subscription_tier})>"
@@ -180,18 +186,17 @@ class User(Base):
 
     def use_enhancement(self, count: int = 1) -> bool:
         """
-        Use enhancement quota
+        Track enhancement usage. Always increments the counter.
 
         Args:
             count: Number of enhancements to use
 
         Returns:
-            bool: True if successful
+            bool: True if within quota, False if over limit (still tracked)
         """
-        if not self.has_enhancement_quota(count):
-            return False
+        within_quota = self.has_enhancement_quota(count)
         self.enhancements_used_this_month += count
-        return True
+        return within_quota
 
     def reset_monthly_enhancements(self):
         """Reset enhancement quota for new month"""
@@ -227,21 +232,40 @@ class User(Base):
         return self.enhancements_used_this_month >= self.monthly_enhancement_limit
 
     # Auto-assign tokens
+    MAX_AUTO_ASSIGNS_PER_MONTH = 3
+
     def check_and_auto_assign_tokens(self) -> int:
         """
-        Check if tokens are low and auto-assign if needed
+        Check if tokens are low and auto-assign if needed.
+        Skips auto-assign for manually paused users and limits auto-assigns per month.
 
         Returns:
-            int: Number of tokens auto-assigned (0 if not needed)
+            int: Number of tokens auto-assigned (0 if not needed or skipped)
         """
+        # Don't auto-assign for manually paused or cancelled users
+        if self.subscription_status in ("paused", "cancelled"):
+            logger.info(f"Skipping auto-assign for user {self.id} ({self.email}): subscription is {self.subscription_status}")
+            return 0
+
         if self.tokens_remaining < settings.AUTO_ASSIGN_TOKENS_THRESHOLD:
-            amount = settings.AUTO_ASSIGN_TOKENS_AMOUNT
+            # Check how many times auto-assign has been triggered this month
+            # Approximate by counting how far limit exceeds the default
+            default_limit = settings.DEFAULT_MONTHLY_TOKENS
+            auto_assign_amount = settings.AUTO_ASSIGN_TOKENS_AMOUNT
+            if auto_assign_amount > 0:
+                times_auto_assigned = max(0, (self.monthly_token_limit - default_limit) // auto_assign_amount)
+            else:
+                times_auto_assigned = 0
+
+            if times_auto_assigned >= self.MAX_AUTO_ASSIGNS_PER_MONTH:
+                logger.warning(f"Auto-assign limit reached for user {self.id} ({self.email}): {times_auto_assigned} auto-assigns this month")
+                return 0
+
+            amount = auto_assign_amount
             self.monthly_token_limit += amount
             self.tokens_remaining += amount
 
-            # Reactivate if paused
-            if self.subscription_status == "paused":
-                self.subscription_status = "active"
+            logger.info(f"Auto-assigned {amount} tokens to user {self.id} ({self.email}). New limit: {self.monthly_token_limit}, remaining: {self.tokens_remaining}")
 
             return amount
         return 0
