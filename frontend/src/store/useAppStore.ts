@@ -70,6 +70,11 @@ interface AppState {
   // Pending Operations (for global tracking)
   pendingOperations: Record<string, PendingOperation>;
 
+  // SimpleWorkflow state (global so it survives navigation)
+  simpleWorkflowResult: { content: string; tokens_used: number } | null;
+  simpleWorkflowTranslation: { original: string; translated: string } | null;
+  simpleWorkflowProcessing: boolean;
+
   // Actions
   setArticles: (articles: Article[]) => void;
   selectArticle: (article: Article | null) => void;
@@ -102,6 +107,12 @@ interface AppState {
   markOperationApplied: (id: string) => void;
   hasPendingOperations: () => boolean;
   getUnappliedCompletedOperations: () => PendingOperation[];
+
+  // SimpleWorkflow actions
+  setSimpleWorkflowResult: (result: { content: string; tokens_used: number } | null) => void;
+  setSimpleWorkflowTranslation: (t: { original: string; translated: string } | null) => void;
+  setSimpleWorkflowProcessing: (v: boolean) => void;
+  clearSimpleWorkflow: () => void;
 }
 
 const defaultFilters: ArticleFilters = {
@@ -129,6 +140,9 @@ export const useAppStore = create<AppState>()(
       isPreviewPanelOpen: false,
       previewArticle: null,
       pendingOperations: {},
+      simpleWorkflowResult: null,
+      simpleWorkflowTranslation: null,
+      simpleWorkflowProcessing: false,
 
       // Actions
       setArticles: (articles) => set({ articles }),
@@ -264,6 +278,15 @@ export const useAppStore = create<AppState>()(
           (op: PendingOperation) => op.status === 'completed' && !op.applied
         );
       },
+
+      setSimpleWorkflowResult: (result) => set({ simpleWorkflowResult: result }),
+      setSimpleWorkflowTranslation: (t) => set({ simpleWorkflowTranslation: t }),
+      setSimpleWorkflowProcessing: (v) => set({ simpleWorkflowProcessing: v }),
+      clearSimpleWorkflow: () => set({
+        simpleWorkflowResult: null,
+        simpleWorkflowTranslation: null,
+        simpleWorkflowProcessing: false,
+      }),
     }),
     {
       name: 'travel-news-store', // localStorage key
@@ -277,6 +300,9 @@ export const useAppStore = create<AppState>()(
         selectedFormats: state.selectedFormats,
         currentEnhancements: state.currentEnhancements,
         // Don't persist pendingOperations - start fresh on page reload
+        simpleWorkflowResult: state.simpleWorkflowResult,
+        simpleWorkflowTranslation: state.simpleWorkflowTranslation,
+        // simpleWorkflowProcessing intentionally NOT persisted (no spinner on reload)
       }),
     }
   )

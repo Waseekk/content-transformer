@@ -13,6 +13,7 @@ import { AILoader, GlowButton, AnimatedCard } from '../ui';
 import { FormatCard } from './FormatCard';
 import { URLExtractor } from './URLExtractor';
 import type { UserFormatConfig } from '../../types/auth';
+import { useAppStore } from '../../store/useAppStore';
 import {
   HiSparkles,
   HiLightningBolt,
@@ -44,21 +45,20 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
   const enhance = useEnhance();
 
   const [pastedContent, setPastedContent] = useState('');
-  const [translation, setTranslation] = useState<{
-    original: string;
-    translated: string;
-  } | null>(null);
-  const [result, setResult] = useState<{
-    content: string;
-    tokens_used: number;
-  } | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  const {
+    simpleWorkflowResult: result,
+    simpleWorkflowTranslation: translation,
+    simpleWorkflowProcessing: isProcessing,
+    setSimpleWorkflowResult,
+    setSimpleWorkflowTranslation,
+    setSimpleWorkflowProcessing,
+    clearSimpleWorkflow,
+  } = useAppStore();
 
   const handleClearAll = () => {
     setPastedContent('');
-    setTranslation(null);
-    setResult(null);
-    toast.success('Cleared');
+    clearSimpleWorkflow();
   };
 
   const handleProcess = async () => {
@@ -67,8 +67,8 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
       return;
     }
 
-    setIsProcessing(true);
-    setResult(null);
+    setSimpleWorkflowProcessing(true);
+    setSimpleWorkflowResult(null);
 
     try {
       // Step 1: Translate/process content
@@ -77,7 +77,7 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
         inputLanguage: 'auto',
       });
 
-      setTranslation({
+      setSimpleWorkflowTranslation({
         original: translateResult.original_text,
         translated: translateResult.translated_text,
       });
@@ -90,30 +90,29 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
       });
 
       if (enhanceResult.formats && enhanceResult.formats.length > 0) {
-        setResult({
+        setSimpleWorkflowResult({
           content: enhanceResult.formats[0].content,
           tokens_used: enhanceResult.formats[0].tokens_used,
         });
-        toast.success('Content generated!');
       }
     } catch (error: any) {
       toast.error(error.message || 'Processing failed');
     } finally {
-      setIsProcessing(false);
+      setSimpleWorkflowProcessing(false);
     }
   };
 
   const handleURLExtracted = (englishContent: string, bengaliContent: string, _title?: string) => {
     // Set translation and auto-process
-    setTranslation({
+    setSimpleWorkflowTranslation({
       original: englishContent,
       translated: bengaliContent,
     });
     setPastedContent('');
 
     // Auto-generate with default format
-    setIsProcessing(true);
-    setResult(null);
+    setSimpleWorkflowProcessing(true);
+    setSimpleWorkflowResult(null);
 
     enhance.mutateAsync({
       text: bengaliContent,
@@ -122,24 +121,23 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
     })
       .then((enhanceResult) => {
         if (enhanceResult.formats && enhanceResult.formats.length > 0) {
-          setResult({
+          setSimpleWorkflowResult({
             content: enhanceResult.formats[0].content,
             tokens_used: enhanceResult.formats[0].tokens_used,
           });
-          toast.success('Content generated!');
         }
       })
       .catch((error) => {
         toast.error(error.message || 'Processing failed');
       })
       .finally(() => {
-        setIsProcessing(false);
+        setSimpleWorkflowProcessing(false);
       });
   };
 
   const handleContentUpdate = (_formatId: string, newContent: string) => {
     if (result) {
-      setResult({ ...result, content: newContent });
+      setSimpleWorkflowResult({ ...result, content: newContent });
     }
   };
 
