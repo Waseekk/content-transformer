@@ -17,8 +17,6 @@ export const useEnhance = () => {
       model?: string;
     }) => enhancementApi.enhance(data),
     onSuccess: (data) => {
-      toast.success('Enhancement complete!');
-
       // Convert formats to store format
       const enhancements: Record<string, any> = {};
       data.formats.forEach((result: any) => {

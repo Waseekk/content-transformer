@@ -7,7 +7,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
-import { OperationStatusBar } from './OperationStatusBar';
 import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX, HiOfficeBuilding, HiDocumentText } from 'react-icons/hi';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -63,9 +62,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen overflow-x-hidden">
       {/* Cursor Glow Effect */}
       <CursorGlow />
-
-      {/* Global Operation Status Bar */}
-      <OperationStatusBar />
 
       {/* Header */}
       <motion.header

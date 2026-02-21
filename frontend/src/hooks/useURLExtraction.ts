@@ -15,7 +15,7 @@ export const useURLExtraction = () => {
     mutationFn: (url: string) => extractionApi.extractFromURL(url),
     onSuccess: (data) => {
       if (data.success) {
-        toast.success(`Content extracted successfully (${data.extraction_method})`);
+        // silent success
       } else {
         toast.error(
           data.error_message || 'Failed to extract content, please contact admin if the problem persists.\n\nNB: Some websites may need manual extraction.',
@@ -63,7 +63,7 @@ export const useURLExtractAndTranslate = () => {
     },
     onSuccess: (data) => {
       if (data.success) {
-        toast.success('Content extracted successfully!');
+        // silent success
       } else {
         toast.error(
           data.error_message || 'Failed to extract content, please contact admin if the problem persists.\n\nNB: Some websites may need manual extraction.',

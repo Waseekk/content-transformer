@@ -80,6 +80,9 @@ export const TranslationPage = () => {
 
   // Apply unapplied completed operations when returning to this page
   useEffect(() => {
+    // Skip in simple workflow mode — SimpleWorkflow handles its own state
+    if ((userConfig?.ui_settings?.workflow_type || 'full') === 'simple') return;
+
     const unappliedOps = Object.values(pendingOperations).filter(
       (op: { status: string; applied?: boolean }) => op.status === 'completed' && !op.applied
     );
