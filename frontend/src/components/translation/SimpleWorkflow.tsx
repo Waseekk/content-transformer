@@ -14,6 +14,7 @@ import { FormatCard } from './FormatCard';
 import { URLExtractor } from './URLExtractor';
 import type { UserFormatConfig } from '../../types/auth';
 import { useAppStore } from '../../store/useAppStore';
+import { isBijoyEncoded, convertBijoyToUnicode } from '../../utils/bijoyToUnicode';
 import {
   HiSparkles,
   HiLightningBolt,
@@ -59,6 +60,17 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
   const handleClearAll = () => {
     setPastedContent('');
     clearSimpleWorkflow();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData('text');
+    if (isBijoyEncoded(pasted)) {
+      e.preventDefault();
+      const converted = convertBijoyToUnicode(pasted);
+      setPastedContent(converted);
+      toast.success('Bijoy text detected — converted to Unicode automatically');
+    }
+    // else: let browser handle paste normally
   };
 
   const handleProcess = async () => {
@@ -192,6 +204,7 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
             <textarea
               value={pastedContent}
               onChange={(e) => setPastedContent(e.target.value)}
+              onPaste={handlePaste}
               placeholder="Paste your content here...
 
 The AI will automatically process and generate content."
