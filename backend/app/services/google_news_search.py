@@ -102,10 +102,11 @@ class GoogleNewsSearcher:
             'data': data
         }
 
-    def _build_rss_url(self, keyword: str) -> str:
-        """Build Google News RSS URL"""
+    def _build_rss_url(self, keyword: str, language: str = 'en') -> str:
+        """Build Google News RSS URL, using Bengali locale for Bengali keywords."""
         encoded_keyword = quote_plus(keyword)
-        # Google News RSS feed - returns recent news articles
+        if language == 'bn':
+            return f"https://news.google.com/rss/search?q={encoded_keyword}&hl=bn-BD&gl=BD&ceid=BD:bn"
         return f"https://news.google.com/rss/search?q={encoded_keyword}&hl=en-US&gl=US&ceid=US:en"
 
     def _extract_real_url(self, google_url: str) -> str:
@@ -244,10 +245,9 @@ class GoogleNewsSearcher:
             time_filter = "24h"
         time_hours = self.TIME_FILTERS[time_filter]
 
-        # Auto-translate Bengali keyword to English before searching
+        # Detect language — search in that language directly (no translation)
+        language = 'bn' if self._is_bengali(keyword) else 'en'
         search_keyword = keyword
-        if self._is_bengali(keyword):
-            search_keyword = self._translate_keyword_to_english(keyword)
 
         # Check cache first
         cache_key = self._get_cache_key(search_keyword, time_filter, user_id)
@@ -257,8 +257,8 @@ class GoogleNewsSearcher:
             cached['search_time_ms'] = int((time.time() - start_time) * 1000)
             return cached
 
-        # Build RSS URL
-        rss_url = self._build_rss_url(search_keyword)
+        # Build RSS URL with appropriate locale
+        rss_url = self._build_rss_url(search_keyword, language)
 
         try:
             # Make HTTP request
