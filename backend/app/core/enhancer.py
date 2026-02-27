@@ -134,7 +134,8 @@ class ContentEnhancer:
 
             # Prepare prompts
             system_prompt = config['system_prompt']
-            user_prompt = get_user_prompt(translated_text, article_info)
+            input_word_count = len(translated_text.split())
+            user_prompt = get_user_prompt(translated_text, article_info, input_word_count=input_word_count)
 
             # Generate content (AI)
             content, tokens = self.provider.generate(

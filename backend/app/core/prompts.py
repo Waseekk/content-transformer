@@ -115,13 +115,14 @@ SOFT_NEWS_SYSTEM_PROMPT = _BENGALI_STYLES.get('soft_news', {}).get('system_promp
 # USER PROMPT TEMPLATE
 # ============================================================================
 
-def get_user_prompt(translated_text, article_info):
+def get_user_prompt(translated_text, article_info, input_word_count: int = None):
     """
     Create user prompt with article context
 
     Args:
         translated_text: Bengali translated text
         article_info: Dictionary with headline, publisher, etc.
+        input_word_count: Word count of input text for dynamic length targeting
 
     Returns:
         str: Formatted user prompt
@@ -129,6 +130,13 @@ def get_user_prompt(translated_text, article_info):
     headline = article_info.get('headline', 'N/A')
     publisher = article_info.get('publisher', 'Unknown')
     country = article_info.get('country', 'Unknown')
+
+    word_count_line = (
+        f"৫. ইনপুট কন্টেন্টটি প্রায় {input_word_count} শব্দের — "
+        f"একই পরিমাণ বিস্তারিত তথ্য রেখে প্রায় {input_word_count} শব্দে লিখুন, সংক্ষিপ্ত করবেন না।"
+        if input_word_count and input_word_count > 0
+        else "৫. উপযুক্ত দৈর্ঘ্য এবং ফরম্যাট মেনে চলুন"
+    )
 
     return f"""নিচের ভ্রমণ সংবাদটি পুনর্লিখন করুন:
 
@@ -144,7 +152,7 @@ def get_user_prompt(translated_text, article_info):
 ২. সম্পূর্ণ বাংলাদেশী বাংলায় লিখুন (ভারতীয় বাংলা নয়)
 ৩. তথ্য সঠিক রাখুন কিন্তু উপস্থাপনা আকর্ষণীয় করুন
 ৪. পাঠকদের জন্য মূল্যবান এবং এনগেজিং করুন
-৫. উপযুক্ত দৈর্ঘ্য এবং ফরম্যাট মেনে চলুন
+{word_count_line}
 
 এখন লিখুন:"""
 
