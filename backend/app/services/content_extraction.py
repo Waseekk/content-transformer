@@ -4,6 +4,7 @@ Extract article content from URLs using Playwright, Trafilatura, and Newspaper3k
 Cascade order: Playwright (JS-rendered) → Trafilatura → Newspaper3k
 """
 
+import asyncio
 import time
 import requests
 import trafilatura
@@ -75,9 +76,12 @@ class ContentExtractor:
             from app.services.playwright_extractor import get_global_extractor
 
             extractor = get_global_extractor()
-            result = await extractor.extract(url)
+            result = await asyncio.wait_for(extractor.extract(url), timeout=90.0)
             return result
 
+        except asyncio.TimeoutError:
+            logger.warning(f"Playwright extraction timed out after 90s for {url}, falling back")
+            raise ExtractionError("Playwright extraction timed out")
         except Exception as e:
             logger.error(f"Playwright extraction error: {str(e)}")
             raise ExtractionError(f"Playwright extraction failed: {str(e)}")
@@ -167,27 +171,26 @@ class ContentExtractor:
 
         Trafilatura is optimized for news articles and blogs.
         Fast, accurate, and handles most common HTML structures.
+        Blocking calls run in a thread pool to avoid freezing the event loop.
         """
         try:
-            # Download content
-            downloaded = trafilatura.fetch_url(url)
+            # Run blocking I/O in thread pool (avoids freezing the event loop)
+            downloaded = await asyncio.to_thread(trafilatura.fetch_url, url)
 
             if not downloaded:
                 raise ExtractionError("Failed to download content from URL")
 
-            # Extract main text
-            text = trafilatura.extract(
-                downloaded,
-                include_comments=False,
-                include_tables=True,
-                no_fallback=False
+            # Extract main text (also blocking — run in thread)
+            text = await asyncio.to_thread(
+                trafilatura.extract, downloaded,
+                include_comments=False, include_tables=True, no_fallback=False
             )
 
             if not text:
                 raise ExtractionError("No content extracted")
 
-            # Extract metadata
-            metadata = trafilatura.extract_metadata(downloaded)
+            # Extract metadata (also blocking)
+            metadata = await asyncio.to_thread(trafilatura.extract_metadata, downloaded)
 
             return {
                 'title': metadata.title if metadata and metadata.title else '',
@@ -199,6 +202,8 @@ class ContentExtractor:
                 'extracted_at': datetime.utcnow().isoformat()
             }
 
+        except ExtractionError:
+            raise
         except Exception as e:
             logger.error(f"Trafilatura extraction error: {str(e)}")
             raise ExtractionError(f"Trafilatura extraction failed: {str(e)}")
@@ -209,14 +214,15 @@ class ContentExtractor:
 
         Newspaper3k is optimized specifically for news articles.
         Good fallback when Trafilatura fails.
+        Blocking calls run in a thread pool to avoid freezing the event loop.
         """
         try:
             # Create article object
             article = Article(url)
 
-            # Download and parse
-            article.download()
-            article.parse()
+            # Run blocking download+parse in thread pool
+            await asyncio.to_thread(article.download)
+            await asyncio.to_thread(article.parse)
 
             if not article.text:
                 raise ExtractionError("No content extracted")
@@ -236,6 +242,8 @@ class ContentExtractor:
                 'extracted_at': datetime.utcnow().isoformat()
             }
 
+        except ExtractionError:
+            raise
         except Exception as e:
             logger.error(f"Newspaper3k extraction error: {str(e)}")
             raise ExtractionError(f"Newspaper3k extraction failed: {str(e)}")

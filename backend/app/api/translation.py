@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel, HttpUrl, Field
 from datetime import datetime
+import asyncio
 import logging
 
 from app.database import get_db
@@ -131,12 +132,18 @@ async def extract_and_translate_from_url(
             detail=f"Insufficient tokens. You have {current_user.tokens_remaining} tokens remaining. Minimum 500 tokens required."
         )
 
-    # Extract content from URL
+    # Extract content from URL (hard cap: 110s — prevents backend freeze)
     try:
         extractor = ContentExtractor()
-        extracted_content = await extractor.extract(
-            url=str(request.url),
-            method=request.extraction_method
+        extracted_content = await asyncio.wait_for(
+            extractor.extract(url=str(request.url), method=request.extraction_method),
+            timeout=110.0
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"Content extraction timed out after 110s for URL {request.url}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Content extraction timed out. The URL may be slow or inaccessible. Please try again."
         )
     except ExtractionError as e:
         logger.warning(f"Content extraction failed for URL {request.url}: {str(e)}")

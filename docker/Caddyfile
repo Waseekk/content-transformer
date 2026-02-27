@@ -24,9 +24,9 @@
             # Timeouts to prevent hanging requests
             transport http {
                 dial_timeout 10s
-                response_header_timeout 120s
-                read_timeout 120s
-                write_timeout 120s
+                response_header_timeout 300s
+                read_timeout 300s
+                write_timeout 300s
             }
 
             # Health checking - increased timeout for long extraction operations
