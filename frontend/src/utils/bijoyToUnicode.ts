@@ -291,13 +291,14 @@ const reorderReph = (text: string): string => {
 // Based on SutonnyMJ map: v=া (aa-kar), w=ি (i-kar), b=ন, g=ম, e=ব, j=ল, etc.
 // Examples: bv=না, gv=মা, mv=সা, jv=লা, wg=+মি, wb=+নি (+ means pre-kar)
 
+// IMPORTANT: Do NOT add 'ev' or 'iv' here — they appear constantly in English
+// ('every', 'seven', 'live', 'give', etc.) and cause false positives.
+// Only include bigrams that are extremely rare in English prose.
 const BIJOY_MARKERS = [
   'bv',  // না  (ন+া)
   'gv',  // মা  (ম+া)
   'mv',  // সা  (স+া)
   'jv',  // লা  (ল+া)
-  'ev',  // বা  (ব+া)
-  'iv',  // রা  (র+া)
   'wg',  // মি  (ি+ম — pre-kar sequence)
   'wb',  // নি  (ি+ন — pre-kar sequence)
   'wK',  // কি  (ি+ক — pre-kar sequence)
@@ -308,9 +309,19 @@ export const isBijoyEncoded = (text: string): boolean => {
   if (!text || text.trim().length < 5) return false;
   // Already has Unicode Bengali → definitely not Bijoy
   if (countBengaliChars(text) > 0) return false;
+
   // Require at least 2 Bijoy-specific marker sequences
   const markerCount = BIJOY_MARKERS.filter(m => text.includes(m)).length;
-  return markerCount >= 2;
+  if (markerCount < 2) return false;
+
+  // Secondary guard: in Bijoy text 'v' (=া aa-kar) is very frequent (~10-20% of
+  // non-whitespace chars). In English 'v' appears at ~1%. Any text where 'v' is
+  // below 4% is almost certainly English, not Bijoy — even if it contains rare
+  // bigrams like "obvious" (bv) or a sentence starting with "Av...".
+  const nonWhitespace = text.replace(/\s/g, '').length;
+  if (nonWhitespace === 0) return false;
+  const vDensity = (text.match(/v/g) ?? []).length / nonWhitespace;
+  return vDensity > 0.04; // Bijoy: ~10-20%, English: ~1%
 };
 
 // ─── Main conversion ──────────────────────────────────────────────────────────
