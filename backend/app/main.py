@@ -25,8 +25,8 @@ app = FastAPI(
     title="Swiftor API",
     description="Hard News & Soft News - Translation and Content Enhancement API",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
 
 # Configure CORS - Use FRONTEND_URL from environment in production
@@ -91,8 +91,8 @@ async def health_check(db: Session = Depends(get_db)):
     try:
         # Verify database connection
         db.execute(text("SELECT 1"))
-    except Exception as e:
-        db_status = f"error: {str(e)}"
+    except Exception:
+        db_status = "disconnected"  # Never expose raw error to unauthenticated callers
         return {
             "status": "unhealthy",
             "database": db_status,

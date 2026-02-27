@@ -4,6 +4,7 @@ AI Providers - OpenAI API Handler
 
 import os
 from pathlib import Path
+import httpx
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -55,7 +56,10 @@ class OpenAIProvider(AIProvider):
         if not api_key:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
         
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(
+            api_key=api_key,
+            timeout=httpx.Timeout(30.0, connect=5.0)  # 30s response, 5s connect
+        )
         self.model = self.MODELS.get(model, model)
         
         logger.info(f"OpenAI provider initialized with model: {self.model}")

@@ -108,7 +108,12 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
         });
       }
     } catch (error: any) {
-      toast.error(error.message || 'Processing failed');
+      const httpStatus = error?.response?.status;
+      if (httpStatus === 504) {
+        toast.error('Request timed out. The content may be too long or the server is busy. Please try again.');
+      } else {
+        toast.error(error?.response?.data?.detail || error.message || 'Processing failed');
+      }
     } finally {
       setSimpleWorkflowProcessing(false);
     }
@@ -140,7 +145,12 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
         }
       })
       .catch((error) => {
-        toast.error(error.message || 'Processing failed');
+        const httpStatus = error?.response?.status;
+        if (httpStatus === 504) {
+          toast.error('Extraction timed out. Please try a different URL or paste the content directly.');
+        } else {
+          toast.error(error?.response?.data?.detail || error.message || 'Processing failed');
+        }
       })
       .finally(() => {
         setSimpleWorkflowProcessing(false);

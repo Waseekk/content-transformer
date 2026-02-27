@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import axiosInstance from '../services/axios';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArticles, useArticleSources, useScrapingSessions } from '../hooks/useArticles';
 import { useEnhancementSessions } from '../hooks/useEnhancementHistory';
@@ -83,22 +84,14 @@ export const ArticlesPage = () => {
 
     const checkForNewArticles = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/articles?latest_only=true&limit=1`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-            },
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          const latestJobId = data.current_job?.job_id;
-          if (latestJobId && latestJobId !== knownJobId) {
-            setHasNewArticles(true);
-          }
+        const response = await axiosInstance.get('/articles', {
+          params: { latest_only: true, limit: 1 },
+        });
+        const latestJobId = response.data?.current_job?.job_id;
+        if (latestJobId && latestJobId !== knownJobId) {
+          setHasNewArticles(true);
         }
-      } catch (error) {
+      } catch {
         // Silently ignore polling errors
       }
     };

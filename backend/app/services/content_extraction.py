@@ -174,23 +174,30 @@ class ContentExtractor:
         Blocking calls run in a thread pool to avoid freezing the event loop.
         """
         try:
-            # Run blocking I/O in thread pool (avoids freezing the event loop)
-            downloaded = await asyncio.to_thread(trafilatura.fetch_url, url)
+            # Run blocking I/O in thread pool with per-step timeouts (avoids stalling a worker thread forever)
+            downloaded = await asyncio.wait_for(
+                asyncio.to_thread(trafilatura.fetch_url, url), timeout=20.0
+            )
 
             if not downloaded:
                 raise ExtractionError("Failed to download content from URL")
 
             # Extract main text (also blocking — run in thread)
-            text = await asyncio.to_thread(
-                trafilatura.extract, downloaded,
-                include_comments=False, include_tables=True, no_fallback=False
+            text = await asyncio.wait_for(
+                asyncio.to_thread(
+                    trafilatura.extract, downloaded,
+                    include_comments=False, include_tables=True, no_fallback=False
+                ),
+                timeout=15.0
             )
 
             if not text:
                 raise ExtractionError("No content extracted")
 
             # Extract metadata (also blocking)
-            metadata = await asyncio.to_thread(trafilatura.extract_metadata, downloaded)
+            metadata = await asyncio.wait_for(
+                asyncio.to_thread(trafilatura.extract_metadata, downloaded), timeout=5.0
+            )
 
             return {
                 'title': metadata.title if metadata and metadata.title else '',
@@ -220,9 +227,9 @@ class ContentExtractor:
             # Create article object
             article = Article(url)
 
-            # Run blocking download+parse in thread pool
-            await asyncio.to_thread(article.download)
-            await asyncio.to_thread(article.parse)
+            # Run blocking download+parse in thread pool with per-step timeouts
+            await asyncio.wait_for(asyncio.to_thread(article.download), timeout=20.0)
+            await asyncio.wait_for(asyncio.to_thread(article.parse), timeout=15.0)
 
             if not article.text:
                 raise ExtractionError("No content extracted")

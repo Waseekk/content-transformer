@@ -180,7 +180,11 @@ async def extract_and_translate_from_url(
     # Translate to Bengali using OpenAI
     try:
         translator = OpenAITranslator()
-        translation_result = translator.simple_translate(extracted_content['text'])
+        # Run blocking translation in thread pool with 60s hard cap
+        translation_result = await asyncio.wait_for(
+            asyncio.to_thread(translator.simple_translate, extracted_content['text']),
+            timeout=60.0
+        )
 
         # Extract translation data
         if isinstance(translation_result, dict):
@@ -190,6 +194,12 @@ async def extract_and_translate_from_url(
             # Handle tuple response (legacy)
             translated_text, tokens_used = translation_result
 
+    except asyncio.TimeoutError:
+        logger.error(f"Translation timed out after 60s for user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Translation timed out. Please try again."
+        )
     except Exception as e:
         logger.exception(f"Translation error: {str(e)}")
         raise HTTPException(
@@ -362,13 +372,23 @@ async def translate_raw_text(
     # Use OpenAI to extract clean English AND translate to Bengali
     try:
         translator = OpenAITranslator()
-        translation_result = translator.simple_translate(request.text)
+        # Run blocking translation in thread pool with 60s hard cap
+        translation_result = await asyncio.wait_for(
+            asyncio.to_thread(translator.simple_translate, request.text),
+            timeout=60.0
+        )
 
         # New format returns dict with clean_english and translation
         translated_text = translation_result.get('translation', '')
         clean_english = translation_result.get('clean_english', request.text)
         tokens_used = translation_result.get('tokens_used', 0)
 
+    except asyncio.TimeoutError:
+        logger.error(f"Translation timed out after 60s for user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Translation timed out. Please try again with shorter content."
+        )
     except Exception as e:
         logger.exception(f"Translation error in translate-text: {str(e)}")
         raise HTTPException(

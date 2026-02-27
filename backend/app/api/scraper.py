@@ -5,6 +5,7 @@ Endpoints for news scraping operations
 
 import asyncio
 import json
+import threading
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -34,7 +35,8 @@ router = APIRouter()
 
 def run_scraper_background(user_id: int, job_id: int, sites: List[str] = None):
     """
-    Background task wrapper that creates its own database session
+    Background task wrapper that creates its own database session.
+    Hard 5-minute timeout via threading.Timer to prevent DB connection leaks.
     """
     db = SessionLocal()
     try:
@@ -44,7 +46,27 @@ def run_scraper_background(user_id: int, job_id: int, sites: List[str] = None):
         job = db.query(Job).filter(Job.id == job_id).first()
 
         if user and job:
-            ScraperService.run_scraper_sync(db, user, job, sites)
+            # Mark job as failed if scraper runs longer than 5 minutes
+            def _on_timeout():
+                try:
+                    db2 = SessionLocal()
+                    try:
+                        timed_out_job = db2.query(Job).filter(Job.id == job_id).first()
+                        if timed_out_job and timed_out_job.status not in ("completed", "failed"):
+                            timed_out_job.status = "failed"
+                            timed_out_job.error = "Scraping timed out after 5 minutes"
+                            db2.commit()
+                    finally:
+                        db2.close()
+                except Exception:
+                    pass
+
+            timer = threading.Timer(300, _on_timeout)
+            timer.start()
+            try:
+                ScraperService.run_scraper_sync(db, user, job, sites)
+            finally:
+                timer.cancel()
     finally:
         db.close()
 

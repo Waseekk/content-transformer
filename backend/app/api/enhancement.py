@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+import asyncio
 import logging
 
 from app.database import get_db
@@ -241,16 +242,26 @@ async def enhance_content(
             'source': 'user_translation'
         }
 
-        # Call enhancer with correct parameter names
-        results_dict = enhancer.enhance_all_formats(
-            translated_text=content_text,
-            article_info=article_info,
-            formats=request.formats
+        # Run blocking enhancer in thread pool with hard 3-minute cap (prevents event loop freeze)
+        results_dict = await asyncio.wait_for(
+            asyncio.to_thread(
+                enhancer.enhance_all_formats,
+                translated_text=content_text,
+                article_info=article_info,
+                formats=request.formats
+            ),
+            timeout=180.0
         )
 
         # Convert dict of results to list
         enhancement_results: List[EnhancementResult] = list(results_dict.values())
 
+    except asyncio.TimeoutError:
+        logger.error(f"Enhancement timed out after 180s for user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Content enhancement timed out. Please try again with shorter content."
+        )
     except Exception as e:
         logger.exception(f"Enhancement error: {str(e)}")
         raise HTTPException(
