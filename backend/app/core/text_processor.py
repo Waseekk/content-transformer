@@ -430,7 +430,7 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
             # - [।!?]" = punctuation inside, then closing quote
             # - "[।!?] = closing quote, then punctuation outside
             # Followed by whitespace and more text (non-empty)
-            match = re.search(r'([।!?]"|"[।!?])\s+(\S.+)', current_para)
+            match = re.search(r'([।!?]"|"[।!?])\s+(\S.+)', current_para, re.DOTALL)
 
             if match:
                 # Found text after closing quote
