@@ -1829,24 +1829,35 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
             if key not in rules:
                 rules[key] = val
 
+    def _log_step(step: str, text: str):
+        paras = [p for p in text.split('\n\n') if p.strip()]
+        logger.info(f"[PIPELINE] {format_type} after {step}: {len(text)} chars, {len(paras)} paragraphs")
+
+    _log_step("INPUT", content)
+
     # Step 0: Normalize markdown line breaks to paragraph breaks (must be first!)
     processed_content = normalize_line_breaks(content)
+    _log_step("step0_normalize", processed_content)
 
     # Step 0.5: Split merged byline+intro if AI concatenated them onto one line
     processed_content = split_merged_byline_intro(processed_content)
+    _log_step("step0.5_byline_split", processed_content)
 
     # Step 1: Strip subheads (only if rules say subheads not allowed)
     if not rules.get('allow_subheads', True):
         processed_content = strip_hard_news_subheads(processed_content)
+        _log_step("step1_strip_subheads", processed_content)
 
     # Step 2: Enforce intro sentence count (only if rules define intro_max_sentences)
     intro_max = rules.get('intro_max_sentences')
     if intro_max:
         processed_content = enforce_intro_sentence_count(processed_content, format_type, intro_max_sentences=intro_max)
+        _log_step("step2_intro_count", processed_content)
 
     # Step 3: Fix intro structure (based on intro_paragraphs_before_subhead)
     intro_paragraphs = rules.get('intro_paragraphs_before_subhead')
     processed_content = fix_intro_structure(processed_content, format_type, intro_paragraphs=intro_paragraphs)
+    _log_step("step3_intro_structure", processed_content)
 
     # Step 4: Apply word corrections — always
     processed_content = apply_word_corrections(processed_content)
@@ -1856,19 +1867,23 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
 
     # Step 6: Replace English words — always
     processed_content = replace_english_words(processed_content)
+    _log_step("step6_word_corrections", processed_content)
 
     # Step 7: Split quotes — always
     # Rearrange mode for hard_news formats: move post-quote orphan text to before
     # the attribution sentence within the same paragraph (eliminates 1-line orphans).
     rearrange_mode = format_type in ('hard_news', 'hard_news_automate_content')
     processed_content = split_quotes(processed_content, rearrange=rearrange_mode)
+    _log_step("step7_split_quotes", processed_content)
 
     # Step 8: Fix 3-line paragraphs (only if rules define max_sentences_per_paragraph)
     if rules.get('max_sentences_per_paragraph'):
         processed_content = fix_three_line_paragraphs(processed_content)
+        _log_step("step8_fix_3line", processed_content)
 
     # Step 9: FINAL SAFETY CHECK - Guarantee intro is bold — always
     processed_content = final_intro_bold_check(processed_content, format_type)
+    _log_step("step9_final_bold", processed_content)
 
     # Step 10: Validate structure (based on rules)
     validation = validate_structure(processed_content, format_type, rules=rules)
