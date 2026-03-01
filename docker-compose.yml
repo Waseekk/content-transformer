@@ -144,6 +144,11 @@ services:
       - "traefik.http.routers.swiftor.entrypoints=web,websecure"
       - "traefik.http.routers.swiftor.tls.certresolver=mytlschallenge"
       - "traefik.http.services.swiftor.loadbalancer.server.port=80"
+      # Extended timeouts for long-running AI translation/enhancement requests
+      - "traefik.http.serversTransports.swiftor-transport.forwardingTimeouts.responseHeaderTimeout=300s"
+      - "traefik.http.serversTransports.swiftor-transport.forwardingTimeouts.dialTimeout=30s"
+      - "traefik.http.serversTransports.swiftor-transport.forwardingTimeouts.idleConnTimeout=300s"
+      - "traefik.http.services.swiftor.loadbalancer.serversTransport=swiftor-transport"
     deploy:
       resources:
         limits:
