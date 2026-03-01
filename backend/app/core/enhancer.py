@@ -154,6 +154,8 @@ class ContentEnhancer:
             min_words = rules.get('min_words')
             if min_words is None and format_type == 'hard_news':
                 min_words = 220  # Backward compatibility
+            elif min_words is None and format_type == 'soft_news':
+                min_words = 350  # Soft news target is 600-1000 words; retry if too short
             if min_words and retry_count < 2:
                 raw_word_count = self._count_body_words(content)
                 if raw_word_count < min_words:

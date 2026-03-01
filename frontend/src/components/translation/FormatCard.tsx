@@ -229,7 +229,9 @@ export const FormatCard: React.FC<FormatCardProps> = ({
 
       // Add Bengali News section header (only if not hiding format labels)
       if (!hideFormatLabels) {
-        const bengaliTitle = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ (HARD NEWS)' : 'সফট নিউজ (SOFT NEWS)';
+        const bengaliTitle = formatId === 'hard_news' ? 'হার্ড নিউজ (HARD NEWS)'
+          : formatId === 'hard_news_automate_content' ? 'AI Content'
+          : 'সফট নিউজ (SOFT NEWS)';
         sections.push(new Paragraph({
           children: [new TextRun({ text: bengaliTitle, bold: true, size: 28 })],
           heading: HeadingLevel.HEADING_1,
@@ -260,9 +262,12 @@ export const FormatCard: React.FC<FormatCardProps> = ({
       if (hideFormatLabels) {
         // Without format type: ClientName-২০ জানুয়ারি ২০২৬.docx
         filename = `${downloadPrefix}-${getBengaliDate()}.docx`;
+      } else if (formatId === 'hard_news_automate_content') {
+        // Automate-AI Content-২০ জানুয়ারি ২০২৬.docx (no client prefix)
+        filename = `Automate-AI Content-${getBengaliDate()}.docx`;
       } else {
         // With format type: বাংলার কলম্বাস-হার্ড নিউজ-২০ জানুয়ারি ২০২৬.docx
-        const formatTypeBengali = title === 'হার্ড নিউজ' ? 'হার্ড নিউজ' : 'সফট নিউজ';
+        const formatTypeBengali = formatId === 'hard_news' ? 'হার্ড নিউজ' : 'সফট নিউজ';
         filename = `${downloadPrefix}-${formatTypeBengali}-${getBengaliDate()}.docx`;
       }
       saveAs(blob, filename);

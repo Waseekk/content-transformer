@@ -125,7 +125,7 @@
     "max_tokens": 4096,
     "rules": {
       "allow_subheads": false,
-      "intro_max_sentences": 3,
+      "intro_max_sentences": 4,
       "min_words": 220,
       "max_words": 1500,
       "max_sentences_per_paragraph": 2

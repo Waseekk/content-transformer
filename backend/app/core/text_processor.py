@@ -368,7 +368,7 @@ def replace_english_words(text: str) -> str:
     return text
 
 
-def split_quotes(text: str) -> str:
+def split_quotes(text: str, rearrange: bool = False) -> str:
     """
     Split paragraphs where text appears after a CLOSING quote.
 
@@ -381,6 +381,10 @@ def split_quotes(text: str) -> str:
 
     Args:
         text: Bengali text with potential quote issues
+        rearrange: If True (hard_news mode), move post-quote text to BEFORE the
+                   attribution sentence within the same paragraph instead of creating
+                   a new orphan paragraph. Falls back to split if no ।  precedes
+                   the opening quote.
 
     Returns:
         str: Text with paragraphs properly split at quote boundaries
@@ -436,6 +440,24 @@ def split_quotes(text: str) -> str:
                 part1 = current_para[:split_pos].strip()
                 part2 = match.group(2).strip()  # Text after closing quote
 
+                if rearrange and part1:
+                    # REARRANGE MODE (hard_news): move post-quote text to before
+                    # the attribution sentence so the paragraph stays intact and
+                    # the quote remains at the end. No orphan paragraph created.
+                    #
+                    # Example:
+                    #   Input:  "S1। Attribution, "Quote।" S3।"
+                    #   Output: "S1। S3। Attribution, "Quote।""
+                    first_quote_pos = part1.find('"')
+                    if first_quote_pos > 0:
+                        last_danda_pos = part1.rfind('।', 0, first_quote_pos)
+                        if last_danda_pos >= 0:
+                            pre_content = part1[:last_danda_pos + 1].strip()
+                            attribution = part1[last_danda_pos + 1:].strip()
+                            current_para = f"{pre_content} {part2} {attribution}"
+                            continue  # re-check rearranged para (quote now at end → no match)
+
+                # Default: split at quote boundary (or rearrange fallback)
                 if part1:
                     split_parts.append(part1)
                     splits_made += 1
@@ -1836,7 +1858,10 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
     processed_content = replace_english_words(processed_content)
 
     # Step 7: Split quotes — always
-    processed_content = split_quotes(processed_content)
+    # Rearrange mode for hard_news formats: move post-quote orphan text to before
+    # the attribution sentence within the same paragraph (eliminates 1-line orphans).
+    rearrange_mode = format_type in ('hard_news', 'hard_news_automate_content')
+    processed_content = split_quotes(processed_content, rearrange=rearrange_mode)
 
     # Step 8: Fix 3-line paragraphs (only if rules define max_sentences_per_paragraph)
     if rules.get('max_sentences_per_paragraph'):

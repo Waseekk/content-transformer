@@ -117,14 +117,22 @@ class OpenAITranslator:
         for para in paragraphs:
             para_len = len(para) + 2  # +2 for \n\n
 
-            # Single paragraph exceeds limit — hard-split it
+            # Single paragraph exceeds limit — hard-split at word boundaries
             if para_len > max_chars:
                 if current_paras:
                     chunks.append('\n\n'.join(current_paras))
                     current_paras = []
                     current_len = 0
-                for i in range(0, len(para), max_chars):
-                    chunks.append(para[i:i + max_chars])
+                start = 0
+                while start < len(para):
+                    end = min(start + max_chars, len(para))
+                    if end < len(para):
+                        # Find nearest space before the limit to avoid mid-word splits
+                        space_idx = para.rfind(' ', start, end)
+                        if space_idx > start:
+                            end = space_idx
+                    chunks.append(para[start:end].strip())
+                    start = end + 1 if end < len(para) else end
 
             elif current_len + para_len > max_chars and current_paras:
                 chunks.append('\n\n'.join(current_paras))
@@ -359,30 +367,19 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
             if len(chunks) == 1:
                 return self._simple_translate_single(text)
 
-            # ── Multiple chunks: parallel ─────────────────────────────────────
-            logger.info(f"Chunked translate: {len(chunks)} chunks in parallel")
+            # ── Multiple chunks: all extract+translate in parallel ────────────
+            # Use extract+translate for ALL chunks so nav/ads are removed from
+            # every part of the pasted content (not just the first chunk).
+            logger.info(f"Chunked translate: {len(chunks)} chunks in parallel (all extract+translate)")
+            parallel = self._run_chunks_parallel(self._extract_translate_chunk, chunks)
 
-            # Chunk 0 → extract+translate (removes nav/ads, gets clean headline)
-            clean_en_0, bengali_0, tokens_0 = self._extract_translate_chunk(
-                chunks[0], 0, len(chunks)
-            )
+            # _extract_translate_chunk returns (clean_english, bengali, tokens)
+            bengali_parts = [r[1] for r in parallel['results']]
+            clean_en_parts = [r[0] for r in parallel['results']]
+            total_tokens = parallel['total_tokens']
 
-            # Chunks 1+ → translate-only in parallel (already clean article body)
-            if len(chunks) > 1:
-                remaining = chunks[1:]
-                parallel = self._run_chunks_parallel(self._translate_chunk_only, remaining)
-                bengali_parts = [r[0] for r in parallel['results']]
-                tokens_rest = parallel['total_tokens']
-            else:
-                bengali_parts = []
-                tokens_rest = 0
-
-            clean_english = clean_en_0 + ('\n\n' + '\n\n'.join(
-                chunk for chunk in chunks[1:]
-            ) if chunks[1:] else '')
-
-            translation = '\n\n'.join(filter(None, [bengali_0] + bengali_parts))
-            total_tokens = tokens_0 + tokens_rest
+            clean_english = '\n\n'.join(filter(None, clean_en_parts))
+            translation = '\n\n'.join(filter(None, bengali_parts))
 
             logger.info(f"Chunked extract+translate complete: {len(chunks)} chunks, {total_tokens} tokens")
 

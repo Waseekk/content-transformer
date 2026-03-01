@@ -58,7 +58,7 @@ class OpenAIProvider(AIProvider):
         
         self.client = OpenAI(
             api_key=api_key,
-            timeout=httpx.Timeout(30.0, connect=5.0)  # 30s response, 5s connect
+            timeout=httpx.Timeout(120.0, connect=5.0)  # 120s for long AI completions, 5s connect
         )
         self.model = self.MODELS.get(model, model)
         
