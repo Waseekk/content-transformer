@@ -80,11 +80,15 @@ class OpenAIProvider(AIProvider):
                 max_tokens=max_tokens
             )
             
-            generated_text = response.choices[0].message.content
-            
+            generated_text = response.choices[0].message.content or ""
+            finish_reason = response.choices[0].finish_reason
+
             # Token usage
             tokens_used = response.usage.total_tokens
-            logger.info(f"Generated {len(generated_text)} chars, {tokens_used} tokens")
+            logger.info(f"Generated {len(generated_text)} chars, {tokens_used} tokens, finish_reason={finish_reason}")
+
+            if not generated_text:
+                raise ValueError(f"OpenAI returned empty content (finish_reason={finish_reason})")
             
             return generated_text, tokens_used
             

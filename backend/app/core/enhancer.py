@@ -6,6 +6,7 @@ Agentic Workflow for Multi-Format Content Generation
 from pathlib import Path
 from datetime import datetime
 import json
+import re
 
 # Import modules
 from app.core.ai_providers import get_provider
@@ -78,7 +79,7 @@ class ContentEnhancer:
         if not content:
             return 0
 
-        paragraphs = content.split('\n\n')
+        paragraphs = [p for p in re.split(r'\n+', content) if p.strip()]
         body_words = 0
 
         for i, para in enumerate(paragraphs):
@@ -203,9 +204,16 @@ class ContentEnhancer:
             return result
 
         except Exception as e:
-            logger.error(f"Error generating {format_type}: {e}")
+            logger.error(f"Error generating {format_type} (attempt {retry_count + 1}): {e}")
 
-            # Create error result
+            # Retry on transient errors (timeout, None content, network blip)
+            if retry_count < 2:
+                logger.warning(f"Retrying {format_type} after error (attempt {retry_count + 1}/3)...")
+                return self.enhance_single_format(
+                    translated_text, article_info, format_type, retry_count + 1
+                )
+
+            # All 3 attempts failed — return empty error result
             result = EnhancementResult(format_type=format_type, content="")
             result.success = False
             result.error = str(e)

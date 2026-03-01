@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, Field
 from typing import Optional
 from datetime import datetime
+import asyncio
 
 from app.database import get_db
 from app.models.user import User
@@ -263,14 +264,25 @@ async def extract_and_translate_from_url(
             error_message=f"Insufficient tokens. Estimated: ~{estimated_tokens:,}, Available: {current_user.tokens_remaining:,}"
         )
 
-    # Step 5: Translate English to Bengali
+    # Step 5: Translate English to Bengali (non-blocking with 60s cap)
     try:
         translator = OpenAITranslator()
-        translation_result = translator.translate_only(extracted_content)
+        translation_result = await asyncio.wait_for(
+            asyncio.to_thread(translator.translate_only, extracted_content),
+            timeout=60.0
+        )
 
         bengali_content = translation_result.get('translation', '')
         tokens_used = translation_result.get('tokens_used', 0)
 
+    except asyncio.TimeoutError:
+        return URLExtractAndTranslateResponse(
+            success=False,
+            english_content=extracted_content,
+            title=title,
+            extraction_method=extraction_method,
+            error_message="Translation timed out. Please try again or paste the content directly."
+        )
     except Exception as e:
         return URLExtractAndTranslateResponse(
             success=False,

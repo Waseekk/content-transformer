@@ -24,18 +24,8 @@ export const useTranslate = () => {
         timestamp: new Date().toISOString(),
       });
     },
-    onError: (error: any) => {
-      // Handle validation errors (array of error objects)
-      const detail = error.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        const errorMsg = detail.map((err: any) => err.msg || err.message).join(', ');
-        toast.error(errorMsg || 'Validation error');
-      } else if (typeof detail === 'string') {
-        toast.error(detail);
-      } else {
-        toast.error('Translation failed');
-      }
-    },
+    // Errors are handled by the caller (mutateAsync catch block)
+    // Removing onError to prevent duplicate toasts in SimpleWorkflow / TranslationPage
   });
 };
 

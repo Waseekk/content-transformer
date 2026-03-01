@@ -3,12 +3,17 @@ OpenAI-Based Translation and Content Extraction
 Replaces Google Translate with intelligent AI translation
 """
 
+import json
+import concurrent.futures
 from pathlib import Path
 
 from app.core.ai_providers import get_provider
 from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('translator')
+
+# Max chars per chunk — safe within 30s httpx timeout for gpt-4o-mini
+CHUNK_MAX_CHARS = 3500
 
 
 # ============================================================================
@@ -93,30 +98,162 @@ class OpenAITranslator:
             logger.error(f"Provider initialization failed: {e}")
             return False
 
+    # -------------------------------------------------------------------------
+    # CHUNKING HELPERS
+    # -------------------------------------------------------------------------
+
+    def _split_into_chunks(self, text: str, max_chars: int = CHUNK_MAX_CHARS) -> list:
+        """
+        Split text at paragraph boundaries keeping each chunk under max_chars.
+
+        Splits at double-newline boundaries so sentences are never cut mid-way.
+        Single paragraphs longer than max_chars are hard-split as a last resort.
+        """
+        paragraphs = [p for p in text.split('\n\n') if p.strip()]
+        chunks = []
+        current_paras = []
+        current_len = 0
+
+        for para in paragraphs:
+            para_len = len(para) + 2  # +2 for \n\n
+
+            # Single paragraph exceeds limit — hard-split it
+            if para_len > max_chars:
+                if current_paras:
+                    chunks.append('\n\n'.join(current_paras))
+                    current_paras = []
+                    current_len = 0
+                for i in range(0, len(para), max_chars):
+                    chunks.append(para[i:i + max_chars])
+
+            elif current_len + para_len > max_chars and current_paras:
+                chunks.append('\n\n'.join(current_paras))
+                current_paras = [para]
+                current_len = para_len
+
+            else:
+                current_paras.append(para)
+                current_len += para_len
+
+        if current_paras:
+            chunks.append('\n\n'.join(current_paras))
+
+        return [c for c in chunks if c.strip()]
+
+    def _translate_chunk_only(self, chunk: str, idx: int, total: int) -> tuple:
+        """
+        Translate one clean chunk to Bangladeshi Bengali.
+        Returns (bengali_text, tokens_used).
+        """
+        prompt = f"""Translate this section of an English news article to natural Bangladeshi Bengali.
+
+Guidelines:
+- Use modern Bangladeshi dialect (NOT Indian Bengali)
+- Keep proper nouns unchanged (names, places, organizations)
+- Maintain journalistic tone and style
+- Output ONLY the Bengali translation — no labels, no "Part X", no introductory or concluding sentences
+- Do NOT add phrases like "In this section...", "Continuing from before...", "In conclusion..."
+- Translate exactly what is given, nothing more
+
+ARTICLE SECTION {idx + 1} OF {total}:
+{chunk}"""
+
+        response, tokens = self.provider.generate(
+            system_prompt="You are an expert translator specializing in Bangladeshi Bengali. Translate accurately and naturally.",
+            user_prompt=prompt,
+            temperature=0.3,
+            max_tokens=5000
+        )
+        return response.strip(), tokens
+
+    def _extract_translate_chunk(self, chunk: str, idx: int, total: int) -> tuple:
+        """
+        Extract clean content AND translate one chunk (for raw pasted text).
+        Returns (clean_english, bengali_text, tokens_used).
+        """
+        prompt = f"""You are processing part {idx + 1} of {total} from pasted webpage content. Do TWO tasks:
+
+TASK 1 - EXTRACT CLEAN ENGLISH:
+Remove navigation menus, ads, social buttons, cookie notices, footer text.
+Keep only: article headline (part 1 only), byline, body paragraphs, quotes.
+
+TASK 2 - TRANSLATE TO BENGALI:
+Translate the extracted content to natural Bangladeshi Bengali.
+
+OUTPUT FORMAT (JSON only, no extra text):
+{{
+  "clean_english": "extracted English article content here",
+  "bengali_translation": "বাংলা অনুবাদ এখানে"
+}}
+
+CONTENT:
+{chunk}"""
+
+        response, tokens = self.provider.generate(
+            system_prompt="You are an expert at extracting article content and translating to Bangladeshi Bengali. Output ONLY valid JSON.",
+            user_prompt=prompt,
+            temperature=0.3,
+            max_tokens=6000
+        )
+
+        # Parse JSON
+        try:
+            if '```json' in response:
+                s = response.find('```json') + 7
+                e = response.find('```', s)
+                json_str = response[s:e].strip()
+            elif '{' in response:
+                s = response.find('{')
+                e = response.rfind('}') + 1
+                json_str = response[s:e]
+            else:
+                json_str = response
+
+            result = json.loads(json_str)
+            return (
+                result.get('clean_english', chunk),
+                result.get('bengali_translation', ''),
+                tokens
+            )
+        except json.JSONDecodeError:
+            # Fallback: treat entire response as translation
+            return chunk, response.strip(), tokens
+
+    def _run_chunks_parallel(self, fn, chunks: list) -> dict:
+        """
+        Run fn(chunk, idx, total) for all chunks in parallel via ThreadPoolExecutor.
+        fn must return a tuple whose last element is tokens_used.
+        Returns {'results': [tuple, ...], 'total_tokens': int}
+        """
+        total = len(chunks)
+        results = [None] * total
+        total_tokens = 0
+
+        max_workers = min(total, 10)  # cap at 10 parallel OpenAI calls
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_idx = {
+                executor.submit(fn, chunk, idx, total): idx
+                for idx, chunk in enumerate(chunks)
+            }
+            for future in concurrent.futures.as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                result = future.result()  # propagates exceptions
+                results[idx] = result
+                total_tokens += result[-1]  # last element is always tokens_used
+
+        return {'results': results, 'total_tokens': total_tokens}
+
+    # -------------------------------------------------------------------------
+    # PUBLIC METHODS
+    # -------------------------------------------------------------------------
+
     def extract_and_translate(self, pasted_content, target_lang='bn'):
         """
-        Extract article content from pasted webpage and translate
-
-        Args:
-            pasted_content: Full webpage content pasted by user
-            target_lang: Target language code (default: 'bn' for Bengali)
-
-        Returns:
-            dict: {
-                'headline': str,
-                'content': str,
-                'author': str or None,
-                'date': str or None,
-                'original_headline': str,
-                'translated_text': str,  # Full content for enhancement
-                'success': bool,
-                'error': str or None,
-                'tokens_used': int
-            }
+        Extract article content from pasted webpage and translate.
+        (Legacy method — used by old TranslationPage flow.)
         """
         logger.info(f"Starting extraction and translation ({len(pasted_content)} chars)")
 
-        # Initialize provider
         if not self._initialize_provider():
             return {
                 'success': False,
@@ -125,28 +262,23 @@ class OpenAITranslator:
             }
 
         try:
-            # Create user prompt with pasted content
             user_prompt = f"""Pasted webpage content:
 
 {pasted_content}
 
 Extract and translate this to Bengali (Bangladeshi dialect)."""
 
-            # Generate extraction and translation
             logger.info("Calling AI for extraction and translation...")
             response, tokens = self.provider.generate(
                 system_prompt=EXTRACTION_TRANSLATION_PROMPT,
                 user_prompt=user_prompt,
-                temperature=0.4 ,  # Lower temperature for more accurate translation
-                max_tokens=4000  # Enough for most articles
+                temperature=0.4,
+                max_tokens=4000
             )
 
             logger.info(f"AI response received: {len(response)} chars, {tokens} tokens")
 
-            # Parse JSON response
-            import json
             try:
-                # Try to extract JSON from response (in case there's extra text)
                 if '```json' in response:
                     json_start = response.find('```json') + 7
                     json_end = response.find('```', json_start)
@@ -159,8 +291,6 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
                     json_str = response
 
                 result = json.loads(json_str)
-
-                # Build translated_text for enhancement
                 translated_text = f"{result.get('headline', '')}\n\n{result.get('content', '')}"
 
                 return {
@@ -177,9 +307,6 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
 
             except json.JSONDecodeError as e:
                 logger.error(f"JSON parsing error: {e}")
-                logger.error(f"Response was: {response[:500]}")
-
-                # Fallback: return raw response as content
                 return {
                     'headline': 'Translation completed',
                     'content': response,
@@ -204,10 +331,10 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
         """
         Extract clean article content and translate to Bengali.
 
-        This method:
-        1. Uses AI to extract ONLY the main article content (removes nav, ads, comments, etc.)
-        2. Translates the clean content to Bengali
-        3. Returns both clean English AND Bengali translation
+        For short text (≤ CHUNK_MAX_CHARS): single OpenAI call (extract + translate).
+        For long text (> CHUNK_MAX_CHARS): chunked parallel translation.
+          - Chunk 0: extract + translate (handles nav/ad removal for the article start)
+          - Chunks 1+: translate-only in parallel (body paragraphs are already clean)
 
         Args:
             text: Raw pasted text (may include navigation, ads, etc.)
@@ -226,7 +353,52 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
             return {'translation': text, 'clean_english': text, 'tokens_used': 0}
 
         try:
-            extract_translate_prompt = f"""You are processing a pasted webpage. Do TWO tasks:
+            chunks = self._split_into_chunks(text)
+
+            # ── Single chunk: existing single-call approach ───────────────────
+            if len(chunks) == 1:
+                return self._simple_translate_single(text)
+
+            # ── Multiple chunks: parallel ─────────────────────────────────────
+            logger.info(f"Chunked translate: {len(chunks)} chunks in parallel")
+
+            # Chunk 0 → extract+translate (removes nav/ads, gets clean headline)
+            clean_en_0, bengali_0, tokens_0 = self._extract_translate_chunk(
+                chunks[0], 0, len(chunks)
+            )
+
+            # Chunks 1+ → translate-only in parallel (already clean article body)
+            if len(chunks) > 1:
+                remaining = chunks[1:]
+                parallel = self._run_chunks_parallel(self._translate_chunk_only, remaining)
+                bengali_parts = [r[0] for r in parallel['results']]
+                tokens_rest = parallel['total_tokens']
+            else:
+                bengali_parts = []
+                tokens_rest = 0
+
+            clean_english = clean_en_0 + ('\n\n' + '\n\n'.join(
+                chunk for chunk in chunks[1:]
+            ) if chunks[1:] else '')
+
+            translation = '\n\n'.join(filter(None, [bengali_0] + bengali_parts))
+            total_tokens = tokens_0 + tokens_rest
+
+            logger.info(f"Chunked extract+translate complete: {len(chunks)} chunks, {total_tokens} tokens")
+
+            return {
+                'translation': translation,
+                'clean_english': clean_english,
+                'tokens_used': total_tokens
+            }
+
+        except Exception as e:
+            logger.error(f"Extract+translate error: {e}")
+            return {'translation': text, 'clean_english': text, 'tokens_used': 0}
+
+    def _simple_translate_single(self, text: str) -> dict:
+        """Single-call extract+translate for short text (existing logic)."""
+        extract_translate_prompt = f"""You are processing a pasted webpage. Do TWO tasks:
 
 TASK 1 - EXTRACT CLEAN ENGLISH:
 Extract ONLY the main news article content from this pasted text.
@@ -263,60 +435,55 @@ OUTPUT FORMAT (JSON only, no extra text):
 PASTED CONTENT:
 {text}"""
 
-            response, tokens = self.provider.generate(
-                system_prompt="You are an expert at extracting article content and translating to Bangladeshi Bengali. Output ONLY valid JSON.",
-                user_prompt=extract_translate_prompt,
-                temperature=0.3,
-                max_tokens=6000  # Increased for both English + Bengali
-            )
+        response, tokens = self.provider.generate(
+            system_prompt="You are an expert at extracting article content and translating to Bangladeshi Bengali. Output ONLY valid JSON.",
+            user_prompt=extract_translate_prompt,
+            temperature=0.3,
+            max_tokens=6000
+        )
 
-            logger.info(f"Extract+Translate completed: {tokens} tokens")
+        logger.info(f"Extract+Translate completed: {tokens} tokens")
 
-            # Parse JSON response
-            import json
-            try:
-                # Extract JSON from response
-                if '```json' in response:
-                    json_start = response.find('```json') + 7
-                    json_end = response.find('```', json_start)
-                    json_str = response[json_start:json_end].strip()
-                elif '```' in response:
-                    json_start = response.find('```') + 3
-                    json_end = response.find('```', json_start)
-                    json_str = response[json_start:json_end].strip()
-                elif '{' in response:
-                    json_start = response.find('{')
-                    json_end = response.rfind('}') + 1
-                    json_str = response[json_start:json_end]
-                else:
-                    json_str = response
+        try:
+            if '```json' in response:
+                json_start = response.find('```json') + 7
+                json_end = response.find('```', json_start)
+                json_str = response[json_start:json_end].strip()
+            elif '```' in response:
+                json_start = response.find('```') + 3
+                json_end = response.find('```', json_start)
+                json_str = response[json_start:json_end].strip()
+            elif '{' in response:
+                json_start = response.find('{')
+                json_end = response.rfind('}') + 1
+                json_str = response[json_start:json_end]
+            else:
+                json_str = response
 
-                result = json.loads(json_str)
+            result = json.loads(json_str)
+            return {
+                'translation': result.get('bengali_translation', ''),
+                'clean_english': result.get('clean_english', text),
+                'tokens_used': tokens
+            }
 
-                return {
-                    'translation': result.get('bengali_translation', ''),
-                    'clean_english': result.get('clean_english', text),
-                    'tokens_used': tokens
-                }
-
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON parsing error: {e}")
-                logger.error(f"Response preview: {response[:500]}")
-                # Fallback: return response as translation, original as English
-                return {
-                    'translation': response.strip(),
-                    'clean_english': text,
-                    'tokens_used': tokens
-                }
-
-        except Exception as e:
-            logger.error(f"Extract+translate error: {e}")
-            return {'translation': text, 'clean_english': text, 'tokens_used': 0}
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error: {e}")
+            logger.error(f"Response preview: {response[:500]}")
+            return {
+                'translation': response.strip(),
+                'clean_english': text,
+                'tokens_used': tokens
+            }
 
     def translate_only(self, clean_text, target_lang='bn'):
         """
         Translate already-clean text to Bengali (no extraction).
         Use this when content has already been cleaned (e.g., by Playwright).
+
+        For short text (≤ CHUNK_MAX_CHARS): single OpenAI call.
+        For long text (> CHUNK_MAX_CHARS): chunked parallel translation —
+        all chunks fire simultaneously, total time stays ~25-35s regardless of length.
 
         Args:
             clean_text: Clean article text (already extracted by Playwright)
@@ -328,13 +495,39 @@ PASTED CONTENT:
                 'tokens_used': int
             }
         """
-        logger.info(f"Translate only (no extraction): {len(clean_text)} chars")
+        logger.info(f"Translate only: {len(clean_text)} chars")
 
         if not self._initialize_provider():
             return {'translation': '', 'tokens_used': 0}
 
         try:
-            translate_prompt = f"""Translate the following English article to natural Bangladeshi Bengali.
+            chunks = self._split_into_chunks(clean_text)
+
+            # ── Single chunk ──────────────────────────────────────────────────
+            if len(chunks) == 1:
+                return self._translate_only_single(clean_text)
+
+            # ── Multiple chunks: parallel ─────────────────────────────────────
+            logger.info(f"Chunked translate_only: {len(chunks)} chunks in parallel")
+            parallel = self._run_chunks_parallel(self._translate_chunk_only, chunks)
+
+            translation = '\n\n'.join(r[0] for r in parallel['results'])
+            total_tokens = parallel['total_tokens']
+
+            logger.info(f"Chunked translation complete: {len(chunks)} chunks, {total_tokens} tokens")
+
+            return {
+                'translation': translation,
+                'tokens_used': total_tokens
+            }
+
+        except Exception as e:
+            logger.error(f"Translation error: {e}")
+            return {'translation': '', 'tokens_used': 0}
+
+    def _translate_only_single(self, clean_text: str) -> dict:
+        """Single-call translation for short text (existing logic)."""
+        translate_prompt = f"""Translate the following English article to natural Bangladeshi Bengali.
 
 Translation Guidelines:
 - Use modern Bangladeshi Bengali dialect (NOT Indian Bengali)
@@ -349,23 +542,19 @@ ARTICLE TO TRANSLATE:
 
 OUTPUT: Provide ONLY the Bengali translation, nothing else."""
 
-            response, tokens = self.provider.generate(
-                system_prompt="You are an expert translator specializing in Bangladeshi Bengali. Translate accurately while maintaining natural flow.",
-                user_prompt=translate_prompt,
-                temperature=0.3,
-                max_tokens=5000
-            )
+        response, tokens = self.provider.generate(
+            system_prompt="You are an expert translator specializing in Bangladeshi Bengali. Translate accurately while maintaining natural flow.",
+            user_prompt=translate_prompt,
+            temperature=0.3,
+            max_tokens=5000
+        )
 
-            logger.info(f"Translation completed: {tokens} tokens")
+        logger.info(f"Translation completed: {tokens} tokens")
 
-            return {
-                'translation': response.strip(),
-                'tokens_used': tokens
-            }
-
-        except Exception as e:
-            logger.error(f"Translation error: {e}")
-            return {'translation': '', 'tokens_used': 0}
+        return {
+            'translation': response.strip(),
+            'tokens_used': tokens
+        }
 
 
 # ============================================================================
@@ -373,51 +562,18 @@ OUTPUT: Provide ONLY the Bengali translation, nothing else."""
 # ============================================================================
 
 def translate_webpage(pasted_content, provider='openai', model=None):
-    """
-    Convenience function to translate pasted webpage content
-
-    Args:
-        pasted_content: Full webpage content
-        provider: 'openai' (only supported provider)
-        model: Model name (optional)
-
-    Returns:
-        dict: Translation result
-    """
+    """Convenience function to translate pasted webpage content."""
     translator = OpenAITranslator(provider, model)
     return translator.extract_and_translate(pasted_content)
 
 
 def translate_text(text, provider='openai', model=None):
-    """
-    Convenience function for simple text translation
-
-    Args:
-        text: Text to translate
-        provider: 'openai' (only supported provider)
-        model: Model name (optional)
-
-    Returns:
-        tuple: (translated_text, tokens_used)
-    """
+    """Convenience function for simple text translation."""
     translator = OpenAITranslator(provider, model)
     return translator.simple_translate(text)
 
 
 def translate_clean_text(text, provider='openai', model=None):
-    """
-    Translate already-clean text to Bengali (no extraction needed).
-    Use this when content has already been extracted (e.g., by Playwright).
-
-    Args:
-        text: Clean article text (already extracted)
-        provider: 'openai' (only supported provider)
-        model: Model name (optional)
-
-    Returns:
-        dict: {translation, tokens_used}
-    """
+    """Translate already-clean text to Bengali (no extraction needed)."""
     translator = OpenAITranslator(provider, model)
     return translator.translate_only(text)
-
-

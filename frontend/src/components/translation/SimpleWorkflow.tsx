@@ -204,8 +204,8 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Paste Content</h3>
-                  <p className="text-sm text-gray-500">
-                    {wordCount > 0 ? `${wordCount} words` : 'Or use URL above'}
+                  <p className={`text-sm ${wordCount > 1500 ? 'text-amber-500 font-medium' : 'text-gray-500'}`}>
+                    {wordCount > 0 ? `${wordCount} words${wordCount > 1500 ? ' — long content may timeout, try a shorter extract' : ''}` : 'Or use URL above'}
                   </p>
                 </div>
               </div>

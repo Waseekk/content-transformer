@@ -5,7 +5,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { enhancementApi } from '../services/api';
 import { useAppStore } from '../store/useAppStore';
-import toast from 'react-hot-toast';
 
 export const useEnhance = () => {
   return useMutation({
@@ -30,9 +29,8 @@ export const useEnhance = () => {
 
       useAppStore.getState().setCurrentEnhancements(enhancements);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Enhancement failed');
-    },
+    // Errors are handled by the caller (mutateAsync catch block)
+    // Removing onError to prevent duplicate toasts in SimpleWorkflow / TranslationPage
   });
 };
 

@@ -195,7 +195,7 @@ async def extract_and_translate_from_url(
             translated_text, tokens_used = translation_result
 
     except asyncio.TimeoutError:
-        logger.error(f"Translation timed out after 60s for user {current_user.id}")
+        logger.error(f"Translation timed out after 90s for user {current_user.id}")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="Translation timed out. Please try again."
@@ -372,10 +372,10 @@ async def translate_raw_text(
     # Use OpenAI to extract clean English AND translate to Bengali
     try:
         translator = OpenAITranslator()
-        # Run blocking translation in thread pool with 60s hard cap
+        # Run blocking translation in thread pool with 90s hard cap
         translation_result = await asyncio.wait_for(
             asyncio.to_thread(translator.simple_translate, request.text),
-            timeout=60.0
+            timeout=90.0
         )
 
         # New format returns dict with clean_english and translation
@@ -384,7 +384,7 @@ async def translate_raw_text(
         tokens_used = translation_result.get('tokens_used', 0)
 
     except asyncio.TimeoutError:
-        logger.error(f"Translation timed out after 60s for user {current_user.id}")
+        logger.error(f"Translation timed out after 90s for user {current_user.id}")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="Translation timed out. Please try again with shorter content."
