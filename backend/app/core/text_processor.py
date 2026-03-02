@@ -659,6 +659,15 @@ def normalize_line_breaks(text: str) -> str:
     # "...করে তোলে।  \n**সাবহেড**" → "...করে তোলে।\n\n**সাবহেড**"
     text = re.sub(r'([।!?])\s*\n(\*\*)', r'\1\n\n\2', text)
 
+    # Pattern 4: Single \n before Bengali combining characters (virama, vowel signs)
+    # AI sometimes line-wraps mid-word: "সংস\n্কৃতি" → "সংস্কৃতি"
+    # Bengali combining chars: virama U+09CD, vowel signs U+09BE–U+09CC, U+09D7
+    text = re.sub(r'(?<!\n)\n([\u09BE-\u09CC\u09CD\u09D7])', r'\1', text)
+
+    # Pattern 5: Any remaining single \n (not \n\n) → space
+    # Handles AI line-wrapping within sentences without breaking paragraph structure
+    text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+
     if text != original:
         logger.info("Normalized markdown line breaks to paragraph breaks")
 
