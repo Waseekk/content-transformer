@@ -424,12 +424,14 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
 
         current_para = para
         split_parts = []
+        rearranged_once = False  # guard: rearrange each paragraph at most once
 
         while True:
             # Match CLOSING quote patterns only:
             # - [।!?]" = punctuation inside, then closing quote
             # - "[।!?] = closing quote, then punctuation outside
             # Followed by whitespace and more text (non-empty)
+            # re.DOTALL: . matches \n so embedded newlines don't silently drop content
             match = re.search(r'([।!?]"|"[।!?])\s+(\S.+)', current_para, re.DOTALL)
 
             if match:
@@ -440,7 +442,7 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
                 part1 = current_para[:split_pos].strip()
                 part2 = match.group(2).strip()  # Text after closing quote
 
-                if rearrange and part1:
+                if rearrange and part1 and not rearranged_once:
                     # REARRANGE MODE (hard_news): move post-quote text to before
                     # the attribution sentence so the paragraph stays intact and
                     # the quote remains at the end. No orphan paragraph created.
@@ -448,6 +450,9 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
                     # Example:
                     #   Input:  "S1। Attribution, "Quote।" S3।"
                     #   Output: "S1। S3। Attribution, "Quote।""
+                    #
+                    # Guard: rearranged_once=True prevents infinite oscillation when
+                    # a paragraph has 2+ quotes (would otherwise toggle forever).
                     first_quote_pos = part1.find('"')
                     if first_quote_pos > 0:
                         last_danda_pos = part1.rfind('।', 0, first_quote_pos)
@@ -455,6 +460,7 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
                             pre_content = part1[:last_danda_pos + 1].strip()
                             attribution = part1[last_danda_pos + 1:].strip()
                             current_para = f"{pre_content} {part2} {attribution}"
+                            rearranged_once = True
                             continue  # re-check rearranged para (quote now at end → no match)
 
                 # Default: split at quote boundary (or rearrange fallback)
@@ -463,6 +469,7 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
                     splits_made += 1
 
                 current_para = part2
+                rearranged_once = False  # reset for each new split segment
             else:
                 # No more splits needed
                 if current_para.strip():
