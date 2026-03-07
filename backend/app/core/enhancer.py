@@ -276,16 +276,16 @@ class ContentEnhancer:
         # Combine extraction/translation prefix with the format's own system prompt
         combined_system_prompt = COMBINED_EXTRACT_TRANSLATE_PREFIX + config['system_prompt']
 
+        # Dynamic max_tokens based on English input word count
+        input_word_count = len(raw_english_text.split())
+        dynamic_max_tokens = min(15000, max(2000, int(input_word_count * 2.5)))
+
         user_prompt = (
             f"Raw English article to extract, translate, and format:\n\n"
             f"{raw_english_text}\n\n"
             f"Note: The article is approximately {input_word_count} English words. "
             f"Preserve all important details — do not summarize or shorten."
         )
-
-        # Dynamic max_tokens based on English input word count
-        input_word_count = len(raw_english_text.split())
-        dynamic_max_tokens = min(15000, max(2000, int(input_word_count * 2.5)))
 
         logger.info(f"Combined translate+enhance [{format_type}]: {input_word_count} input words, {dynamic_max_tokens} max_tokens")
 
