@@ -17,6 +17,33 @@ from app.utils.logger import LoggerManager
 logger = LoggerManager.get_logger('enhancer')
 
 
+# ============================================================================
+# COMBINED EXTRACT + TRANSLATE + FORMAT PROMPT
+# ============================================================================
+
+COMBINED_EXTRACT_TRANSLATE_PREFIX = """You are a professional journalist and expert translator for "বাংলার কলম্বাস" newspaper.
+
+Your task has THREE steps (complete all in one pass):
+
+STEP 1 — EXTRACT:
+Extract ONLY the main article content from the provided English text.
+REMOVE: navigation menus, advertisements, cookie notices, social media buttons, comment sections, footer/header content, related article links, weather widgets.
+KEEP: article headline, body paragraphs, direct quotes, statistics, author name, publication date.
+
+STEP 2 — TRANSLATE:
+Translate the extracted content to natural Bangladeshi Bengali (NOT Indian Bengali).
+- Keep proper nouns unchanged (person names, place names, organizations)
+- Use modern Bangladeshi dialect and journalistic tone
+- Keep numbers, dates, and statistics accurate
+
+STEP 3 — FORMAT AS HARD NEWS:
+Format the translated content as a professional hard news article using the rules below.
+
+---
+
+"""
+
+
 class EnhancementResult:
     """Store enhancement results"""
 
@@ -138,12 +165,15 @@ class ContentEnhancer:
             input_word_count = len(translated_text.split())
             user_prompt = get_user_prompt(translated_text, article_info, input_word_count=input_word_count)
 
+            # Dynamic max_tokens: scale with input size to prevent truncation on long articles
+            dynamic_max_tokens = min(15000, max(2000, int(input_word_count * 2.5)))
+
             # Generate content (AI)
             content, tokens = self.provider.generate(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=config['temperature'],
-                max_tokens=config['max_tokens']
+                max_tokens=dynamic_max_tokens
             )
 
             # Get rules from config for rules-driven pipeline
@@ -222,6 +252,67 @@ class ContentEnhancer:
 
             return result
     
+    def combined_translate_enhance(self, raw_english_text: str, article_info: dict,
+                                   format_type: str = 'hard_news_automate_content') -> tuple:
+        """
+        Single LLM call: extract + translate + format English text directly.
+
+        Skips the separate translation step by combining extraction, translation,
+        and formatting into one prompt. ~30-50% faster than the 2-call pipeline.
+
+        Args:
+            raw_english_text: Raw pasted English text (may contain nav/ads)
+            article_info: Article metadata dict
+            format_type: Format type (default: hard_news_automate_content)
+
+        Returns:
+            tuple: (formatted_content, tokens_used)
+        """
+        if not self._initialize_provider():
+            return '', 0
+
+        config = get_format_config(format_type)
+
+        # Combine extraction/translation prefix with the format's own system prompt
+        combined_system_prompt = COMBINED_EXTRACT_TRANSLATE_PREFIX + config['system_prompt']
+
+        user_prompt = (
+            f"Raw English article to extract, translate, and format:\n\n"
+            f"{raw_english_text}\n\n"
+            f"Note: The article is approximately {input_word_count} English words. "
+            f"Preserve all important details — do not summarize or shorten."
+        )
+
+        # Dynamic max_tokens based on English input word count
+        input_word_count = len(raw_english_text.split())
+        dynamic_max_tokens = min(15000, max(2000, int(input_word_count * 2.5)))
+
+        logger.info(f"Combined translate+enhance [{format_type}]: {input_word_count} input words, {dynamic_max_tokens} max_tokens")
+
+        content, tokens = self.provider.generate(
+            system_prompt=combined_system_prompt,
+            user_prompt=user_prompt,
+            temperature=config['temperature'],
+            max_tokens=dynamic_max_tokens
+        )
+
+        # Apply same post-processing pipeline as regular enhance
+        rules = config.get('rules', {})
+        processed_content, validation = process_enhanced_content(
+            content.strip(),
+            format_type,
+            rules=rules
+        )
+
+        if not validation['valid']:
+            for warning in validation['warnings']:
+                logger.warning(f"Structure warning for {format_type} (combined): {warning}")
+
+        self.total_tokens += tokens
+        logger.info(f"Combined translate+enhance done: {len(processed_content)} chars, {tokens} tokens")
+
+        return processed_content, tokens
+
     def enhance_all_formats(self, translated_text, article_info,
                            formats=['hard_news', 'soft_news'],
                            progress_callback=None):

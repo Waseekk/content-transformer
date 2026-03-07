@@ -165,7 +165,8 @@ export const enhancementApi = {
   },
 
   enhance: async (data: {
-    text: string;
+    text?: string;
+    raw_english_text?: string;
     headline?: string;
     formats: string[];
     provider?: string;

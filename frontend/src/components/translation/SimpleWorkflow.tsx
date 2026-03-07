@@ -73,6 +73,9 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
     // else: let browser handle paste normally
   };
 
+  // Detect Bengali text by checking for Bengali Unicode characters (U+0980–U+09FF)
+  const isBengali = (text: string) => /[\u0980-\u09FF]/.test(text.slice(0, 300));
+
   const handleProcess = async () => {
     if (!pastedContent.trim()) {
       toast.error('Please paste content first');
@@ -82,30 +85,69 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
     setSimpleWorkflowProcessing(true);
     setSimpleWorkflowResult(null);
 
+    const bengaliInput = isBengali(pastedContent);
+
     try {
-      // Step 1: Translate/process content
-      const translateResult = await translate.mutateAsync({
-        text: pastedContent,
-        inputLanguage: 'auto',
-      });
-
-      setSimpleWorkflowTranslation({
-        original: translateResult.original_text,
-        translated: translateResult.translated_text,
-      });
-
-      // Step 2: Generate with default format
-      const enhanceResult = await enhance.mutateAsync({
-        text: translateResult.translated_text,
-        headline: 'Content',
-        formats: [defaultFormat.slug],
-      });
-
-      if (enhanceResult.formats && enhanceResult.formats.length > 0) {
-        setSimpleWorkflowResult({
-          content: enhanceResult.formats[0].content,
-          tokens_used: enhanceResult.formats[0].tokens_used,
+      if (defaultFormat.slug === 'hard_news_automate_content' && !bengaliInput) {
+        // English paste — fast path: single LLM call (extract + translate + format)
+        const enhanceResult = await enhance.mutateAsync({
+          raw_english_text: pastedContent,
+          headline: 'Content',
+          formats: [defaultFormat.slug],
         });
+
+        if (enhanceResult.formats && enhanceResult.formats.length > 0) {
+          setSimpleWorkflowResult({
+            content: enhanceResult.formats[0].content,
+            tokens_used: enhanceResult.formats[0].tokens_used,
+          });
+          setSimpleWorkflowTranslation({
+            original: pastedContent,
+            translated: enhanceResult.formats[0].content,
+          });
+        }
+      } else if (defaultFormat.slug === 'hard_news_automate_content' && bengaliInput) {
+        // Bengali paste — skip translate entirely, enhance directly (already Bengali)
+        const enhanceResult = await enhance.mutateAsync({
+          text: pastedContent,
+          headline: 'Content',
+          formats: [defaultFormat.slug],
+        });
+
+        if (enhanceResult.formats && enhanceResult.formats.length > 0) {
+          setSimpleWorkflowResult({
+            content: enhanceResult.formats[0].content,
+            tokens_used: enhanceResult.formats[0].tokens_used,
+          });
+          setSimpleWorkflowTranslation({
+            original: pastedContent,
+            translated: enhanceResult.formats[0].content,
+          });
+        }
+      } else {
+        // Other formats — standard path: translate (or passthrough) then format
+        const translateResult = await translate.mutateAsync({
+          text: pastedContent,
+          inputLanguage: 'auto',
+        });
+
+        setSimpleWorkflowTranslation({
+          original: translateResult.original_text,
+          translated: translateResult.translated_text,
+        });
+
+        const enhanceResult = await enhance.mutateAsync({
+          text: translateResult.translated_text,
+          headline: 'Content',
+          formats: [defaultFormat.slug],
+        });
+
+        if (enhanceResult.formats && enhanceResult.formats.length > 0) {
+          setSimpleWorkflowResult({
+            content: enhanceResult.formats[0].content,
+            tokens_used: enhanceResult.formats[0].tokens_used,
+          });
+        }
       }
     } catch (error: any) {
       const httpStatus = error?.response?.status;

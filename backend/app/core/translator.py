@@ -5,6 +5,7 @@ Replaces Google Translate with intelligent AI translation
 
 import json
 import concurrent.futures
+from datetime import date
 from pathlib import Path
 
 from app.core.ai_providers import get_provider
@@ -153,6 +154,7 @@ class OpenAITranslator:
         Translate one clean chunk to Bangladeshi Bengali.
         Returns (bengali_text, tokens_used).
         """
+        today = date.today().strftime("%B %d, %Y")
         prompt = f"""Translate this section of an English news article to natural Bangladeshi Bengali.
 
 Guidelines:
@@ -162,6 +164,8 @@ Guidelines:
 - Output ONLY the Bengali translation — no labels, no "Part X", no introductory or concluding sentences
 - Do NOT add phrases like "In this section...", "Continuing from before...", "In conclusion..."
 - Translate exactly what is given, nothing more
+- Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
+- Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
 
 ARTICLE SECTION {idx + 1} OF {total}:
 {chunk}"""
@@ -179,6 +183,7 @@ ARTICLE SECTION {idx + 1} OF {total}:
         Extract clean content AND translate one chunk (for raw pasted text).
         Returns (clean_english, bengali_text, tokens_used).
         """
+        today = date.today().strftime("%B %d, %Y")
         prompt = f"""You are processing part {idx + 1} of {total} from pasted webpage content. Do TWO tasks:
 
 TASK 1 - EXTRACT CLEAN ENGLISH:
@@ -187,6 +192,8 @@ Keep only: article headline (part 1 only), byline, body paragraphs, quotes.
 
 TASK 2 - TRANSLATE TO BENGALI:
 Translate the extracted content to natural Bangladeshi Bengali.
+- Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
+- Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
 
 OUTPUT FORMAT (JSON only, no extra text):
 {{
@@ -395,6 +402,7 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
 
     def _simple_translate_single(self, text: str) -> dict:
         """Single-call extract+translate for short text (existing logic)."""
+        today = date.today().strftime("%B %d, %Y")
         extract_translate_prompt = f"""You are processing a pasted webpage. Do TWO tasks:
 
 TASK 1 - EXTRACT CLEAN ENGLISH:
@@ -422,6 +430,8 @@ Translate the extracted clean article to natural Bangladeshi Bengali.
 - Use modern Bangladeshi dialect (NOT Indian Bengali)
 - Keep proper nouns unchanged (names, places)
 - Maintain journalistic tone
+- Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
+- Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
 
 OUTPUT FORMAT (JSON only, no extra text):
 {{
@@ -524,6 +534,7 @@ PASTED CONTENT:
 
     def _translate_only_single(self, clean_text: str) -> dict:
         """Single-call translation for short text (existing logic)."""
+        today = date.today().strftime("%B %d, %Y")
         translate_prompt = f"""Translate the following English article to natural Bangladeshi Bengali.
 
 Translation Guidelines:
@@ -533,6 +544,8 @@ Translation Guidelines:
 - Translate idioms contextually (not word-by-word)
 - Keep numbers, dates, and statistics accurate
 - Preserve paragraph structure
+- Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
+- Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
 
 ARTICLE TO TRANSLATE:
 {clean_text}

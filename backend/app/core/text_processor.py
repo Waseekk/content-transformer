@@ -224,6 +224,20 @@ WORD_CORRECTIONS = [
     (r'([০-৯]+)লা\b', r'\1'),
     (r'([০-৯]+)ই\b', r'\1'),
     (r'([০-৯]+)শে\b', r'\1'),
+
+    # Currency symbols before numbers → number + Bengali currency word
+    # Scale-word patterns FIRST (বিলিয়ন, মিলিয়ন, কোটি, লাখ, হাজার)
+    # Captures suffix separately so inflection moves to currency word:
+    #   $১৭ বিলিয়ন   → ১৭ বিলিয়ন ডলার
+    #   $১৭ বিলিয়নে  → ১৭ বিলিয়ন ডলারে
+    #   €৬.৫ মিলিয়নের → ৬.৫ মিলিয়ন ইউরোর
+    (r'\$([\d০-৯][\d০-৯.,]*)(\s+(?:বিলিয়ন|মিলিয়ন|কোটি|লাখ|হাজার))([^\s,।?!\n]*)', r'\1\2 ডলার\3'),
+    (r'€([\d০-৯][\d০-৯.,]*)(\s+(?:বিলিয়ন|মিলিয়ন|কোটি|লাখ|হাজার))([^\s,।?!\n]*)', r'\1\2 ইউরো\3'),
+    (r'£([\d০-৯][\d০-৯.,]*)(\s+(?:বিলিয়ন|মিলিয়ন|কোটি|লাখ|হাজার))([^\s,।?!\n]*)', r'\1\2 পাউন্ড\3'),
+    # Plain number (no scale word) — catches any remaining $X / €X / £X
+    (r'\$([\d০-৯][\d০-৯.,]*)', r'\1 ডলার'),
+    (r'€([\d০-৯][\d০-৯.,]*)', r'\1 ইউরো'),
+    (r'£([\d০-৯][\d০-৯.,]*)', r'\1 পাউন্ড'),
 ]
 
 # Words that START with সহ - don't join these
@@ -411,65 +425,48 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
             result.append(para)
             continue
 
-        # Check if paragraph has quotes
-        if '"' not in para:
+        # Check if paragraph has any closing quote (straight " U+0022 or curly " U+201D)
+        if '"' not in para and '\u201D' not in para:
             result.append(para)
             continue
 
         # MAIN LOGIC: Find CLOSING quote patterns and split
         # Only split when: punctuation + closing quote + space + more text
         #
+        # Closing quote chars: straight " (U+0022) or right curly " (U+201D)
         # Pattern 1: ।" or !" or ?" (punctuation inside quote) followed by space + text
         # Pattern 2: "। or "! or "? (punctuation outside quote) followed by space + text
 
         current_para = para
         split_parts = []
-        rearranged_once = False  # guard: rearrange each paragraph at most once
+
+        # NOTE: rearrange mode (hard_news) was removed — it caused garbled output
+        # when a paragraph had 2+ quotes (quotes/attributions swapped paragraphs).
+        # Now we always do clean splits: each paragraph ends at its closing quote.
+        # A post-quote sentence becomes its own paragraph (may be short, but correct).
+        # _ = rearrange  # parameter kept for signature compatibility, no longer used
 
         while True:
-            # Match CLOSING quote patterns only:
-            # - [।!?]" = punctuation inside, then closing quote
-            # - "[।!?] = closing quote, then punctuation outside
+            # Match CLOSING quote patterns only (straight " or curly " U+201D):
+            # - [।!?]["\u201D] = punctuation inside, then closing quote
+            # - ["\u201D][।!?] = closing quote, then punctuation outside
             # Followed by whitespace and more text (non-empty)
             # re.DOTALL: . matches \n so embedded newlines don't silently drop content
-            match = re.search(r'([।!?]"|"[।!?])\s+(\S.+)', current_para, re.DOTALL)
+            match = re.search(r'([।!?]["\u201D]|["\u201D][।!?])\s+(\S.+)', current_para, re.DOTALL)
 
             if match:
-                # Found text after closing quote
-                # Get position after the matched closing pattern
+                # Found text after closing quote — split here
                 split_pos = match.start() + len(match.group(1))
 
                 part1 = current_para[:split_pos].strip()
                 part2 = match.group(2).strip()  # Text after closing quote
 
-                if rearrange and part1 and not rearranged_once:
-                    # REARRANGE MODE (hard_news): move post-quote text to before
-                    # the attribution sentence so the paragraph stays intact and
-                    # the quote remains at the end. No orphan paragraph created.
-                    #
-                    # Example:
-                    #   Input:  "S1। Attribution, "Quote।" S3।"
-                    #   Output: "S1। S3। Attribution, "Quote।""
-                    #
-                    # Guard: rearranged_once=True prevents infinite oscillation when
-                    # a paragraph has 2+ quotes (would otherwise toggle forever).
-                    first_quote_pos = part1.find('"')
-                    if first_quote_pos > 0:
-                        last_danda_pos = part1.rfind('।', 0, first_quote_pos)
-                        if last_danda_pos >= 0:
-                            pre_content = part1[:last_danda_pos + 1].strip()
-                            attribution = part1[last_danda_pos + 1:].strip()
-                            current_para = f"{pre_content} {part2} {attribution}"
-                            rearranged_once = True
-                            continue  # re-check rearranged para (quote now at end → no match)
-
-                # Default: split at quote boundary (or rearrange fallback)
+                # Always split at quote boundary (1 quote per paragraph)
                 if part1:
                     split_parts.append(part1)
                     splits_made += 1
 
                 current_para = part2
-                rearranged_once = False  # reset for each new split segment
             else:
                 # No more splits needed
                 if current_para.strip():
@@ -1886,10 +1883,9 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
     _log_step("step6_word_corrections", processed_content)
 
     # Step 7: Split quotes — always
-    # Rearrange mode for hard_news formats: move post-quote orphan text to before
-    # the attribution sentence within the same paragraph (eliminates 1-line orphans).
-    rearrange_mode = format_type in ('hard_news', 'hard_news_automate_content')
-    processed_content = split_quotes(processed_content, rearrange=rearrange_mode)
+    # Clean split at every closing quote boundary (1 quote per paragraph).
+    # rearrange=False for all formats — rearrange mode removed (caused garbled 2-quote paras).
+    processed_content = split_quotes(processed_content, rearrange=False)
     _log_step("step7_split_quotes", processed_content)
 
     # Step 8: Fix 3-line paragraphs (only if rules define max_sentences_per_paragraph)

@@ -33,6 +33,7 @@ class EnhanceRequest(BaseModel):
     """Request to enhance translated content"""
     translation_id: Optional[int] = Field(None, description="ID of saved translation to enhance")
     text: Optional[str] = Field(None, min_length=100, max_length=50000, description="Direct Bengali text to enhance")
+    raw_english_text: Optional[str] = Field(None, min_length=50, max_length=100000, description="Raw English text for combined extract+translate+format (1 LLM call, faster)")
     headline: Optional[str] = Field(None, description="Article headline/title")
     formats: List[str] = Field(default=["hard_news"], description="Formats to generate")
 
@@ -151,10 +152,10 @@ async def enhance_content(
     - Access to requested formats (tier-based)
     """
     # Validate input
-    if not request.translation_id and not request.text:
+    if not request.translation_id and not request.text and not request.raw_english_text:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either translation_id or text must be provided"
+            detail="Either translation_id, text, or raw_english_text must be provided"
         )
 
     # Get content to enhance
@@ -172,9 +173,13 @@ async def enhance_content(
             )
 
         content_text = translation.translated_text
-        headline_text = translation.original_title or "Travel News"
+        headline_text = translation.title or "Travel News"
+    elif request.raw_english_text:
+        # Combined path: raw English → extract + translate + format in 1 LLM call
+        content_text = request.raw_english_text
+        headline_text = request.headline or "Travel News"
     else:
-        # Use provided text
+        # Use provided Bengali text
         content_text = request.text
         headline_text = request.headline or "Travel News"
 
@@ -242,16 +247,35 @@ async def enhance_content(
             'source': 'user_translation'
         }
 
-        # Run blocking enhancer in thread pool with hard 3-minute cap (prevents event loop freeze)
-        results_dict = await asyncio.wait_for(
-            asyncio.to_thread(
-                enhancer.enhance_all_formats,
-                translated_text=content_text,
-                article_info=article_info,
-                formats=request.formats
-            ),
-            timeout=180.0
-        )
+        if request.raw_english_text:
+            # Combined path: extract + translate + format in one LLM call (faster)
+            def _run_combined():
+                results = {}
+                for fmt in request.formats:
+                    content, tokens = enhancer.combined_translate_enhance(
+                        raw_english_text=content_text,
+                        article_info=article_info,
+                        format_type=fmt
+                    )
+                    r = EnhancementResult(fmt, content, tokens)
+                    results[fmt] = r
+                return results
+
+            results_dict = await asyncio.wait_for(
+                asyncio.to_thread(_run_combined),
+                timeout=180.0
+            )
+        else:
+            # Standard path: Bengali text → format
+            results_dict = await asyncio.wait_for(
+                asyncio.to_thread(
+                    enhancer.enhance_all_formats,
+                    translated_text=content_text,
+                    article_info=article_info,
+                    formats=request.formats
+                ),
+                timeout=180.0
+            )
 
         # Convert dict of results to list
         enhancement_results: List[EnhancementResult] = list(results_dict.values())
@@ -284,12 +308,30 @@ async def enhance_content(
     if not within_quota:
         logger.warning(f"User {current_user.id} ({current_user.email}) exceeded enhancement quota: {current_user.enhancements_used_this_month}/{current_user.monthly_enhancement_limit}")
 
+    # For combined path: save a Translation record to track the combined call
+    combined_translation_id = request.translation_id
+    if request.raw_english_text and not request.translation_id:
+        combined_translation = Translation(
+            user_id=current_user.id,
+            original_text=request.raw_english_text,
+            translated_text=enhancement_results[0].content if enhancement_results else '',
+            original_language='en',
+            target_language='bn',
+            extraction_method='combined_llm',
+            tokens_used=total_tokens,
+            provider='openai',
+            model='gpt-4o-mini',
+        )
+        db.add(combined_translation)
+        db.flush()  # Get the ID without full commit
+        combined_translation_id = combined_translation.id
+
     # Save to database
     enhancement_records = []
     for result in enhancement_results:
         enhancement_record = Enhancement(
             user_id=current_user.id,
-            translation_id=request.translation_id,
+            translation_id=combined_translation_id,
             format_type=result.format_type,
             content=result.content,
             headline=None,  # EnhancementResult doesn't provide headline
@@ -320,7 +362,7 @@ async def enhance_content(
 
     return EnhancementResponse(
         id=enhancement_records[0].id if enhancement_records else None,
-        translation_id=request.translation_id,
+        translation_id=combined_translation_id,
         formats=format_outputs,
         total_tokens_used=total_tokens,
         tokens_remaining=current_user.tokens_remaining,

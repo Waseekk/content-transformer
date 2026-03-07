@@ -9,7 +9,8 @@ import { useAppStore } from '../store/useAppStore';
 export const useEnhance = () => {
   return useMutation({
     mutationFn: (data: {
-      text: string;
+      text?: string;
+      raw_english_text?: string;
       headline?: string;
       formats: string[];
       provider?: string;
