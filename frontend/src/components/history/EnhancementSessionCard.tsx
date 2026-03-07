@@ -48,12 +48,15 @@ const getBengaliDate = (): string => {
  */
 const parseMarkdownForWord = (markdown: string): Paragraph[] => {
   const paragraphs: Paragraph[] = [];
-  const lines = markdown.split(/\n\n+/).filter(line => line.trim());
+  // Normalize \n \n (soft double-newlines with optional spaces) → \n\n before splitting
+  const normalized = markdown.replace(/\n[ \t]*\n/g, '\n\n');
+  const lines = normalized.split(/\n\n+/).filter(line => line.trim());
 
   for (const line of lines) {
     const textRuns: TextRun[] = [];
     let currentIndex = 0;
-    const boldRegex = /\*\*(.+?)\*\*/g;
+    // Use [\s\S]+? to match bold text that spans newlines
+    const boldRegex = /\*\*([\s\S]+?)\*\*/g;
     let match;
 
     while ((match = boldRegex.exec(line)) !== null) {
@@ -104,7 +107,9 @@ const markdownToPlainText = (markdown: string): string => {
  * Convert markdown text to HTML string
  */
 const markdownToHtml = (markdown: string): string => {
-  let html = markdown.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Normalize \n \n (soft double-newlines) to \n\n before processing
+  const normalized = markdown.replace(/\n[ \t]*\n/g, '\n\n');
+  let html = normalized.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
   const paragraphs = html.split(/\n\n+/).filter(p => p.trim());
   html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
   return html;

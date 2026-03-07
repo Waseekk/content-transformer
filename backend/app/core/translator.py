@@ -166,6 +166,7 @@ Guidelines:
 - Translate exactly what is given, nothing more
 - Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
 - Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
+- If the source has bullet points or numbered lists, preserve them using markdown list format (- item)
 
 ARTICLE SECTION {idx + 1} OF {total}:
 {chunk}"""
@@ -194,6 +195,7 @@ TASK 2 - TRANSLATE TO BENGALI:
 Translate the extracted content to natural Bangladeshi Bengali.
 - Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
 - Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
+- If the source has bullet points or numbered lists, preserve them using markdown list format (- item)
 
 OUTPUT FORMAT (JSON only, no extra text):
 {{
@@ -432,6 +434,7 @@ Translate the extracted clean article to natural Bangladeshi Bengali.
 - Maintain journalistic tone
 - Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
 - Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
+- If the source has bullet points or numbered lists, preserve them using markdown list format (- item)
 
 OUTPUT FORMAT (JSON only, no extra text):
 {{
@@ -546,6 +549,7 @@ Translation Guidelines:
 - Preserve paragraph structure
 - Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
 - Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
+- If the source has bullet points or numbered lists, preserve them using markdown list format (- item)
 
 ARTICLE TO TRANSLATE:
 {clean_text}

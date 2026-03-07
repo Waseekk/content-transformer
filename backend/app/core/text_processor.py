@@ -425,6 +425,11 @@ def split_quotes(text: str, rearrange: bool = False) -> str:
             result.append(para)
             continue
 
+        # Skip bullet list items
+        if re.match(r'^[-•*–➤►▶] ', para):
+            result.append(para)
+            continue
+
         # Check if paragraph has any closing quote (straight " U+0022 or curly " U+201D)
         if '"' not in para and '\u201D' not in para:
             result.append(para)
@@ -660,6 +665,16 @@ def normalize_line_breaks(text: str) -> str:
     # AI sometimes line-wraps mid-word: "সংস\n্কৃতি" → "সংস্কৃতি"
     # Bengali combining chars: virama U+09CD, vowel signs U+09BE–U+09CC, U+09D7
     text = re.sub(r'(?<!\n)\n([\u09BE-\u09CC\u09CD\u09D7])', r'\1', text)
+
+    # Pattern 4.5: Protect bullet list items — single \n before a bullet → double \n
+    # Prevents Pattern 5 from collapsing "- item1\n- item2" into "- item1 - item2"
+    text = re.sub(r'\n([-•*–➤►▶] )', r'\n\n\1', text)
+
+    # Pattern 4.6: Normalize "soft" double-newlines — \n[spaces/tabs]\n → \n\n
+    # AI sometimes outputs paragraphs separated by "\n \n" (newline+space+newline).
+    # Must become \n\n BEFORE Pattern 5 (which would collapse each single \n to a
+    # space, destroying the paragraph break entirely).
+    text = re.sub(r'\n[ \t]+\n', '\n\n', text)
 
     # Pattern 5: Any remaining single \n (not \n\n) → space
     # Handles AI line-wrapping within sentences without breaking paragraph structure
@@ -1436,6 +1451,11 @@ def fix_three_line_paragraphs(text: str) -> str:
             result.append(para)
             continue
 
+        # Skip bullet list items
+        if re.match(r'^[-•*–➤►▶] ', para):
+            result.append(para)
+            continue
+
         # Split into sentences (preserves quotes as complete units)
         # Uses state machine to avoid splitting on ।?! inside quotation marks
         full_sentences = split_sentences_preserving_quotes(para)
@@ -1794,6 +1814,22 @@ def validate_structure(content: str, format_type: str, rules: dict = None) -> di
         return {'valid': True, 'warnings': []}
 
 
+def bold_urls_and_emails(text: str) -> str:
+    """
+    Wrap URLs and email addresses in **bold** markdown.
+    Skips text already wrapped in **.
+    """
+    if not text:
+        return text
+    # URLs starting with http/https — negative lookbehind for ** to avoid double-bolding
+    text = re.sub(r'(?<!\*\*)(https?://[^\s<>"*\)]+)', r'**\1**', text)
+    # URLs starting with www.
+    text = re.sub(r'(?<!\*\*)(www\.[^\s<>"*\)]+)', r'**\1**', text)
+    # Email addresses
+    text = re.sub(r'(?<!\*\*)([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})(?!\*\*)', r'**\1**', text)
+    return text
+
+
 def process_enhanced_content(content: str, format_type: str, rules: dict = None, max_paragraph_words: int = 35, openai_client=None) -> tuple[str, dict]:
     """
     Full post-processing pipeline for enhanced content.
@@ -1896,6 +1932,10 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
     # Step 9: FINAL SAFETY CHECK - Guarantee intro is bold — always
     processed_content = final_intro_bold_check(processed_content, format_type)
     _log_step("step9_final_bold", processed_content)
+
+    # Step 9.5: Bold URLs and email addresses
+    processed_content = bold_urls_and_emails(processed_content)
+    _log_step("step9.5_bold_urls", processed_content)
 
     # Step 10: Validate structure (based on rules)
     validation = validate_structure(processed_content, format_type, rules=rules)
