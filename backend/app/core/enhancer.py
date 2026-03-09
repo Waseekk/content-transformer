@@ -36,8 +36,9 @@ Translate the extracted content to natural Bangladeshi Bengali (NOT Indian Benga
 - Use modern Bangladeshi dialect and journalistic tone
 - Keep numbers, dates, and statistics accurate
 
-STEP 3 — FORMAT AS HARD NEWS:
-Format the translated content as a professional hard news article using the rules below.
+STEP 3 — FORMAT AS BANGLAR COLUMBUS STYLE:
+Detect the travel content type (travel news / destination feature / travel guide) and format
+the translated content using the appropriate structure from the rules below.
 
 ---
 
