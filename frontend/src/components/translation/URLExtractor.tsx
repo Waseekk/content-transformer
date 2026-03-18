@@ -12,10 +12,11 @@ import { useURLExtractAndTranslate } from '../../hooks/useURLExtraction';
 
 interface URLExtractorProps {
   onExtractedAndTranslated: (englishContent: string, bengaliContent: string, title?: string, extractionMethod?: string) => void;
+  initialUrl?: string;
 }
 
-export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTranslated }) => {
-  const [url, setUrl] = useState('');
+export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTranslated, initialUrl }) => {
+  const [url, setUrl] = useState(initialUrl || '');
   const [extractedUrl, setExtractedUrl] = useState<string | null>(null);
   const [wasBengaliPassthrough, setWasBengaliPassthrough] = useState(false);
   const extraction = useURLExtractAndTranslate();

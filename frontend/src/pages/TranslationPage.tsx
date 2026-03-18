@@ -444,7 +444,7 @@ export const TranslationPage = () => {
         </AnimatedCard>
 
         {/* URL Extractor - Extract & Translate in one step */}
-        <URLExtractor onExtractedAndTranslated={handleURLExtractedAndTranslated} />
+        <URLExtractor onExtractedAndTranslated={handleURLExtractedAndTranslated} initialUrl={selectedArticle?.article_url ?? ''} />
 
         {/* Paste Area - Hide when translation came from URL */}
         {translationSource !== 'url' && (

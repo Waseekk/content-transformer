@@ -7,7 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
-import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX, HiOfficeBuilding, HiDocumentText } from 'react-icons/hi';
+import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX, HiOfficeBuilding, HiDocumentText, HiGlobe, HiPencilAlt } from 'react-icons/hi';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface LayoutProps {
@@ -147,7 +147,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <span className={`relative z-10 ${isAIAssistant && !isActive ? 'text-violet-500' : ''}`}>
                         {item.icon}
                       </span>
-                      <span className="relative z-10">{item.label}</span>
+                      {item.highlight ? (
+                        <span className="relative z-10 flex flex-col items-center leading-none gap-0.5">
+                          <span className="text-[10px]">AI</span>
+                          <span>Assistant</span>
+                        </span>
+                      ) : (
+                        <span className="relative z-10">{item.label}</span>
+                      )}
                       {item.badge && (
                         <motion.span
                           initial={{ scale: 0 }}
@@ -255,6 +262,30 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <HiOfficeBuilding className="w-5 h-5" />
                         <span className="font-medium">Clients</span>
                       </Link>
+                      <Link
+                        to="/admin/word-corrections"
+                        onClick={() => setIsUserPanelOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          location.pathname === '/admin/word-corrections'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <HiPencilAlt className="w-5 h-5" />
+                        <span className="font-medium">Word Corrections</span>
+                      </Link>
+                      <Link
+                        to="/admin/sources"
+                        onClick={() => setIsUserPanelOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          location.pathname === '/admin/sources'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <HiGlobe className="w-5 h-5" />
+                        <span className="font-medium">Sources</span>
+                      </Link>
                     </>
                   )}
                 </div>
@@ -304,7 +335,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div className={`absolute inset-0 ${isAIAssistant ? 'nav-inner-glow-purple' : 'nav-inner-glow-dark'}`} />
                   )}
                   <span className="relative z-10">{item.icon}</span>
-                  <span className="relative z-10 text-xs font-medium whitespace-nowrap">{item.label}</span>
+                  {item.highlight ? (
+                    <span className="relative z-10 flex flex-col items-center leading-none gap-0.5">
+                      <span className="text-[8px]">AI</span>
+                      <span className="text-xs font-medium">Assistant</span>
+                    </span>
+                  ) : (
+                    <span className="relative z-10 text-xs font-medium whitespace-nowrap">{item.label}</span>
+                  )}
                   {item.badge && (
                     <span className="absolute top-0 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center z-20">
                       {item.badge}

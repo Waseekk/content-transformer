@@ -48,6 +48,7 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
   const [pastedContent, setPastedContent] = useState('');
 
   const {
+    selectedArticle,
     simpleWorkflowResult: result,
     simpleWorkflowTranslation: translation,
     simpleWorkflowProcessing: isProcessing,
@@ -89,22 +90,50 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
 
     try {
       if (defaultFormat.slug === 'hard_news_automate_content' && !bengaliInput) {
-        // English paste — fast path: single LLM call (extract + translate + format)
-        const enhanceResult = await enhance.mutateAsync({
-          raw_english_text: pastedContent,
-          headline: 'Content',
-          formats: [defaultFormat.slug],
-        });
+        const englishWordCount = pastedContent.split(/\s+/).filter(Boolean).length;
 
-        if (enhanceResult.formats && enhanceResult.formats.length > 0) {
-          setSimpleWorkflowResult({
-            content: enhanceResult.formats[0].content,
-            tokens_used: enhanceResult.formats[0].tokens_used,
+        if (englishWordCount <= 1000) {
+          // Short article — fast single LLM call (extract + translate + format)
+          const enhanceResult = await enhance.mutateAsync({
+            raw_english_text: pastedContent,
+            headline: 'Content',
+            formats: [defaultFormat.slug],
           });
+
+          if (enhanceResult.formats && enhanceResult.formats.length > 0) {
+            setSimpleWorkflowResult({
+              content: enhanceResult.formats[0].content,
+              tokens_used: enhanceResult.formats[0].tokens_used,
+            });
+            setSimpleWorkflowTranslation({
+              original: pastedContent,
+              translated: enhanceResult.formats[0].content,
+            });
+          }
+        } else {
+          // Long article — two-step for better quality (translate first, then format)
+          const translateResult = await translate.mutateAsync({
+            text: pastedContent,
+            inputLanguage: 'auto',
+          });
+
           setSimpleWorkflowTranslation({
-            original: pastedContent,
-            translated: enhanceResult.formats[0].content,
+            original: translateResult.original_text,
+            translated: translateResult.translated_text,
           });
+
+          const enhanceResult = await enhance.mutateAsync({
+            text: translateResult.translated_text,
+            headline: 'Content',
+            formats: [defaultFormat.slug],
+          });
+
+          if (enhanceResult.formats && enhanceResult.formats.length > 0) {
+            setSimpleWorkflowResult({
+              content: enhanceResult.formats[0].content,
+              tokens_used: enhanceResult.formats[0].tokens_used,
+            });
+          }
         }
       } else if (defaultFormat.slug === 'hard_news_automate_content' && bengaliInput) {
         // Bengali paste — skip translate entirely, enhance directly (already Bengali)
@@ -234,7 +263,7 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
         </motion.div>
 
         {/* URL Extractor */}
-        <URLExtractor onExtractedAndTranslated={handleURLExtracted} />
+        <URLExtractor onExtractedAndTranslated={handleURLExtracted} initialUrl={selectedArticle?.article_url ?? ''} />
 
         {/* Paste Area (when no result yet) */}
         {!result && (
@@ -246,8 +275,8 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Paste Content</h3>
-                  <p className={`text-sm ${wordCount > 1500 ? 'text-amber-500 font-medium' : 'text-gray-500'}`}>
-                    {wordCount > 0 ? `${wordCount} words${wordCount > 1500 ? ' — long content may timeout, try a shorter extract' : ''}` : 'Or use URL above'}
+                  <p className="text-sm text-gray-500">
+                    {wordCount > 0 ? `${wordCount} words` : 'Or use URL above'}
                   </p>
                 </div>
               </div>
