@@ -4,7 +4,7 @@ User-specific scraping with job tracking and database storage
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any, Callable
 from sqlalchemy.orm import Session
 
@@ -139,6 +139,14 @@ class ScraperService:
         try:
             # Update job to running
             ScraperService.update_job_status(db, job, "running", 0, "Starting scraper...")
+
+            # Delete articles older than 7 days for this user
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            old_articles = db.query(Article).filter(
+                Article.user_id == user.id,
+                Article.scraped_at < cutoff
+            ).delete(synchronize_session=False)
+            db.commit()
 
             # Get user's enabled sites
             user_sites = sites or ScraperService.get_user_sites(db, user)
