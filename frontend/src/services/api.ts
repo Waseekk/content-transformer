@@ -12,6 +12,7 @@ export const articlesApi = {
   getAll: async (params?: {
     search?: string;
     sources?: string[];
+    publishers?: string[];
     page?: number;
     limit?: number;
     latest_only?: boolean;
@@ -28,6 +29,13 @@ export const articlesApi = {
 
   getSources: async () => {
     const response = await axios.get('/api/articles/sources/list');
+    return response.data;
+  },
+
+  getPublishers: async (sources?: string[]) => {
+    const response = await axios.get('/api/articles/publishers/list', {
+      params: sources && sources.length > 0 ? { sources } : undefined,
+    });
     return response.data;
   },
 

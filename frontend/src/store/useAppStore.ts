@@ -118,6 +118,7 @@ interface AppState {
 const defaultFilters: ArticleFilters = {
   search: '',
   sources: [],
+  publishers: [],
   page: 1,
   pageSize: 10,
 };

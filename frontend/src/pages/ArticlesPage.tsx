@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../services/axios';
 import { useQueryClient } from '@tanstack/react-query';
-import { useArticles, useArticleSources, useScrapingSessions } from '../hooks/useArticles';
+import { useArticles, useArticleSources, useArticlePublishers, useScrapingSessions } from '../hooks/useArticles';
 import { useEnhancementSessions } from '../hooks/useEnhancementHistory';
 import { useStartScraper } from '../hooks/useScraper';
 import { useAppStore } from '../store/useAppStore';
@@ -30,7 +30,8 @@ import {
   HiNewspaper,
   HiChevronDown,
   HiDocumentText,
-  HiGlobe
+  HiGlobe,
+  HiBookmark
 } from 'react-icons/hi';
 import { GoogleNewsSearchTab } from '../components/search/GoogleNewsSearchTab';
 
@@ -67,6 +68,8 @@ export const ArticlesPage = () => {
     activeScraperJobId,
     setActiveScraperJobId,
   } = useAppStore();
+
+  const { data: publishersData } = useArticlePublishers(filters.sources ?? []);
 
   const [searchInput, setSearchInput] = useState(filters.search);
   const [knownJobId, setKnownJobId] = useState<number | null>(null);
@@ -149,7 +152,7 @@ export const ArticlesPage = () => {
 
   const handleSelectArticle = (article: any) => {
     selectArticle(article);
-    toast.success('Article selected! Go to Translation page');
+    toast.success('Article selected for AI Enhancement');
   };
 
   const handleTranslateSelected = () => {
@@ -176,6 +179,24 @@ export const ArticlesPage = () => {
   const handleBannerClose = useCallback(() => {
     setActiveScraperJobId(null);
   }, [setActiveScraperJobId]);
+
+  const [savingDefault, setSavingDefault] = useState(false);
+
+  const handleSaveAsDefault = async () => {
+    setSavingDefault(true);
+    try {
+      // Save selected sources as the user's enabled_sites
+      await axiosInstance.put('/scraper/sites', { enabled_sites: filters.sources });
+      // Then persist as custom default (survives login)
+      await axiosInstance.post('/scraper/sites/default');
+      toast.success('Saved as your default sources');
+      queryClient.invalidateQueries({ queryKey: ['articleSources'] });
+    } catch {
+      toast.error('Failed to save default sources');
+    } finally {
+      setSavingDefault(false);
+    }
+  };
 
   const totalPages = Math.ceil(total / filters.pageSize);
 
@@ -307,7 +328,7 @@ export const ArticlesPage = () => {
           >
             <HiFilter className="w-5 h-5" />
             Filters
-            {(filters.search || filters.sources.length > 0) && (
+            {(filters.search || filters.sources.length > 0 || (filters.publishers?.length ?? 0) > 0) && (
               <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
             )}
           </button>
@@ -333,7 +354,7 @@ export const ArticlesPage = () => {
               onClick={handleTranslateSelected}
               className="ml-auto inline-flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-all shadow-sm hover:shadow-md"
             >
-              Translate Selected
+              Enhance with AI
               <HiArrowRight className="w-5 h-5" />
             </button>
           )}
@@ -377,13 +398,40 @@ export const ArticlesPage = () => {
                   placeholder="All sources"
                   options={sources.map((s: any) => ({
                     value: s.source,
-                    label: s.source,
+                    label: s.label || s.source,
                     count: s.count,
                   }))}
                   selected={filters.sources}
-                  onChange={(selected) => setFilters({ sources: selected, page: 1 })}
+                  onChange={(selected) => setFilters({ sources: selected, publishers: [], page: 1 })}
                 />
+                {filters.sources.length > 0 && (
+                  <button
+                    onClick={handleSaveAsDefault}
+                    disabled={savingDefault}
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 font-medium disabled:opacity-50 transition-colors"
+                  >
+                    <HiBookmark className="w-3.5 h-3.5" />
+                    {savingDefault ? 'Saving...' : 'Set as my default sources'}
+                  </button>
+                )}
               </div>
+
+              {/* Publishers — scoped to selected sources */}
+              {(publishersData?.publishers?.length ?? 0) > 0 && (
+                <div>
+                  <SearchableMultiSelect
+                    label="Publishers"
+                    placeholder={(filters.sources?.length ?? 0) > 0 ? 'All publishers in selected sources' : 'All publishers'}
+                    options={(publishersData?.publishers ?? []).map((p: any) => ({
+                      value: p.publisher,
+                      label: p.publisher,
+                      count: p.count,
+                    }))}
+                    selected={filters.publishers ?? []}
+                    onChange={(selected) => setFilters({ publishers: selected, page: 1 })}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -695,7 +743,7 @@ export const ArticlesPage = () => {
             onClick={handleTranslateSelected}
             className="fixed bottom-20 right-8 inline-flex items-center gap-3 px-6 py-4 bg-teal-500 text-white rounded-2xl font-bold shadow-xl hover:bg-teal-600 hover:shadow-2xl transition-all transform hover:scale-105"
           >
-            <span>Translate Article</span>
+            <span>Enhance with AI</span>
             <HiArrowRight className="w-5 h-5" />
           </button>
         )}

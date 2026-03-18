@@ -17,6 +17,7 @@ export interface Article {
 export interface ArticleFilters {
   search: string;
   sources: string[];
+  publishers: string[];
   page: number;
   pageSize: number;
   dateRange?: {

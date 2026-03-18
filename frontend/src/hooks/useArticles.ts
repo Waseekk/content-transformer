@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 // Get all unique articles by default (no job filter)
 export const useArticles = (options?: { latestOnly?: boolean; jobId?: number }) => {
   const filters = useAppStore((state) => state.filters);
-  const latestOnly = options?.latestOnly ?? false; // Default to false - show all unique articles
+  const latestOnly = options?.latestOnly ?? false;
   const jobId = options?.jobId;
 
   return useQuery({
@@ -18,12 +18,13 @@ export const useArticles = (options?: { latestOnly?: boolean; jobId?: number }) 
     queryFn: () => articlesApi.getAll({
       search: filters.search || undefined,
       sources: filters.sources.length > 0 ? filters.sources : undefined,
+      publishers: filters.publishers?.length > 0 ? filters.publishers : undefined,
       page: filters.page,
       limit: filters.pageSize,
       latest_only: latestOnly,
       job_id: jobId,
     }),
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60 * 2,
   });
 };
 
@@ -40,6 +41,14 @@ export const useArticleSources = () => {
     queryKey: ['articleSources'],
     queryFn: articlesApi.getSources,
     staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+};
+
+export const useArticlePublishers = (sources: string[]) => {
+  return useQuery({
+    queryKey: ['articlePublishers', sources],
+    queryFn: () => articlesApi.getPublishers(sources.length > 0 ? sources : undefined),
+    staleTime: 1000 * 60 * 5,
   });
 };
 

@@ -52,6 +52,7 @@ class ArticleListResponse:
 async def get_articles(
     search: Optional[str] = Query(None, description="Search in headline"),
     sources: Optional[List[str]] = Query(None, description="Filter by source names"),
+    publishers: Optional[List[str]] = Query(None, description="Filter by publisher names (drill-down within sources)"),
     days: Optional[int] = Query(7, description="Number of days to look back (default: 7)"),
     latest_only: bool = Query(False, description="Show only articles from latest scraping run"),
     job_id: Optional[int] = Query(None, description="Filter by specific job ID"),
@@ -119,9 +120,13 @@ async def get_articles(
     if search:
         query = query.filter(Article.headline.ilike(f"%{search}%"))
 
-    # Filter by publishers if specified (sources param contains publisher names)
+    # Filter by source names if specified (matches Article.source = site config name)
     if sources:
-        query = query.filter(Article.publisher.in_(sources))
+        query = query.filter(Article.source.in_(sources))
+
+    # Filter by publisher names if specified (drill-down within sources)
+    if publishers:
+        query = query.filter(Article.publisher.in_(publishers))
 
     # Get total count
     total = query.count()
@@ -425,25 +430,30 @@ async def get_article_detail(
     )
 
 
-@router.get("/sources/list", response_model=dict)
-async def get_article_sources(
+@router.get("/publishers/list", response_model=dict)
+async def get_article_publishers(
+    sources: Optional[List[str]] = Query(None, description="Filter publishers to these sources only"),
+    days: Optional[int] = Query(7, description="Number of days to look back (matches articles list)"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get list of publishers from scraped articles (filtered by enabled sites)
+    Get publishers from scraped articles, optionally scoped to specific sources.
 
-    Returns unique publisher names with article counts
+    If sources are provided, only publishers from those sources are returned.
+    If no sources, returns all publishers across all scraped articles.
 
     Requires: Bearer token in Authorization header
     """
     from sqlalchemy import func
 
-    # Get user's enabled sites
+    # Limit days to 7 max (matches the articles list endpoint)
+    if days > 7:
+        days = 7
+    date_threshold = datetime.utcnow() - timedelta(days=days)
+
     enabled_sites = get_user_enabled_sites(db, current_user.id)
 
-    # Get publishers with counts (human-readable names shown on article cards)
-    # Exclude entries where publisher equals source (those are placeholder values)
     query = db.query(
         Article.publisher,
         func.count(Article.id).label('count')
@@ -451,27 +461,102 @@ async def get_article_sources(
         Article.user_id == current_user.id,
         Article.publisher.isnot(None),
         Article.publisher != '',
-        Article.publisher != Article.source  # Exclude placeholder values
+        Article.publisher != Article.source,  # skip placeholder fallbacks
+        Article.scraped_at >= date_threshold   # same date window as articles list
     )
 
-    # Filter by enabled sites (None = no filter, [] = show nothing, list = filter)
-    if enabled_sites is None:
-        pass  # No filter - show all sources
-    elif len(enabled_sites) == 0:
-        query = query.filter(False)  # Empty list = show nothing
+    # Scope to specific sources if provided
+    if sources:
+        query = query.filter(Article.source.in_(sources))
     else:
-        query = query.filter(Article.source.in_(enabled_sites))
+        # Apply enabled_sites as background filter when no explicit source selection
+        if enabled_sites is None:
+            pass
+        elif len(enabled_sites) == 0:
+            query = query.filter(False)
+        else:
+            query = query.filter(Article.source.in_(enabled_sites))
 
     publishers = query.group_by(Article.publisher).order_by(
         func.count(Article.id).desc()
     ).all()
 
     return {
-        "sources": [
-            {"source": publisher, "count": count}
-            for publisher, count in publishers
+        "publishers": [
+            {"publisher": pub, "count": count}
+            for pub, count in publishers
         ],
-        "total_sources": len(publishers)
+        "total_publishers": len(publishers)
+    }
+
+
+@router.get("/sources/list", response_model=dict)
+async def get_article_sources(
+    days: Optional[int] = Query(7, description="Number of days to look back (matches articles list)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get list of sources from scraped articles (filtered by enabled sites)
+
+    Returns source names (matching sites_config names) with article counts and labels.
+
+    Requires: Bearer token in Authorization header
+    """
+    from sqlalchemy import func
+    from app.config import get_settings
+    import json
+
+    # Limit days to 7 max (matches the articles list endpoint)
+    if days > 7:
+        days = 7
+    date_threshold = datetime.utcnow() - timedelta(days=days)
+
+    # Build friendly label map from sites_config: name -> description
+    settings = get_settings()
+    label_map: dict = {}
+    if settings.SITES_CONFIG_PATH.exists():
+        with open(settings.SITES_CONFIG_PATH, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+            all_raw = raw if isinstance(raw, list) else raw.get('sites', [])
+            for s in all_raw:
+                label_map[s['name']] = s.get('description', s['name'])
+
+    # Get user's enabled sites
+    enabled_sites = get_user_enabled_sites(db, current_user.id)
+
+    # Count articles grouped by source — same 7-day window as articles list
+    query = db.query(
+        Article.source,
+        func.count(Article.id).label('count')
+    ).filter(
+        Article.user_id == current_user.id,
+        Article.source.isnot(None),
+        Article.source != '',
+        Article.scraped_at >= date_threshold
+    )
+
+    if enabled_sites is None:
+        pass
+    elif len(enabled_sites) == 0:
+        query = query.filter(False)
+    else:
+        query = query.filter(Article.source.in_(enabled_sites))
+
+    sources_rows = query.group_by(Article.source).order_by(
+        func.count(Article.id).desc()
+    ).all()
+
+    return {
+        "sources": [
+            {
+                "source": source,
+                "label": label_map.get(source, source),
+                "count": count
+            }
+            for source, count in sources_rows
+        ],
+        "total_sources": len(sources_rows)
     }
 
 
