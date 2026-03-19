@@ -1,0 +1,13 @@
+{
+  "english_to_bengali": {},
+  "bengali_corrections": [],
+  "pending_suggestions": [
+    {
+      "id": "8c625ef2-fd12-442c-9fff-e04154a61717",
+      "english": "DOOR",
+      "bengali": "দরজা",
+      "suggested_by": "test@example.com",
+      "suggested_at": "2026-03-18T20:28:40.666173+00:00"
+    }
+  ]
+}
