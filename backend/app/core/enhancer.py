@@ -21,6 +21,69 @@ logger = LoggerManager.get_logger('enhancer')
 # COMBINED EXTRACT + TRANSLATE + FORMAT PROMPT
 # ============================================================================
 
+CHUNKED_THRESHOLD = 2000   # Words above which chunked pipeline is used
+CHUNK_SIZE = 1500          # Target words per chunk
+
+# System prompt for generating ONLY headline + byline + intro from the full article
+# Used in chunked pipeline so the intro reflects the WHOLE article, not just the first chunk
+INTRO_ONLY_SYSTEM_PROMPT = """আপনি "বাংলার কলম্বাস" পত্রিকার একজন অভিজ্ঞ ভ্রমণ সাংবাদিক।
+
+পুরো নিবন্ধটি পড়ুন এবং শুধুমাত্র এই তিনটি অংশ লিখুন:
+
+১. **শিরোনাম** (সম্পূর্ণ bold) — সংক্ষিপ্ত, তথ্যভিত্তিক
+২. নিউজ ডেস্ক, বাংলার কলম্বাস (bold নয়)
+৩. **ভূমিকা অনুচ্ছেদ** (সম্পূর্ণ bold) — পুরো নিবন্ধের মূল বিষয় তুলে ধরুন, ৩-৪টি পূর্ণ বাক্য
+
+⚠️ ভূমিকা নিয়ম:
+- পুরো ৩-৪ বাক্য একটি **...**-এর মধ্যে মুড়িয়ে দিন
+- ❌ ভুল: **একটি বাক্য** তারপর non-bold বাক্য
+- ✅ সঠিক: **বাক্য ১। বাক্য ২। বাক্য ৩। বাক্য ৪।**
+
+শুধু এই তিনটি অংশ লিখুন — বডি অনুচ্ছেদ বা সাবহেড লিখবেন না।
+সম্পূর্ণ বাংলাদেশী বাংলায় লিখুন।"""
+
+# System prompt for continuation chunks — articles WITH subheads (tips/guides)
+CONTINUATION_SYSTEM_PROMPT = """আপনি "বাংলার কলম্বাস" পত্রিকার একজন অভিজ্ঞ ভ্রমণ সাংবাদিক।
+
+এটি একটি চলমান নিবন্ধের অতিরিক্ত অংশ ফরম্যাট করার কাজ।
+
+কঠোর নিষেধাজ্ঞা — এগুলো লিখবেন না:
+- নতুন শিরোনাম (headline)
+- নতুন বাইলাইন (নিউজ ডেস্ক, বাংলার কলম্বাস)
+- নতুন ভূমিকা (intro paragraph)
+
+সরাসরি **প্রথম সাবহেড** দিয়ে শুরু করুন।
+
+ফরম্যাট নিয়ম:
+- প্রতিটি টিপস বা গন্তব্যের জন্য **Bold সাবহেড** — মূল ইনপুটে যে নাম/শিরোনাম আছে সেটি অনুবাদ করুন, নতুন নাম বানাবেন না
+- সাবহেডের নিচে পূর্ণ বিবরণ — সংক্ষিপ্ত করবেন না
+- অনুচ্ছেদ সর্বোচ্চ ২ বাক্য, Bold নয়
+- প্রতিটি টিপসের শেষে যদি ইনপুটে একটি ছোট নাম (লেখকের attribution) থাকে — সেটি সাধারণ (non-bold) টেক্সটে রাখুন। ইনপুটে যা নেই তা যোগ করবেন না।
+- সব তথ্য, উদ্ধৃতি, পরিসংখ্যান সংরক্ষণ করুন — কিছুই বাদ দেবেন না
+- সম্পূর্ণ বাংলাদেশী বাংলায় লিখুন (ভারতীয় বাংলা নয়)"""
+
+# System prompt for continuation chunks — articles WITHOUT subheads (narrative features)
+CONTINUATION_SYSTEM_PROMPT_NO_SUBHEADS = """আপনি "বাংলার কলম্বাস" পত্রিকার একজন অভিজ্ঞ ভ্রমণ সাংবাদিক।
+
+এটি একটি চলমান নিবন্ধের অতিরিক্ত অংশ ফরম্যাট করার কাজ।
+
+কঠোর নিষেধাজ্ঞা — এগুলো লিখবেন না:
+- নতুন শিরোনাম (headline)
+- নতুন বাইলাইন (নিউজ ডেস্ক, বাংলার কলম্বাস)
+- নতুন ভূমিকা (intro paragraph)
+- ⚠️ কোনো সাবহেড বা বোল্ড সেকশন শিরোনাম নয় — এই নিবন্ধে কোনো সাবহেড নেই
+- কোনো লাইন **Bold** করবেন না
+
+সরাসরি body paragraph দিয়ে শুরু করুন।
+
+ফরম্যাট নিয়ম:
+- অনুচ্ছেদ সর্বোচ্চ ২ বাক্য, Bold নয়
+- উদ্ধৃতি অনুচ্ছেদের শেষে রাখুন (মাঝখানে নয়) — ফরম্যাট: তিনি বলেন, "..." অথবা জানান, "..."
+- উদ্ধৃতির পর নতুন অনুচ্ছেদ শুরু করুন
+- সব তথ্য, উদ্ধৃতি, পরিসংখ্যান সংরক্ষণ করুন — কিছুই বাদ দেবেন না
+- সম্পূর্ণ বাংলাদেশী বাংলায় লিখুন (ভারতীয় বাংলা নয়)"""
+
+
 COMBINED_EXTRACT_TRANSLATE_PREFIX = """You are a professional journalist and expert translator for "বাংলার কলম্বাস" newspaper.
 
 Your task has THREE steps (complete all in one pass):
@@ -91,6 +154,124 @@ class ContentEnhancer:
         except Exception as e:
             logger.error(f"Provider initialization failed: {e}")
             return False
+
+    def _split_into_chunks(self, text: str, chunk_size: int = CHUNK_SIZE) -> list:
+        """
+        Split text into chunks of ~chunk_size words at paragraph boundaries.
+        Used by the chunked enhancement pipeline for very long articles.
+        """
+        paragraphs = [p for p in text.split('\n') if p.strip()]
+        chunks = []
+        current_paras = []
+        current_words = 0
+
+        for para in paragraphs:
+            para_words = len(para.split())
+            if current_words + para_words > chunk_size and current_paras:
+                chunks.append('\n\n'.join(current_paras))
+                current_paras = [para]
+                current_words = para_words
+            else:
+                current_paras.append(para)
+                current_words += para_words
+
+        if current_paras:
+            chunks.append('\n\n'.join(current_paras))
+
+        return [c for c in chunks if c.strip()]
+
+    def _generate_article_header(self, full_text: str, article_info: dict, config: dict) -> tuple:
+        """
+        Generate ONLY headline + byline + bold intro paragraph from the FULL article text.
+        Used in chunked pipeline so the intro reflects the complete article, not just chunk 1.
+        Returns (content, tokens_used).
+        """
+        headline = article_info.get('headline', 'N/A')
+        user_prompt = (
+            f"মূল শিরোনাম: {headline}\n\n"
+            f"নিচের পুরো নিবন্ধটি পড়ুন এবং শুধু শিরোনাম + বাইলাইন + ভূমিকা অনুচ্ছেদ লিখুন:\n\n"
+            f"{full_text}\n\n"
+            f"মনে রাখুন: শুধু তিনটি অংশ — শিরোনাম (bold), বাইলাইন (not bold), ভূমিকা (পুরো অনুচ্ছেদ bold)।"
+        )
+        content, tokens = self.provider.generate(
+            system_prompt=INTRO_ONLY_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            temperature=config.get('temperature', 0.68),
+            max_tokens=400,
+        )
+        logger.info(f"Article header generated from full text: {len(content)} chars, {tokens} tokens")
+        return content, tokens
+
+    def _enhance_continuation_chunk(self, chunk: str, config: dict, has_subheads: bool = True) -> tuple:
+        """
+        Format a continuation chunk (no headline/byline/intro — sections only).
+        Returns (content, tokens_used).
+        """
+        word_count = len(chunk.split())
+        max_tokens = min(8000, max(2000, int(word_count * 3)))
+
+        if has_subheads:
+            sys_prompt = CONTINUATION_SYSTEM_PROMPT
+            user_prompt = (
+                f"এই অংশের ভ্রমণ টিপস/সেকশনগুলো ফরম্যাট করুন:\n\n{chunk}\n\n"
+                f"মনে রাখুন: শুধু সাবহেড + কন্টেন্ট — headline, byline বা intro লিখবেন না।"
+            )
+        else:
+            sys_prompt = CONTINUATION_SYSTEM_PROMPT_NO_SUBHEADS
+            user_prompt = (
+                f"এই অংশটি চলমান নিবন্ধের ধারাবাহিকতায় লিখুন:\n\n{chunk}\n\n"
+                f"মনে রাখুন: শুধু body paragraph — কোনো সাবহেড, headline, byline বা intro লিখবেন না।"
+            )
+
+        content, tokens = self.provider.generate(
+            system_prompt=sys_prompt,
+            user_prompt=user_prompt,
+            temperature=config.get('temperature', 0.68),
+            max_tokens=max_tokens,
+        )
+        logger.info(f"Continuation chunk ({'with' if has_subheads else 'no'} subheads): {len(content)} chars, {tokens} tokens")
+        return content, tokens
+
+    def _strip_article_header(self, content: str) -> str:
+        """
+        Strip headline, byline, and intro from a continuation chunk output
+        in case the model ignored the instruction and added them anyway.
+        """
+        lines = content.split('\n')
+        # Find where the first subhead or non-header content starts
+        # Skip: first **...** line (headline), byline line, bold intro
+        header_done = False
+        start_idx = 0
+        headline_seen = False
+        byline_seen = False
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            # If we see 'নিউজ ডেস্ক' — that's a byline, skip it
+            if 'নিউজ ডেস্ক' in stripped and 'বাংলার কলম্বাস' in stripped:
+                byline_seen = True
+                start_idx = i + 1
+                continue
+
+            # First bold line before byline = headline, skip it
+            if not headline_seen and not byline_seen and stripped.startswith('**') and stripped.endswith('**'):
+                headline_seen = True
+                start_idx = i + 1
+                continue
+
+            # Bold intro paragraph right after byline — skip it
+            if byline_seen and stripped.startswith('**'):
+                start_idx = i + 1
+                continue
+
+            # If we're past the header area, stop
+            if headline_seen or byline_seen:
+                break
+
+        return '\n'.join(lines[start_idx:]).strip()
 
     def _count_body_words(self, content: str) -> int:
         """
@@ -164,18 +345,55 @@ class ContentEnhancer:
             # Prepare prompts
             system_prompt = config['system_prompt']
             input_word_count = len(translated_text.split())
-            user_prompt = get_user_prompt(translated_text, article_info, input_word_count=input_word_count)
 
-            # Dynamic max_tokens: scale with input size to prevent truncation on long articles
-            dynamic_max_tokens = min(15000, max(2000, int(input_word_count * 2.5)))
+            # Chunked pipeline for very long articles (>2000 words).
+            # gpt-4o-mini severely summarizes when given 2000+ word inputs.
+            # Solution: split into ~1500-word chunks, process first chunk fully
+            # (headline + byline + intro + sections), then process subsequent
+            # chunks as continuation sections (no header), then combine.
+            if input_word_count > CHUNKED_THRESHOLD:
+                logger.info(f"Long article ({input_word_count} words) — using chunked enhancement pipeline")
+                chunks = self._split_into_chunks(translated_text, CHUNK_SIZE)
+                logger.info(f"Split into {len(chunks)} chunks")
 
-            # Generate content (AI)
-            content, tokens = self.provider.generate(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                temperature=config['temperature'],
-                max_tokens=dynamic_max_tokens
-            )
+                # Detect subheads in full text — used for all continuation chunks
+                from app.core.prompts import _input_has_subheads
+                has_subheads = _input_has_subheads(translated_text)
+                logger.info(f"Subhead detection for chunked pipeline: {has_subheads}")
+
+                # Step 1: Generate headline + byline + intro from FULL article
+                # (so the intro reflects the complete article, not just the first 1500 words)
+                header_content, header_tokens = self._generate_article_header(
+                    translated_text, article_info, config
+                )
+                tokens = header_tokens
+                self.total_tokens += header_tokens
+                logger.info(f"Article header generated: {len(header_content)} chars")
+
+                # Step 2: Generate body from all chunks (no headline/byline/intro in any chunk)
+                body_parts = []
+                for i, chunk in enumerate(chunks, 1):
+                    cont_content, cont_tokens = self._enhance_continuation_chunk(chunk, config, has_subheads=has_subheads)
+                    cleaned = self._strip_article_header(cont_content)
+                    body_parts.append(cleaned)
+                    tokens += cont_tokens
+                    self.total_tokens += cont_tokens
+                    logger.info(f"Body chunk {i}/{len(chunks)} done: {len(cleaned)} chars")
+
+                content = header_content + '\n\n' + '\n\n'.join(body_parts)
+
+            else:
+                user_prompt = get_user_prompt(translated_text, article_info, input_word_count=input_word_count)
+                # Dynamic max_tokens: scale with input size
+                dynamic_max_tokens = min(15000, max(3000, int(input_word_count * 3.5)))
+
+                # Generate content (AI)
+                content, tokens = self.provider.generate(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    temperature=config['temperature'],
+                    max_tokens=dynamic_max_tokens
+                )
 
             # Get rules from config for rules-driven pipeline
             rules = config.get('rules', {})
@@ -277,10 +495,8 @@ class ContentEnhancer:
         # Combine extraction/translation prefix with the format's own system prompt
         combined_system_prompt = COMBINED_EXTRACT_TRANSLATE_PREFIX + config['system_prompt']
 
-        # Dynamic max_tokens based on English input word count
         input_word_count = len(raw_english_text.split())
-        dynamic_max_tokens = min(15000, max(2000, int(input_word_count * 2.5)))
-
+        dynamic_max_tokens = min(15000, max(3000, int(input_word_count * 4.0)))
         user_prompt = (
             f"Raw English article to extract, translate, and format:\n\n"
             f"{raw_english_text}\n\n"

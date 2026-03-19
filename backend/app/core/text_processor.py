@@ -5,6 +5,7 @@ Also includes text cleaning for pasted webpage content
 """
 
 import re
+import json
 from app.utils.logger import LoggerManager
 
 logger = LoggerManager.get_logger('text_processor')
@@ -278,7 +279,69 @@ ENGLISH_TO_BENGALI = {
     'reported': 'জানিয়েছে',
     'announced': 'ঘোষণা করেছে',
     'statement': 'বিবৃতি',
+    'Itinerary': 'ভ্রমণসূচি',
+    'graceful': 'লাবণ্যময়',
+    'elegant': 'মার্জিত',
+    'elegantly': 'মার্জিতভাবে',
+    'gracefully': 'লাবণ্যময়ভাবে',
 }
+
+
+def _load_user_word_corrections():
+    """Load user-defined word corrections from config/word_corrections.json and merge into globals."""
+    try:
+        from app.config import get_settings
+        settings = get_settings()
+        path = settings.WORD_CORRECTIONS_PATH
+        if not path.exists():
+            return
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Merge english_to_bengali additions
+        extra_e2b = data.get('english_to_bengali', {})
+        if extra_e2b:
+            ENGLISH_TO_BENGALI.update(extra_e2b)
+            logger.debug(f"Loaded {len(extra_e2b)} user english_to_bengali corrections")
+
+        # Append bengali corrections (pattern/replacement pairs)
+        extra_bn = data.get('bengali_corrections', [])
+        for entry in extra_bn:
+            pattern = entry.get('pattern')
+            replacement = entry.get('replacement', '')
+            if pattern:
+                WORD_CORRECTIONS.append((pattern, replacement))
+        if extra_bn:
+            logger.debug(f"Loaded {len(extra_bn)} user bengali corrections")
+    except Exception as e:
+        logger.warning(f"Could not load user word corrections: {e}")
+
+
+_load_user_word_corrections()
+
+
+_WESTERN_TO_BENGALI_DIGITS = str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')
+
+
+def convert_to_bengali_numerals(text: str) -> str:
+    """
+    Convert Western Arabic numerals (0-9) to Bengali numerals (০-৯)
+    in Bengali text. Skips numbers inside URLs and markdown links.
+    """
+    import re
+    # Skip URLs (http/https/www), markdown links [text](url), and bold markers
+    # Process character by character via regex substitution on safe segments
+    # Split on URL-like patterns and process the non-URL parts
+    url_pattern = re.compile(r'(https?://\S+|www\.\S+|\[.*?\]\(.*?\))')
+    parts = url_pattern.split(text)
+    result = []
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            # URL/link — keep as-is
+            result.append(part)
+        else:
+            result.append(part.translate(_WESTERN_TO_BENGALI_DIGITS))
+    return ''.join(result)
 
 
 def apply_word_corrections(text: str) -> str:
@@ -1916,6 +1979,9 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
 
     # Step 6: Replace English words — always
     processed_content = replace_english_words(processed_content)
+
+    # Step 6.5: Convert Western numerals to Bengali numerals — always
+    processed_content = convert_to_bengali_numerals(processed_content)
     _log_step("step6_word_corrections", processed_content)
 
     # Step 7: Split quotes — always

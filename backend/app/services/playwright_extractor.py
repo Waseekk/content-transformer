@@ -174,6 +174,27 @@ class PlaywrightExtractor:
             if not text or len(text) < 100:
                 raise PlaywrightExtractionError("Insufficient content extracted from page")
 
+            # Prepend title to text if not already present
+            if title and title.strip() and title.strip()[:30].lower() not in text[:200].lower():
+                text = title.strip() + '\n\n' + text
+
+            # Remove noise lines: photo credits, "See more:" links, copyright lines
+            clean_lines = []
+            for line in text.split('\n'):
+                stripped = line.strip()
+                # Skip photo credit lines (contain ©)
+                if '©' in stripped:
+                    continue
+                # Skip "See more:" internal links
+                if stripped.lower().startswith('see more:'):
+                    continue
+                # Skip very short standalone lines that are clearly nav/label artefacts (1-2 words, no Bengali)
+                import re as _re
+                if stripped and len(stripped.split()) <= 2 and not _re.search(r'[\u0980-\u09FF]', stripped) and stripped[-1] not in '.?!,':
+                    continue
+                clean_lines.append(line)
+            text = '\n'.join(clean_lines)
+
             # Extract metadata
             author = await self._extract_author(page)
             date = await self._extract_date(page)

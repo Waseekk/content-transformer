@@ -4,6 +4,7 @@ Replaces Google Translate with intelligent AI translation
 """
 
 import json
+import re
 import concurrent.futures
 from datetime import date
 from pathlib import Path
@@ -66,6 +67,39 @@ IMPORTANT:
 - If you cannot find certain fields, use null
 - Make sure the Bengali text is natural and readable
 """
+
+
+# Regex: a line that is ONLY 1-4 ASCII words (author attribution like "Roy", "George Joy")
+# Must be at least 2 chars, no Bengali, no digits, no punctuation except hyphens/apostrophes
+_AUTHOR_LINE_RE = re.compile(
+    r'^([A-Z][A-Za-z\'\-]+(?: [A-Z][A-Za-z\'\-]+){0,3})$'
+)
+
+
+def _protect_author_names(text: str) -> tuple:
+    """
+    Replace standalone author attribution lines with placeholders before translation.
+    Returns (protected_text, {placeholder: original_name}).
+    """
+    markers = {}
+    lines = text.split('\n')
+    protected = []
+    for line in lines:
+        stripped = line.strip()
+        if _AUTHOR_LINE_RE.match(stripped) and len(stripped) >= 2:
+            key = f'__AUTHOR_{len(markers)}__'
+            markers[key] = stripped
+            protected.append(key)
+        else:
+            protected.append(line)
+    return '\n'.join(protected), markers
+
+
+def _restore_author_names(text: str, markers: dict) -> str:
+    """Replace placeholders back with original author names."""
+    for key, name in markers.items():
+        text = text.replace(key, name)
+    return text
 
 
 class OpenAITranslator:
@@ -160,6 +194,7 @@ class OpenAITranslator:
 Guidelines:
 - Use modern Bangladeshi dialect (NOT Indian Bengali)
 - Keep proper nouns unchanged (names, places, organizations)
+- IMPORTANT: Short standalone lines that are just a person's name (e.g. "Roy", "Eleanor", "Yasmin", "George Joy", "Dave Thomas") are author attributions — keep them EXACTLY as-is in English, do NOT transliterate or translate them
 - Maintain journalistic tone and style
 - Output ONLY the Bengali translation — no labels, no "Part X", no introductory or concluding sentences
 - Do NOT add phrases like "In this section...", "Continuing from before...", "In conclusion..."
@@ -511,17 +546,25 @@ PASTED CONTENT:
             return {'translation': '', 'tokens_used': 0}
 
         try:
-            chunks = self._split_into_chunks(clean_text)
+            # Protect author attribution lines (e.g. "Roy", "George Joy") before translation
+            protected_text, author_markers = _protect_author_names(clean_text)
+            if author_markers:
+                logger.info(f"Protected {len(author_markers)} author name(s) from translation")
+
+            chunks = self._split_into_chunks(protected_text)
 
             # ── Single chunk ──────────────────────────────────────────────────
             if len(chunks) == 1:
-                return self._translate_only_single(clean_text)
+                result = self._translate_only_single(protected_text)
+                result['translation'] = _restore_author_names(result['translation'], author_markers)
+                return result
 
             # ── Multiple chunks: parallel ─────────────────────────────────────
             logger.info(f"Chunked translate_only: {len(chunks)} chunks in parallel")
             parallel = self._run_chunks_parallel(self._translate_chunk_only, chunks)
 
             translation = '\n\n'.join(r[0] for r in parallel['results'])
+            translation = _restore_author_names(translation, author_markers)
             total_tokens = parallel['total_tokens']
 
             logger.info(f"Chunked translation complete: {len(chunks)} chunks, {total_tokens} tokens")

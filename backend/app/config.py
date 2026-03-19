@@ -32,6 +32,7 @@ else:
 
 _SITES_CONFIG_PATH = _CONFIG_DIR / 'sites_config.json'
 _FORMATS_CONFIG_PATH = _CONFIG_DIR / 'formats' / 'bengali_news_styles.json'
+_WORD_CORRECTIONS_PATH = _CONFIG_DIR / 'word_corrections.json'
 
 
 def get_current_time() -> datetime:
@@ -102,6 +103,7 @@ class Settings(BaseSettings):
     # Configuration files
     SITES_CONFIG_PATH: Path = _SITES_CONFIG_PATH
     FORMATS_CONFIG_PATH: Path = _FORMATS_CONFIG_PATH
+    WORD_CORRECTIONS_PATH: Path = _WORD_CORRECTIONS_PATH
 
     # Scraper Settings
     SCRAPER_TIMEOUT: int = 15

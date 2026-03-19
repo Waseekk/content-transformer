@@ -263,7 +263,7 @@ async def enhance_content(
 
             results_dict = await asyncio.wait_for(
                 asyncio.to_thread(_run_combined),
-                timeout=180.0
+                timeout=360.0
             )
         else:
             # Standard path: Bengali text → format
@@ -274,14 +274,14 @@ async def enhance_content(
                     article_info=article_info,
                     formats=request.formats
                 ),
-                timeout=180.0
+                timeout=360.0
             )
 
         # Convert dict of results to list
         enhancement_results: List[EnhancementResult] = list(results_dict.values())
 
     except asyncio.TimeoutError:
-        logger.error(f"Enhancement timed out after 180s for user {current_user.id}")
+        logger.error(f"Enhancement timed out after 360s for user {current_user.id}")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="Content enhancement timed out. Please try again with shorter content."

@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search, support, admin_formats, admin_clients, user_config
+from app.api import scraper, articles, auth, translation, enhancement, scheduler, oauth, extraction, search, support, admin_formats, admin_clients, admin_word_corrections, admin_sources, user_config
 from app.config import get_settings
 from app.database import get_db
 from app.utils.logger import LoggerManager
@@ -66,6 +66,8 @@ app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(support.router, prefix="/api/support", tags=["support"])
 app.include_router(admin_formats.router, prefix="/api/admin/formats", tags=["admin-formats"])
 app.include_router(admin_clients.router, prefix="/api/admin/clients", tags=["admin-clients"])
+app.include_router(admin_word_corrections.router, prefix="/api/admin/word-corrections", tags=["admin-word-corrections"])
+app.include_router(admin_sources.router, prefix="/api/admin/sources", tags=["admin-sources"])
 app.include_router(user_config.router, prefix="/api/user", tags=["user-config"])
 
 # Mount uploads directory for serving attachments

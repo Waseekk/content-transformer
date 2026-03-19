@@ -115,6 +115,36 @@ SOFT_NEWS_SYSTEM_PROMPT = _BENGALI_STYLES.get('soft_news', {}).get('system_promp
 # USER PROMPT TEMPLATE
 # ============================================================================
 
+def _input_has_subheads(text: str) -> bool:
+    """
+    Detect whether the input text already contains subheads/section headers.
+    A subhead is a short line (5-80 chars) that does NOT end with sentence-ending
+    punctuation. Requires at least 2 such lines to avoid false positives from
+    the article title alone.
+    """
+    import re
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    matches = 0
+    for i, line in enumerate(lines):
+        # Skip the very first line (always the article title)
+        if i == 0:
+            continue
+        if len(line) < 5 or len(line) > 80:
+            continue
+        # If line ends with sentence-ending punctuation it's a paragraph, not a subhead
+        if line[-1] in '.?!।':
+            continue
+        # If line has Bengali characters and is short — likely a subhead
+        if re.search(r'[\u0980-\u09FF]', line):
+            matches += 1
+        # English ALL-CAPS short line — section header
+        elif line.isupper() and len(line.split()) <= 6:
+            matches += 1
+        if matches >= 3:
+            return True
+    return False
+
+
 def get_user_prompt(translated_text, article_info, input_word_count: int = None):
     """
     Create user prompt with article context
@@ -138,6 +168,13 @@ def get_user_prompt(translated_text, article_info, input_word_count: int = None)
         else "৫. উপযুক্ত দৈর্ঘ্য এবং ফরম্যাট মেনে চলুন"
     )
 
+    has_subheads = _input_has_subheads(translated_text)
+    subhead_instruction = (
+        "৩. মূল নিবন্ধের সেকশন শিরোনাম ও টিপস শিরোনাম — মূলের অনুবাদ ব্যবহার করুন, নতুন নাম বানাবেন না"
+        if has_subheads else
+        "৩. ⚠️ এই নিবন্ধে কোনো সাবহেড বা সেকশন শিরোনাম নেই — আউটপুটেও কোনো সাবহেড যোগ করবেন না। শুধু শিরোনাম, বাইলাইন, ভূমিকা এবং সাধারণ অনুচ্ছেদ।"
+    )
+
     return f"""নিচের ভ্রমণ সংবাদটি পুনর্লিখন করুন:
 
 মূল শিরোনাম: {headline}
@@ -148,11 +185,16 @@ def get_user_prompt(translated_text, article_info, input_word_count: int = None)
 {translated_text}
 
 নির্দেশনা:
-১. উপরের বিষয়বস্তু ব্যবহার করে আপনার স্টাইলে নতুন করে লিখুন
+১. মূল শিরোনাম ("মূল শিরোনাম:" এর পরে যা লেখা) বাংলায় অনুবাদ করুন এবং সেটিই ব্যবহার করুন — নতুন শিরোনাম বানাবেন না
 ২. সম্পূর্ণ বাংলাদেশী বাংলায় লিখুন (ভারতীয় বাংলা নয়)
-৩. তথ্য সঠিক রাখুন কিন্তু উপস্থাপনা আকর্ষণীয় করুন
-৪. পাঠকদের জন্য মূল্যবান এবং এনগেজিং করুন
+{subhead_instruction}
+৪. তথ্য সঠিক রাখুন কিন্তু উপস্থাপনা আকর্ষণীয় করুন
 {word_count_line}
+৬. ⚠️ ভূমিকা অনুচ্ছেদ ফরম্যাট — অবশ্যই মানতে হবে:
+   - ভূমিকা অনুচ্ছেদটি ৩-৪টি পূর্ণ বাক্য নিয়ে গঠিত হবে
+   - পুরো অনুচ্ছেদটি একসাথে **bold** করুন: **বাক্য ১। বাক্য ২। বাক্য ৩।**
+   - ❌ ভুল: শুধু একটি বাক্য বা শিরোনাম-স্টাইল লাইন bold করা
+   - ✅ সঠিক: পুরো ৩-৪ বাক্যের অনুচ্ছেদ একটি **...**-এর মধ্যে
 
 এখন লিখুন:"""
 
