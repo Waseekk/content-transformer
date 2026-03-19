@@ -23,6 +23,8 @@ import { SupportPage } from './pages/SupportPage';
 // Admin pages
 import { FormatsPage } from './pages/admin/FormatsPage';
 import { ClientsPage } from './pages/admin/ClientsPage';
+import { WordCorrectionsPage } from './pages/admin/WordCorrectionsPage';
+import { SourcesPage } from './pages/admin/SourcesPage';
 
 // Layout
 import { Layout } from './components/common/Layout';
@@ -125,6 +127,28 @@ function App() {
               <ProtectedRoute requireAdmin>
                 <Layout>
                   <ClientsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/word-corrections"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <WordCorrectionsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/sources"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <SourcesPage />
                 </Layout>
               </ProtectedRoute>
             }

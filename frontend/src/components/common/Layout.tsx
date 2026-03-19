@@ -149,8 +149,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                       </span>
                       {item.highlight ? (
                         <span className="relative z-10 flex flex-col items-center leading-none gap-0.5">
-                          <span className="text-[10px]">AI</span>
-                          <span>Assistant</span>
+                          <span className="text-xs">AI</span>
+                          <span className="text-xs">Assistant</span>
                         </span>
                       ) : (
                         <span className="relative z-10">{item.label}</span>

@@ -308,6 +308,35 @@ export interface PaginatedSearchResponse {
   error_message: string | null;
 }
 
+// ============================================================================
+// WORD CORRECTIONS
+// ============================================================================
+
+export const wordCorrectionsApi = {
+  suggestWord: async (english: string, bengali: string) => {
+    const response = await axios.post('/api/admin/word-corrections/suggest', { english, bengali });
+    return response.data;
+  },
+
+  getSuggestions: async () => {
+    const response = await axios.get('/api/admin/word-corrections/suggestions');
+    return response.data;
+  },
+
+  approveSuggestion: async (id: string) => {
+    const response = await axios.post(`/api/admin/word-corrections/suggestions/${id}/approve`);
+    return response.data;
+  },
+
+  rejectSuggestion: async (id: string) => {
+    await axios.delete(`/api/admin/word-corrections/suggestions/${id}`);
+  },
+};
+
+// ============================================================================
+// GOOGLE NEWS SEARCH
+// ============================================================================
+
 export const searchApi = {
   searchGoogleNews: async (params: {
     keyword: string;

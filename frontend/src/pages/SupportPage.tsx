@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { supportApi } from '../api/support';
+import { wordCorrectionsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AILoader } from '../components/ui';
 import type { SupportTicket, TicketStatus, TicketPriority, CreateTicketRequest, TicketWithUser, TicketAttachment } from '../types/support';
@@ -28,6 +29,7 @@ import {
   HiPhotograph,
   HiDocumentText,
   HiDocument,
+  HiTranslate,
 } from 'react-icons/hi';
 
 // File size formatter
@@ -59,6 +61,20 @@ export const SupportPage = () => {
   const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('');
+
+  // Word suggestion state
+  const [suggestEnglish, setSuggestEnglish] = useState('');
+  const [suggestBengali, setSuggestBengali] = useState('');
+
+  const suggestWordMutation = useMutation({
+    mutationFn: () => wordCorrectionsApi.suggestWord(suggestEnglish.trim(), suggestBengali.trim()),
+    onSuccess: () => {
+      toast.success('Word suggestion submitted! Admin will review it.');
+      setSuggestEnglish('');
+      setSuggestBengali('');
+    },
+    onError: () => toast.error('Failed to submit suggestion'),
+  });
 
   // File refs
   const createFileInputRef = useRef<HTMLInputElement>(null);
@@ -779,6 +795,44 @@ export const SupportPage = () => {
                   )}
                 </motion.button>
               </form>
+
+              {/* Suggest a Word */}
+              <div className="mt-6 bg-indigo-50 rounded-2xl border border-indigo-100 p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+                    <HiTranslate className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-gray-900">Suggest a Word</h2>
+                    <p className="text-xs text-gray-500">Suggest an English word and its Bengali replacement for AI output</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={suggestEnglish}
+                    onChange={e => setSuggestEnglish(e.target.value)}
+                    placeholder="English word"
+                    className="flex-1 px-3 py-2 border border-indigo-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    onKeyDown={e => e.key === 'Enter' && !suggestWordMutation.isPending && suggestEnglish.trim() && suggestBengali.trim() && suggestWordMutation.mutate()}
+                  />
+                  <input
+                    type="text"
+                    value={suggestBengali}
+                    onChange={e => setSuggestBengali(e.target.value)}
+                    placeholder="Bengali replacement"
+                    className="flex-1 px-3 py-2 border border-indigo-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    onKeyDown={e => e.key === 'Enter' && !suggestWordMutation.isPending && suggestEnglish.trim() && suggestBengali.trim() && suggestWordMutation.mutate()}
+                  />
+                  <button
+                    onClick={() => suggestWordMutation.mutate()}
+                    disabled={suggestWordMutation.isPending || !suggestEnglish.trim() || !suggestBengali.trim()}
+                    className="inline-flex items-center gap-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    {suggestWordMutation.isPending ? 'Sending...' : 'Submit'}
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
 

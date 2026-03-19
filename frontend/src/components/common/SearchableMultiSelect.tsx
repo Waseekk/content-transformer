@@ -8,6 +8,7 @@ import { HiChevronDown, HiSearch, HiX } from 'react-icons/hi';
 interface Option {
   value: string;
   label: string;
+  sublabel?: string;
   count?: number;
 }
 
@@ -38,7 +39,8 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
 
   // Filter options by search
   const filteredOptions = sortedOptions.filter(option =>
-    option.label.toLowerCase().includes(search.toLowerCase())
+    option.label.toLowerCase().includes(search.toLowerCase()) ||
+    option.value.toLowerCase().includes(search.toLowerCase())
   );
 
   // Close dropdown when clicking outside
@@ -100,11 +102,14 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
             placeholder
           ) : (
             <span className="flex flex-wrap gap-1">
-              {selected.slice(0, 3).map((val) => (
-                <span key={val} className="inline-flex items-center px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full">
-                  {val}
-                </span>
-              ))}
+              {selected.slice(0, 3).map((val) => {
+                const opt = options.find(o => o.value === val);
+                return (
+                  <span key={val} className="inline-flex items-center px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full">
+                    {opt?.label || val}
+                  </span>
+                );
+              })}
               {selected.length > 3 && (
                 <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
                   +{selected.length - 3} more
