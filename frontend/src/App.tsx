@@ -19,6 +19,7 @@ import { TranslationPage } from './pages/TranslationPage';
 import { SchedulerPage } from './pages/SchedulerPage';
 import { UserDashboardPage } from './pages/UserDashboardPage';
 import { SupportPage } from './pages/SupportPage';
+import { AboutPage } from './pages/AboutPage';
 
 // Admin pages
 import { FormatsPage } from './pages/admin/FormatsPage';
@@ -104,6 +105,17 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SupportPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/about"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AboutPage />
                 </Layout>
               </ProtectedRoute>
             }

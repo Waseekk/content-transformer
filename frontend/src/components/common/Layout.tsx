@@ -7,7 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store/useAppStore';
 import { CursorGlow } from '../ui';
-import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX, HiOfficeBuilding, HiDocumentText, HiGlobe, HiPencilAlt } from 'react-icons/hi';
+import { HiHome, HiNewspaper, HiSparkles, HiClock, HiLogout, HiChartBar, HiQuestionMarkCircle, HiMenu, HiX, HiOfficeBuilding, HiDocumentText, HiGlobe, HiPencilAlt, HiInformationCircle } from 'react-icons/hi';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface LayoutProps {
@@ -230,6 +230,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   >
                     <HiQuestionMarkCircle className="w-5 h-5" />
                     <span className="font-medium">Support</span>
+                  </Link>
+
+                  <Link
+                    to="/about"
+                    onClick={() => setIsUserPanelOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      location.pathname === '/about'
+                        ? 'bg-gray-900 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <HiInformationCircle className="w-5 h-5" />
+                    <span className="font-medium">About</span>
                   </Link>
 
                   {/* Admin Section */}
