@@ -47,7 +47,7 @@ What to IGNORE:
 Translation Guidelines:
 - Use modern Bangladeshi Bengali dialect
 - Maintain the journalistic tone
-- Keep proper nouns in original language (place names, person names)
+- Transliterate proper nouns into modern Bangladeshi Bengali script (e.g. 'Paris' → 'প্যারিস', 'Donald Trump' → 'ডোনাল্ড ট্রাম্প', 'London' → 'লন্ডন', 'New York' → 'নিউ ইয়র্ক')
 - Translate idioms and phrases contextually (not word-by-word)
 - Preserve the meaning and nuance
 - Keep numbers, dates, and statistics accurate
@@ -193,7 +193,7 @@ class OpenAITranslator:
 
 Guidelines:
 - Use modern Bangladeshi dialect (NOT Indian Bengali)
-- Keep proper nouns unchanged (names, places, organizations)
+- Transliterate proper nouns into modern Bangladeshi Bengali script (e.g. 'Paris' → 'প্যারিস', 'Donald Trump' → 'ডোনাল্ড ট্রাম্প', 'London' → 'লন্ডন')
 - IMPORTANT: Short standalone lines that are just a person's name (e.g. "Roy", "Eleanor", "Yasmin", "George Joy", "Dave Thomas") are author attributions — keep them EXACTLY as-is in English, do NOT transliterate or translate them
 - Maintain journalistic tone and style
 - Output ONLY the Bengali translation — no labels, no "Part X", no introductory or concluding sentences
@@ -465,7 +465,7 @@ KEEP only:
 TASK 2 - TRANSLATE TO BENGALI:
 Translate the extracted clean article to natural Bangladeshi Bengali.
 - Use modern Bangladeshi dialect (NOT Indian Bengali)
-- Keep proper nouns unchanged (names, places)
+- Transliterate proper nouns into modern Bangladeshi Bengali script (e.g. 'Paris' → 'প্যারিস', 'Donald Trump' → 'ডোনাল্ড ট্রাম্প', 'London' → 'লন্ডন')
 - Maintain journalistic tone
 - Today's date is {today}. Use past tense for events/years that have already passed, and future tense only for genuinely upcoming events
 - Numbers, figures, and statistics must be reproduced EXACTLY as written — do not round or approximate (e.g. $16.5 billion must stay $16.5 billion, not $17 billion)
@@ -585,7 +585,7 @@ PASTED CONTENT:
 
 Translation Guidelines:
 - Use modern Bangladeshi Bengali dialect (NOT Indian Bengali)
-- Keep proper nouns unchanged (names, places, organizations)
+- Transliterate proper nouns into modern Bangladeshi Bengali script (e.g. 'Paris' → 'প্যারিস', 'Donald Trump' → 'ডোনাল্ড ট্রাম্প', 'London' → 'লন্ডন', 'New York' → 'নিউ ইয়র্ক')
 - Maintain the journalistic tone and style
 - Translate idioms contextually (not word-by-word)
 - Keep numbers, dates, and statistics accurate

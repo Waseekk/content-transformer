@@ -95,7 +95,7 @@ KEEP: article headline, body paragraphs, direct quotes, statistics, author name,
 
 STEP 2 — TRANSLATE:
 Translate the extracted content to natural Bangladeshi Bengali (NOT Indian Bengali).
-- Keep proper nouns unchanged (person names, place names, organizations)
+- Transliterate proper nouns into modern Bangladeshi Bengali script (e.g. 'Paris' → 'প্যারিস', 'Donald Trump' → 'ডোনাল্ড ট্রাম্প', 'London' → 'লন্ডন')
 - Use modern Bangladeshi dialect and journalistic tone
 - Keep numbers, dates, and statistics accurate
 

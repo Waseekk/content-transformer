@@ -67,6 +67,8 @@ export const ArticlesPage = () => {
     selectArticle,
     activeScraperJobId,
     setActiveScraperJobId,
+    defaultPublishers,
+    setDefaultPublishers,
   } = useAppStore();
 
   const { data: publishersData } = useArticlePublishers(filters.sources ?? []);
@@ -181,6 +183,15 @@ export const ArticlesPage = () => {
   }, [setActiveScraperJobId]);
 
   const [savingDefault, setSavingDefault] = useState(false);
+  const [savingPublisherDefault, setSavingPublisherDefault] = useState(false);
+
+  // Auto-apply saved publisher default when no publishers are currently selected
+  useEffect(() => {
+    if (!filters.publishers?.length && defaultPublishers.length > 0) {
+      setFilters({ publishers: defaultPublishers, page: 1 });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveAsDefault = async () => {
     setSavingDefault(true);
@@ -196,6 +207,13 @@ export const ArticlesPage = () => {
     } finally {
       setSavingDefault(false);
     }
+  };
+
+  const handleSavePublisherAsDefault = () => {
+    setSavingPublisherDefault(true);
+    setDefaultPublishers(filters.publishers ?? []);
+    toast.success('Saved as your default publishers');
+    setSavingPublisherDefault(false);
   };
 
   const totalPages = Math.ceil(total / filters.pageSize);
@@ -430,6 +448,16 @@ export const ArticlesPage = () => {
                     selected={filters.publishers ?? []}
                     onChange={(selected) => setFilters({ publishers: selected, page: 1 })}
                   />
+                  {(filters.publishers?.length ?? 0) > 0 && (
+                    <button
+                      onClick={handleSavePublisherAsDefault}
+                      disabled={savingPublisherDefault}
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 font-medium disabled:opacity-50 transition-colors"
+                    >
+                      <HiBookmark className="w-3.5 h-3.5" />
+                      {savingPublisherDefault ? 'Saving...' : 'Set as my default publishers'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

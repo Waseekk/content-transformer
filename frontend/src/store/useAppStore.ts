@@ -113,11 +113,15 @@ interface AppState {
   setSimpleWorkflowTranslation: (t: { original: string; translated: string } | null) => void;
   setSimpleWorkflowProcessing: (v: boolean) => void;
   clearSimpleWorkflow: () => void;
+
+  // Publisher preference
+  defaultPublishers: string[];
+  setDefaultPublishers: (publishers: string[]) => void;
 }
 
 const defaultFilters: ArticleFilters = {
   search: '',
-  sources: [],
+  sources: ['newsuk_travel'],
   publishers: [],
   page: 1,
   pageSize: 10,
@@ -288,9 +292,25 @@ export const useAppStore = create<AppState>()(
         simpleWorkflowTranslation: null,
         simpleWorkflowProcessing: false,
       }),
+
+      defaultPublishers: [],
+      setDefaultPublishers: (publishers) => set({ defaultPublishers: publishers }),
     }),
     {
       name: 'travel-news-store', // localStorage key
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        if (version < 2) {
+          // Migrate existing users: set newsuk_travel as default source if they had no filter
+          if (!persistedState.filters?.sources?.length) {
+            persistedState.filters = {
+              ...(persistedState.filters ?? {}),
+              sources: ['newsuk_travel'],
+            };
+          }
+        }
+        return persistedState;
+      },
       partialize: (state) => ({
         // Only persist these fields
         selectedArticle: state.selectedArticle,
@@ -304,6 +324,7 @@ export const useAppStore = create<AppState>()(
         simpleWorkflowResult: state.simpleWorkflowResult,
         simpleWorkflowTranslation: state.simpleWorkflowTranslation,
         // simpleWorkflowProcessing intentionally NOT persisted (no spinner on reload)
+        defaultPublishers: state.defaultPublishers,
       }),
     }
   )
