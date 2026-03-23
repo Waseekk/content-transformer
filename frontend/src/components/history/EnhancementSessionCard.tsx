@@ -117,7 +117,7 @@ const markdownToHtml = (markdown: string): string => {
 
 interface FormatBoxProps {
   title: string;
-  formatType: 'hard_news' | 'soft_news';
+  formatType: string;
   data: EnhancementData;
   englishContent: string | null;
   fullWidth?: boolean;
