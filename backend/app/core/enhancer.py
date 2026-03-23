@@ -434,6 +434,12 @@ class ContentEnhancer:
                 for warning in validation['warnings']:
                     logger.warning(f"Structure warning for {format_type}: {warning}")
 
+            # Strip newspaper name from byline for generic format
+            if format_type == 'hard_news_generic':
+                processed_content = processed_content.replace(
+                    'নিউজ ডেস্ক, বাংলার কলম্বাস', 'নিউজ ডেস্ক'
+                )
+
             # Initialize result
             result = EnhancementResult(
                 format_type=format_type,

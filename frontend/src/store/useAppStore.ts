@@ -313,7 +313,7 @@ export const useAppStore = create<AppState>()(
       },
       partialize: (state) => ({
         // Only persist these fields
-        selectedArticle: state.selectedArticle,
+        // selectedArticle intentionally NOT persisted — stale article shouldn't pre-fill on reload
         filters: state.filters,
         pastedContent: state.pastedContent,
         currentTranslation: state.currentTranslation,

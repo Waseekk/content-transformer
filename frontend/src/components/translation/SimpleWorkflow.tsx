@@ -23,6 +23,8 @@ import {
   HiNewspaper,
   HiBookOpen,
   HiDocumentText,
+  HiExternalLink,
+  HiClipboardCheck,
 } from 'react-icons/hi';
 
 interface SimpleWorkflowProps {
@@ -46,9 +48,19 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
   const enhance = useEnhance();
 
   const [pastedContent, setPastedContent] = useState('');
+  const [urlCopied, setUrlCopied] = useState(false);
+
+  const handleCopyUrl = () => {
+    if (selectedArticle?.article_url) {
+      navigator.clipboard.writeText(selectedArticle.article_url);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
+    }
+  };
 
   const {
     selectedArticle,
+    selectArticle,
     simpleWorkflowResult: result,
     simpleWorkflowTranslation: translation,
     simpleWorkflowProcessing: isProcessing,
@@ -61,6 +73,11 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
   const handleClearAll = () => {
     setPastedContent('');
     clearSimpleWorkflow();
+    selectArticle(null);
+  };
+
+  const handleNewUrl = () => {
+    selectArticle(null);
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -89,7 +106,9 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
     const bengaliInput = isBengali(pastedContent);
 
     try {
-      if (defaultFormat.slug === 'hard_news_automate_content' && !bengaliInput) {
+      const isAutomateFormat = defaultFormat.slug === 'hard_news_automate_content' || defaultFormat.slug === 'hard_news_generic';
+
+      if (isAutomateFormat && !bengaliInput) {
         const englishWordCount = pastedContent.split(/\s+/).filter(Boolean).length;
 
         if (englishWordCount <= 1000) {
@@ -135,7 +154,7 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
             });
           }
         }
-      } else if (defaultFormat.slug === 'hard_news_automate_content' && bengaliInput) {
+      } else if (isAutomateFormat && bengaliInput) {
         // Bengali paste — skip translate entirely, enhance directly (already Bengali)
         const enhanceResult = await enhance.mutateAsync({
           text: pastedContent,
@@ -262,8 +281,62 @@ export const SimpleWorkflow: React.FC<SimpleWorkflowProps> = ({
           </p>
         </motion.div>
 
+        {/* Selected Article Card */}
+        {selectedArticle && (
+          <AnimatedCard delay={0.05} className="mb-6 p-5">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <HiDocumentText className="w-6 h-6 text-white" />
+                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white shadow-sm"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium px-2 py-0.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full">
+                    {selectedArticle.publisher}
+                  </span>
+                  <span className="text-xs text-gray-400">Selected Article</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 line-clamp-1 flex-1">
+                    {selectedArticle.headline}
+                  </h3>
+                  {selectedArticle.article_url && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={handleCopyUrl}
+                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-emerald-100 flex items-center justify-center transition-colors group"
+                        title="Copy URL"
+                      >
+                        {urlCopied
+                          ? <HiClipboardCheck className="w-4 h-4 text-emerald-500" />
+                          : <HiClipboard className="w-4 h-4 text-gray-500 group-hover:text-emerald-600 transition-colors" />
+                        }
+                      </button>
+                      <a
+                        href={selectedArticle.article_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center transition-colors group"
+                        title="Open original article"
+                      >
+                        <HiExternalLink className="w-4 h-4 text-gray-500 group-hover:text-indigo-600 transition-colors" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </AnimatedCard>
+        )}
+
         {/* URL Extractor */}
-        <URLExtractor onExtractedAndTranslated={handleURLExtracted} initialUrl={selectedArticle?.article_url ?? ''} />
+        <URLExtractor onExtractedAndTranslated={handleURLExtracted} initialUrl={selectedArticle?.article_url ?? ''} onNewUrl={handleNewUrl} />
 
         {/* Paste Area (when no result yet) */}
         {!result && (

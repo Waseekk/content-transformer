@@ -6,16 +6,17 @@
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
-import { HiLink, HiSparkles, HiCheckCircle, HiRefresh } from 'react-icons/hi';
+import { HiLink, HiSparkles, HiCheckCircle, HiRefresh, HiExternalLink } from 'react-icons/hi';
 import { AnimatedCard, GlowButton } from '../ui';
 import { useURLExtractAndTranslate } from '../../hooks/useURLExtraction';
 
 interface URLExtractorProps {
   onExtractedAndTranslated: (englishContent: string, bengaliContent: string, title?: string, extractionMethod?: string) => void;
   initialUrl?: string;
+  onNewUrl?: () => void;
 }
 
-export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTranslated, initialUrl }) => {
+export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTranslated, initialUrl, onNewUrl }) => {
   const [url, setUrl] = useState(initialUrl || '');
   const [extractedUrl, setExtractedUrl] = useState<string | null>(null);
   const [wasBengaliPassthrough, setWasBengaliPassthrough] = useState(false);
@@ -75,6 +76,7 @@ export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTransl
     setExtractedUrl(null);
     setWasBengaliPassthrough(false);
     setUrl('');
+    onNewUrl?.();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -155,17 +157,20 @@ export const URLExtractor: React.FC<URLExtractorProps> = ({ onExtractedAndTransl
               focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20
               transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed
+              ${isValidUrl(url) ? 'pr-10' : ''}
             `}
           />
-          {/* URL validation indicator */}
-          {url && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={`absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${
-                isValidUrl(url) ? 'bg-emerald-400' : 'bg-gray-300'
-              }`}
-            />
+          {/* Open in browser link — useful for paywalls/verification */}
+          {isValidUrl(url) && (
+            <a
+              href={normalizeUrl(url)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open article in browser"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-600 transition-colors"
+            >
+              <HiExternalLink className="w-4 h-4" />
+            </a>
           )}
         </div>
         <GlowButton

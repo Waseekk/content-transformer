@@ -203,7 +203,9 @@ const FormatBox: React.FC<FormatBoxProps> = ({
 
       // Add Bengali News section header (only if not hiding format labels)
       if (!hideFormatLabels) {
-        const bengaliTitle = formatType === 'hard_news' ? 'হার্ড নিউজ (HARD NEWS)' : 'সফট নিউজ (SOFT NEWS)';
+        const bengaliTitle = formatType === 'hard_news' ? 'হার্ড নিউজ (HARD NEWS)'
+          : (formatType === 'hard_news_automate_content' || formatType === 'hard_news_generic') ? 'AI Content'
+          : 'সফট নিউজ (SOFT NEWS)';
         sections.push(new Paragraph({
           children: [new TextRun({ text: bengaliTitle, bold: true, size: 28 })],
           heading: HeadingLevel.HEADING_1,
@@ -231,6 +233,8 @@ const FormatBox: React.FC<FormatBoxProps> = ({
       let filename: string;
       if (hideFormatLabels) {
         filename = `${downloadPrefix}-${getBengaliDate()}.docx`;
+      } else if (formatType === 'hard_news_generic') {
+        filename = `নিউজ ডেস্ক-হার্ড নিউজ-${getBengaliDate()}.docx`;
       } else {
         const formatTypeBengali = formatType === 'hard_news' ? 'হার্ড নিউজ' : 'সফট নিউজ';
         filename = `${downloadPrefix}-${formatTypeBengali}-${getBengaliDate()}.docx`;

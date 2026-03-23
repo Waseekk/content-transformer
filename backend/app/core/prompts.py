@@ -219,6 +219,18 @@ FORMAT_CONFIG = {
             "max_sentences_per_paragraph": 2
         }
     },
+    'hard_news_generic': {
+        'name': 'হার্ড নিউজ (জেনেরিক)',
+        'icon': '📰',
+        'system_prompt': HARD_NEWS_SYSTEM_PROMPT,  # DB overrides this with automate prompt
+        'temperature': 0.5,
+        'max_tokens': 4096,
+        'description': 'পেশাদার তথ্যভিত্তিক সংবাদ (নিরপেক্ষ বাইলাইন)',
+        'rules': {
+            "allow_subheads": True,
+            "min_words": 250
+        }
+    },
     'soft_news': {
         'name': 'সফট নিউজ (বাংলার কলম্বাস)',
         'icon': '✍️',
