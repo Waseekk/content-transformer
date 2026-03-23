@@ -34,6 +34,7 @@ RUN playwright install chromium && \
 
 # Copy application
 COPY backend/app ./app
+COPY backend/migrations ./migrations
 COPY config ./config
 
 # Create runtime directories
