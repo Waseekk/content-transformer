@@ -11,6 +11,7 @@ from pathlib import Path
 
 from app.core.ai_providers import get_provider
 from app.utils.logger import LoggerManager
+from app.core.text_processor import clean_url_extracted_content
 
 logger = LoggerManager.get_logger('translator')
 
@@ -403,6 +404,10 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
 
         if not self._initialize_provider():
             return {'translation': text, 'clean_english': text, 'tokens_used': 0}
+
+        # Pre-clean: strip noise (Related reading, Editorial disclaimer, Featured image by, etc.)
+        # before AI even sees the text — catches what the AI extraction prompt misses.
+        text = clean_url_extracted_content(text)
 
         try:
             chunks = self._split_into_chunks(text)
