@@ -17,6 +17,7 @@ from app.middleware.auth import get_current_active_user
 from app.services.content_extraction import ContentExtractor, ExtractionError
 from app.core.translator import OpenAITranslator
 from app.utils.language_detection import detect_language
+from app.core.text_processor import clean_url_extracted_content
 
 router = APIRouter()
 
@@ -123,9 +124,10 @@ async def extract_from_url(
             method='auto'  # Use cascade: Playwright → Trafilatura → Newspaper3k
         )
 
+        cleaned_content = clean_url_extracted_content(result.get('text', ''))
         return URLExtractionResponse(
             success=True,
-            content=result.get('text', ''),
+            content=cleaned_content,
             title=result.get('title', ''),
             extraction_method=result.get('method', 'unknown'),
             error_message=None
@@ -198,7 +200,7 @@ async def extract_and_translate_from_url(
             error_message="Failed to extract content, please contact admin if the problem persists.\n\nNB: Some websites may need manual extraction."
         )
 
-    extracted_content = extracted.get('text', '')
+    extracted_content = clean_url_extracted_content(extracted.get('text', ''))
     title = extracted.get('title', '')
     extraction_method = extracted.get('method', 'unknown')
 
