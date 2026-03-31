@@ -49,6 +49,7 @@ CONTENT_START_INDICATORS = [
 CONTENT_END_INDICATORS = [
     r'^Read\s*more:?\s*$',
     r'^Related\s*articles?:?\s*$',
+    r'^Related\s+reading:?\s*$',       # "Related reading:" (TPG, NerdWallet, etc.)
     r'^See\s*also:?\s*$',
     r'^More\s*from\s*',
     r'^Advertisement\s*$',
@@ -61,6 +62,19 @@ CONTENT_END_INDICATORS = [
     r'^Popular\s*',
     r'^Top\s*\d+\s*',  # Top 10, Top 5, etc.
     r'^Best\s*\w+\s*(for|in|of)\s*',  # Best deals for...
+]
+
+# Noise lines to strip from URL-extracted content (line-level removal, not truncation)
+# These appear anywhere in the article, not just at the end.
+URL_NOISE_PATTERNS = [
+    r'^Featured\s+image\s+by\b',          # "Featured image by LEFAY"
+    r'^Editorial\s+disclaimer:',           # "Editorial disclaimer: Opinions expressed..."
+    r'^Opinions\s+expressed\s+here\s+are', # standalone disclaimer variant
+    r'^\[?\s*Image\s+credit:',             # "[Image credit: ...]"
+    r'^Photo\s+(credit|by|courtesy):',     # "Photo credit: Getty Images"
+    r'^Credit:\s*\w',                       # "Credit: Reuters"
+    r'^Advertiser\s+disclosure',           # "Advertiser disclosure:"
+    r'^Compensation\s+(may|does)\s+',      # affiliate disclosure lines
 ]
 
 
@@ -177,6 +191,60 @@ def clean_pasted_text(text: str) -> str:
     return result
 
 
+def clean_url_extracted_content(text: str) -> str:
+    """
+    Remove trailing noise from URL-extracted content (Playwright/Trafilatura/Newspaper3k).
+
+    Unlike clean_pasted_text() which handles raw webpage pastes, this targets
+    already-extracted article text that still contains footer/sidebar noise that
+    extractors fail to strip:
+    - "Related reading:" sections with article link lists
+    - "Featured image by [name]" credits
+    - "Editorial disclaimer: ..." lines
+    - Photo/image credit lines
+
+    Applies two passes:
+    1. Truncate at the first CONTENT_END_INDICATOR (stops at "Related reading:", etc.)
+    2. Strip individual URL_NOISE_PATTERNS lines from remaining content
+
+    Safe for already-clean content — no-op if no noise found.
+    """
+    if not text or len(text) < 100:
+        return text
+
+    lines = text.split('\n')
+    result_lines = []
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Pass 1: truncate at end indicators (e.g. "Related reading:")
+        truncate = False
+        for pattern in CONTENT_END_INDICATORS:
+            if re.search(pattern, stripped, re.IGNORECASE):
+                truncate = True
+                break
+        if truncate:
+            logger.info(f"URL content cleaner: truncated at '{stripped[:60]}'")
+            break
+
+        # Pass 2: skip individual noise lines (e.g. "Featured image by LEFAY")
+        is_noise = False
+        for pattern in URL_NOISE_PATTERNS:
+            if re.search(pattern, stripped, re.IGNORECASE):
+                is_noise = True
+                logger.info(f"URL content cleaner: removed noise line '{stripped[:60]}'")
+                break
+        if is_noise:
+            continue
+
+        result_lines.append(line)
+
+    result = '\n'.join(result_lines).strip()
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    return result
+
+
 def extract_main_article(text: str) -> dict:
     """
     Extract main article content and metadata from pasted text.
@@ -285,6 +353,51 @@ ENGLISH_TO_BENGALI = {
     'elegantly': 'মার্জিতভাবে',
     'gracefully': 'লাবণ্যময়ভাবে',
 }
+
+
+# ============================================================================
+# AI-TELL PHRASE REPLACEMENTS (Reduce AI detection score)
+# Applied only to body paragraphs (non-bold) — skips headline, byline, intro.
+# Targets the highest-frequency AI connector phrases in Bengali journalism.
+# ============================================================================
+
+AI_PHRASE_REPLACEMENTS = [
+    # "verb + যে" connector — most common AI tell; replace with comma
+    (r'(জানান|বলেন|জানিয়েছেন|বলেছেন|জানা গেছে|বলা হয়েছে)\s+যে\s+', r'\1, '),
+    # Filler transition phrases
+    (r'উল্লেখ্য যে[,]?\s*', 'এদিকে '),
+    (r'গুরুত্বপূর্ণ যে[,]?\s*', ''),
+    (r'এই প্রসঙ্গে বলা যায়[,]?\s*', 'এ বিষয়ে '),
+    (r'বিশেষভাবে উল্লেখযোগ্য[,]?\s*', 'লক্ষণীয় যে '),
+    (r'এটি উল্লেখযোগ্য যে[,]?\s*', 'লক্ষণীয় বিষয় হলো, '),
+    (r'এটি স্পষ্ট যে[,]?\s*', 'স্পষ্টতই '),
+    # Overly formal passive constructions
+    (r'পরিচালিত হচ্ছে', 'চলছে'),
+    (r'পরিচালনা করা হচ্ছে', 'চালানো হচ্ছে'),
+    (r'পর্যবেক্ষণ করা হয়েছে', 'দেখা গেছে'),
+    (r'সংগঠিত হয়েছে', 'হয়েছে'),
+    (r'পরিচালিত হয়', 'চলে'),
+]
+
+
+def replace_ai_phrases(text: str) -> str:
+    """
+    Replace high-frequency AI-tell phrases with natural Bengali alternatives.
+    Only operates on non-bold body paragraphs — skips headline, byline, and intro.
+    """
+    paragraphs = text.split('\n\n')
+    result = []
+    for para in paragraphs:
+        stripped = para.strip()
+        # Skip bold paragraphs (headline, intro, subheads)
+        if stripped.startswith('**'):
+            result.append(para)
+            continue
+        # Apply replacements
+        for pattern, replacement in AI_PHRASE_REPLACEMENTS:
+            stripped = re.sub(pattern, replacement, stripped)
+        result.append(stripped)
+    return '\n\n'.join(result)
 
 
 def _load_user_word_corrections():
@@ -1535,7 +1648,7 @@ def fix_three_line_paragraphs(text: str) -> str:
         # Find sentences with quotations (closing quote)
         quote_indices = [i for i, s in enumerate(full_sentences) if '"' in s]
 
-        # Group sentences: max 2 per paragraph, quotes at end of their paragraph
+        # Group sentences: max 2 per paragraph
         current_group = []
         for i, sentence in enumerate(full_sentences):
             current_group.append(sentence)
@@ -1544,14 +1657,13 @@ def fix_three_line_paragraphs(text: str) -> str:
             should_split = False
 
             if len(current_group) >= 2:
-                # Have 2 sentences, time to split
+                # Have 2 sentences — always split, no exceptions.
+                # The old "wait for quote in next sentence" logic was removed because
+                # it caused 3-sentence accumulation: [S1, S2, S3_quote] → one long para.
+                # split_quotes() (Step 7) already ensures quotes end paragraphs before this runs.
                 should_split = True
 
-                # But if next sentence has a quote and current doesn't, wait
-                if i + 1 < len(full_sentences) and '"' in full_sentences[i + 1] and '"' not in sentence:
-                    should_split = False
-
-            # If current sentence has a quote, always split after it
+            # If current sentence has a quote, always split after it (even at 1 sentence)
             if '"' in sentence and len(current_group) >= 1:
                 should_split = True
 
@@ -1973,6 +2085,10 @@ def process_enhanced_content(content: str, format_type: str, rules: dict = None,
 
     # Step 4: Apply word corrections — always
     processed_content = apply_word_corrections(processed_content)
+
+    # Step 4.5: Replace AI-tell phrases (body paragraphs only) — automate format only
+    if format_type == 'hard_news_automate_content':
+        processed_content = replace_ai_phrases(processed_content)
 
     # Step 5: Fix সহ joining — always
     processed_content = fix_saho_joining(processed_content)
