@@ -130,8 +130,9 @@ export const FormatCard: React.FC<FormatCardProps> = ({
   formatId,
   onContentUpdate,
 }) => {
-  const { userConfig } = useAuth();
+  const { user, userConfig } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [copiedEn, setCopiedEn] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content || '');
 
@@ -180,6 +181,18 @@ export const FormatCard: React.FC<FormatCardProps> = ({
       } catch {
         toast.error('Failed to copy');
       }
+    }
+  };
+
+  const handleCopyEnglish = async () => {
+    if (!englishContent) return;
+    try {
+      await navigator.clipboard.writeText(englishContent);
+      setCopiedEn(true);
+      setTimeout(() => setCopiedEn(false), 2000);
+      toast.success('English content copied!');
+    } catch {
+      toast.error('Failed to copy');
     }
   };
 
@@ -451,6 +464,27 @@ export const FormatCard: React.FC<FormatCardProps> = ({
                 </motion.button>
               </div>
             </div>
+
+            {/* English Source — visible for hard_news_generic and admins */}
+            {englishContent && (formatId === 'hard_news_generic' || user?.is_admin) && (
+              <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">English Source</span>
+                  <button
+                    onClick={handleCopyEnglish}
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-white border border-gray-300 hover:bg-gray-100 text-gray-600 rounded-lg font-medium transition-all"
+                  >
+                    {copiedEn ? <HiClipboardCheck className="w-3 h-3" /> : <HiClipboard className="w-3 h-3" />}
+                    {copiedEn ? 'Copied!' : 'Copy English'}
+                  </button>
+                </div>
+                <div className="p-4 max-h-52 overflow-y-auto">
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                    {englishContent}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Content Display/Edit */}
             <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
