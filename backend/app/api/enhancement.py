@@ -266,14 +266,21 @@ async def enhance_content(
                 timeout=360.0
             )
         else:
-            # Standard path: Bengali text → format
+            # Standard path: Bengali text → format (one enhance_single_format call per format)
+            def _run_standard():
+                if not enhancer._initialize_provider():
+                    return {}
+                results = {}
+                for fmt in request.formats:
+                    results[fmt] = enhancer.enhance_single_format(
+                        translated_text=content_text,
+                        article_info=article_info,
+                        format_type=fmt
+                    )
+                return results
+
             results_dict = await asyncio.wait_for(
-                asyncio.to_thread(
-                    enhancer.enhance_all_formats,
-                    translated_text=content_text,
-                    article_info=article_info,
-                    formats=request.formats
-                ),
+                asyncio.to_thread(_run_standard),
                 timeout=360.0
             )
 

@@ -18,13 +18,25 @@ from typing import Optional
 # ============================================================================
 
 def _load_bengali_news_styles():
-    """Load Bengali news style configurations from JSON file if exists"""
-    json_path = Path(__file__).parent.parent / 'config' / 'formats' / 'bengali_news_styles.json'
-    try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    """Load Bengali news style configurations from JSON file.
+
+    Checks paths in order:
+    1. Docker path: /app/config/formats/ (production)
+    2. Project root: config/formats/ (local dev — 4 levels up from this file)
+    3. Legacy path: backend/app/config/formats/ (old location, kept as fallback)
+    """
+    candidates = [
+        Path('/app/config/formats/bengali_news_styles.json'),
+        Path(__file__).parent.parent.parent.parent / 'config' / 'formats' / 'bengali_news_styles.json',
+        Path(__file__).parent.parent / 'config' / 'formats' / 'bengali_news_styles.json',
+    ]
+    for json_path in candidates:
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            continue
+    return {}
 
 _BENGALI_STYLES = _load_bengali_news_styles()
 
@@ -62,7 +74,9 @@ def get_format_config_from_db(format_type: str, db_session=None):
                 FormatConfig.is_active == True
             ).first()
 
-            if format_config:
+            if format_config and format_config.system_prompt and format_config.system_prompt != '__use_json__':
+                # Only use DB config when system_prompt is a real prompt (not empty or sentinel).
+                # '__use_json__' = row exists for client format resolution but JSON is the prompt source.
                 return format_config.get_config_for_enhancer()
             return None
         finally:
@@ -271,5 +285,17 @@ def get_format_config(format_type: str, db_session=None):
     if db_config:
         return db_config
 
-    # Fall back to JSON/hardcoded config
+    # Try JSON styles file directly (covers formats not in FORMAT_CONFIG dict, e.g. hard_news_automate_content)
+    if format_type in _BENGALI_STYLES:
+        style = _BENGALI_STYLES[format_type]
+        return {
+            'name': style.get('display_name', format_type),
+            'system_prompt': style['system_prompt'],
+            'temperature': style.get('temperature', 0.68),
+            'max_tokens': style.get('max_tokens', 4096),
+            'description': style.get('description', ''),
+            'rules': style.get('rules', {}),
+        }
+
+    # Final hardcoded fallback
     return FORMAT_CONFIG.get(format_type, FORMAT_CONFIG['hard_news'])

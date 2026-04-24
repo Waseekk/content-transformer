@@ -84,24 +84,25 @@ CONTINUATION_SYSTEM_PROMPT_NO_SUBHEADS = """আপনি "বাংলার ক
 - সম্পূর্ণ বাংলাদেশী বাংলায় লিখুন (ভারতীয় বাংলা নয়)"""
 
 
-COMBINED_EXTRACT_TRANSLATE_PREFIX = """You are a professional journalist and expert translator for "বাংলার কলম্বাস" newspaper.
+COMBINED_EXTRACT_TRANSLATE_PREFIX = """You are a senior journalist at "বাংলার কলম্বাস" newspaper with 20 years of experience.
 
-Your task has THREE steps (complete all in one pass):
+Your task has THREE steps:
 
 STEP 1 — EXTRACT:
 Extract ONLY the main article content from the provided English text.
-REMOVE: navigation menus, advertisements, cookie notices, social media buttons, comment sections, footer/header content, related article links, weather widgets.
+REMOVE: navigation menus, advertisements, cookie notices, social buttons, comment sections, footer/header content, related article links, weather widgets, any section marked "should not be translated" or "these are links."
 KEEP: article headline, body paragraphs, direct quotes, statistics, author name, publication date.
 
-STEP 2 — TRANSLATE:
-Translate the extracted content to natural Bangladeshi Bengali (NOT Indian Bengali).
-- Transliterate proper nouns into modern Bangladeshi Bengali script (e.g. 'Paris' → 'প্যারিস', 'Donald Trump' → 'ডোনাল্ড ট্রাম্প', 'London' → 'লন্ডন')
-- Use modern Bangladeshi dialect and journalistic tone
-- Keep numbers, dates, and statistics accurate
+STEP 2 — WRITE IN NEWSPAPER BENGALI:
+Based on the extracted content, write as a professional Bangladeshi journalist would — NOT a literal translation.
+- Do NOT translate word for word. Adapt the content into natural newspaper Bengali.
+- If the original uses first-person (I, me, my, we), convert to third-person journalistic style (he/she/the author/reporters/tourists etc.)
+- Transliterate proper names into Bengali script (Paris → প্যারিস, Troy Robinson → ট্রয় রবিনসন, Coffs Harbour → কফস হারবার, she-oak → শি-ওক গাছ)
+- ⚠️ Every word must be in Bengali — NO English words should appear in the Bengali output (not even "exclaimed", "impending", etc.)
+- Preserve every fact, statistic, quote, and piece of information — but rewrite sentences in journalistic Bengali style
 
 STEP 3 — FORMAT AS BANGLAR COLUMBUS STYLE:
-Detect the travel content type (travel news / destination feature / travel guide) and format
-the translated content using the appropriate structure from the rules below.
+Detect the travel content type and apply the formatting rules below.
 
 ---
 
@@ -536,53 +537,12 @@ class ContentEnhancer:
 
         return processed_content, tokens
 
-    def enhance_all_formats(self, translated_text, article_info,
-                           formats=['hard_news', 'soft_news'],
-                           progress_callback=None):
-        """
-        Generate content for all formats
-        
-        Args:
-            translated_text: Bengali translated text
-            article_info: Article metadata dict
-            formats: List of format types to generate
-            progress_callback: Optional callback(format, progress, result)
-        
-        Returns:
-            dict: {format_type: EnhancementResult}
-        """
-        logger.info(f"Starting enhancement for {len(formats)} formats")
-        
-        # Initialize provider
-        if not self._initialize_provider():
-            logger.error("Provider initialization failed")
-            return {}
-        
-        self.results = {}
-        self.total_tokens = 0
-        
-        total_formats = len(formats)
-        
-        for idx, format_type in enumerate(formats, 1):
-            logger.info(f"Processing format {idx}/{total_formats}: {format_type}")
-            
-            # Generate content
-            result = self.enhance_single_format(
-                translated_text, 
-                article_info, 
-                format_type
-            )
-            
-            self.results[format_type] = result
-            
-            # Progress callback
-            if progress_callback:
-                progress = int((idx / total_formats) * 100)
-                progress_callback(format_type, progress, result)
-        
-        logger.info(f"Enhancement complete. Total tokens: {self.total_tokens}")
-        
-        return self.results
+    # enhance_all_formats() — UNUSED in web app, kept for reference only.
+    # The API now calls enhance_single_format() per format directly.
+    # def enhance_all_formats(self, translated_text, article_info,
+    #                        formats=['hard_news', 'soft_news'],
+    #                        progress_callback=None):
+    #     ...removed...
     
     def save_results(self, save_dir, article_info):
         """
