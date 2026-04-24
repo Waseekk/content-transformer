@@ -62,6 +62,11 @@ CONTENT_END_INDICATORS = [
     r'^Popular\s*',
     r'^Top\s*\d+\s*',  # Top 10, Top 5, etc.
     r'^Best\s*\w+\s*(for|in|of)\s*',  # Best deals for...
+    # BBC-specific footer (often extracted as one concatenated line or standalone lines)
+    r'Terms\s*of\s*Use.*Subscription\s*Terms',  # "Terms of UseSubscription Terms..."
+    r'Copyright\s+\d{4}\s+BBC\b',               # "Copyright 2026 BBC. All rights reserved."
+    r'^Content\s+Index\s*$',                     # standalone "Content Index" line
+    r'^Set\s+Preferred\s+Source\s*$',           # standalone "Set Preferred Source" line
 ]
 
 # Noise lines to strip from URL-extracted content (line-level removal, not truncation)
@@ -75,6 +80,10 @@ URL_NOISE_PATTERNS = [
     r'^Credit:\s*\w',                       # "Credit: Reuters"
     r'^Advertiser\s+disclosure',           # "Advertiser disclosure:"
     r'^Compensation\s+(may|does)\s+',      # affiliate disclosure lines
+    # BBC-specific noise lines
+    r'BBC\.com\s+Help\s*[&]+\s*FAQs',                          # "BBC.com Help & FAQs"
+    r'The\s+BBC\s+is\s+not\s+responsible\s+for',               # BBC disclaimer
+    r'Read\s+about\s+our\s+approach\s+to\s+external\s+linking', # BBC footer text
 ]
 
 
@@ -1082,32 +1091,12 @@ def enforce_intro_sentence_count(content: str, format_type: str, intro_max_sente
         else:
             return content  # Unknown format, no rule, skip
 
-    if len(sentences) > max_sentences:
-        intro_sentences = sentences[:max_sentences]
-        overflow_sentences = sentences[max_sentences:]
-
-        # Rebuild intro (bold)
-        new_intro = ' '.join(intro_sentences)
-        paragraphs[intro_idx] = f'**{new_intro}**'
-
-        # Check if there's a next paragraph to merge overflow into
-        if intro_idx + 1 < len(paragraphs):
-            next_para = paragraphs[intro_idx + 1]
-            # If next para is not bold (intro 2 / body), prepend overflow to it
-            if not (next_para.startswith('**') and next_para.endswith('**')):
-                overflow_text = ' '.join(overflow_sentences)
-                paragraphs[intro_idx + 1] = overflow_text + ' ' + next_para.replace('**', '').strip()
-                logger.info(f"Enforced intro: kept {max_sentences} sentences, merged {len(overflow_sentences)} into next paragraph")
-            else:
-                # Next is a subhead/bold, insert overflow as new paragraph
-                overflow_para = ' '.join(overflow_sentences)
-                paragraphs.insert(intro_idx + 1, overflow_para)
-                logger.info(f"Enforced intro: kept {max_sentences} sentences, created new paragraph from overflow")
-        else:
-            # No next paragraph, create one
-            overflow_para = ' '.join(overflow_sentences)
-            paragraphs.insert(intro_idx + 1, overflow_para)
-            logger.info(f"Enforced intro: kept {max_sentences} sentences, moved {len(overflow_sentences)} to body")
+    # if len(sentences) > max_sentences:
+    #     # AI is instructed via system prompt to aim for max 4 sentences (intro_max_sentences: 4 in rules).
+    #     # If AI writes 5+ sentences, they stay in intro untouched — no code enforcement.
+    #     new_intro = ' '.join(sentences[:max_sentences])
+    #     paragraphs[intro_idx] = f'**{new_intro}**'
+    #     logger.info(f"Enforced intro: truncated to {max_sentences} sentences, dropped {len(sentences) - max_sentences} overflow")
 
     return '\n\n'.join(paragraphs)
 

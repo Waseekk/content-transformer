@@ -416,16 +416,26 @@ Extract and translate this to Bengali (Bangladeshi dialect)."""
             if len(chunks) == 1:
                 return self._simple_translate_single(text)
 
-            # ── Multiple chunks: all extract+translate in parallel ────────────
-            # Use extract+translate for ALL chunks so nav/ads are removed from
-            # every part of the pasted content (not just the first chunk).
-            logger.info(f"Chunked translate: {len(chunks)} chunks in parallel (all extract+translate)")
-            parallel = self._run_chunks_parallel(self._extract_translate_chunk, chunks)
-
+            # ── Multiple chunks: chunk 0 extract+translate, chunks 1+ translate-only ──
+            # Chunk 0: extract+translate — strips any remaining nav/ads from article start.
+            # Chunks 1+: translate-only — body paragraphs are clean after pre-cleaner;
+            #   running "extract" on them causes unnecessary rewriting and quality loss.
+            # BBC/site footer is now caught by clean_url_extracted_content() above,
+            # so translate-only is safe for all body chunks.
+            logger.info(f"Chunked translate: chunk 0 extract+translate, {len(chunks)-1} chunks translate-only")
+            chunk0_result = self._extract_translate_chunk(chunks[0], 0, len(chunks))
             # _extract_translate_chunk returns (clean_english, bengali, tokens)
-            bengali_parts = [r[1] for r in parallel['results']]
-            clean_en_parts = [r[0] for r in parallel['results']]
-            total_tokens = parallel['total_tokens']
+            clean_en_parts = [chunk0_result[0]]
+            bengali_parts = [chunk0_result[1]]
+            total_tokens = chunk0_result[2]
+
+            if len(chunks) > 1:
+                parallel = self._run_chunks_parallel(self._translate_chunk_only, chunks[1:])
+                # _translate_chunk_only returns (bengali, tokens)
+                for i, r in enumerate(parallel['results']):
+                    bengali_parts.append(r[0])
+                    clean_en_parts.append(chunks[i + 1])  # use pre-cleaned English as-is
+                total_tokens += parallel['total_tokens']
 
             clean_english = '\n\n'.join(filter(None, clean_en_parts))
             translation = '\n\n'.join(filter(None, bengali_parts))
