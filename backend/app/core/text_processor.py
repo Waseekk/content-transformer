@@ -67,6 +67,10 @@ CONTENT_END_INDICATORS = [
     r'Copyright\s+\d{4}\s+BBC\b',               # "Copyright 2026 BBC. All rights reserved."
     r'^Content\s+Index\s*$',                     # standalone "Content Index" line
     r'^Set\s+Preferred\s+Source\s*$',           # standalone "Set Preferred Source" line
+    # Bengali source attribution lines (Prothom Alo and similar)
+    r'^সূত্র:\s*',                               # "সূত্র: মিশেল উলফ সম্পাদিত..."
+    r'^তথ্যসূত্র:\s*',                          # "তথ্যসূত্র: ..."
+    r'^অনুবাদ:\s*',                              # "অনুবাদ: ..."
 ]
 
 # Noise lines to strip from URL-extracted content (line-level removal, not truncation)
@@ -304,6 +308,15 @@ WORD_CORRECTIONS = [
     (r'([০-৯]+)শে\b', r'\1'),
 
     # Currency symbols before numbers → number + Bengali currency word
+    # Regional dollar variants FIRST (before plain $ catch-all)
+    (r'S\$([\d০-৯][\d০-৯.,]*)(\s+(?:বিলিয়ন|মিলিয়ন|কোটি|লাখ|হাজার))([^\s,।?!\n]*)', r'\1\2 সিঙ্গাপুর ডলার\3'),
+    (r'S\$([\d০-৯][\d০-৯.,]*)', r'\1 সিঙ্গাপুর ডলার'),
+    (r'HK\$([\d০-৯][\d০-৯.,]*)', r'\1 হংকং ডলার'),
+    (r'A\$([\d০-৯][\d০-৯.,]*)', r'\1 অস্ট্রেলিয়ান ডলার'),
+    (r'NZ\$([\d০-৯][\d০-৯.,]*)', r'\1 নিউজিল্যান্ড ডলার'),
+    # Stray "S" prefix before Bengali numerals + currency words (AI wrote S১.৫ without $ sign)
+    (r'\bS([০-৯][\d০-৯.,]*\s+বিলিয়ন\s+ডলার)', r'\1 সিঙ্গাপুর'),
+    (r'\bS([০-৯][\d০-৯.,]*\s+মিলিয়ন\s+ডলার)', r'\1 মিলিয়ন সিঙ্গাপুর'),
     # Scale-word patterns FIRST (বিলিয়ন, মিলিয়ন, কোটি, লাখ, হাজার)
     # Captures suffix separately so inflection moves to currency word:
     #   $১৭ বিলিয়ন   → ১৭ বিলিয়ন ডলার
@@ -361,6 +374,18 @@ ENGLISH_TO_BENGALI = {
     'elegant': 'মার্জিত',
     'elegantly': 'মার্জিতভাবে',
     'gracefully': 'লাবণ্যময়ভাবে',
+    'immemorial': 'অনাদিকাল',
+    'crouching': 'হাঁটু গেড়ে বসে',
+    'paddleboarding': 'প্যাডলবোর্ডিং',
+    'mangroves': 'ম্যানগ্রোভ',
+    'fumaroles': 'ফিউমারোল',
+    'snorkelling': 'স্নোর্কেলিং',
+    'snorkeling': 'স্নোর্কেলিং',
+    'kayaking': 'কায়াকিং',
+    'trekking': 'ট্রেকিং',
+    'layover': 'লেওভার',
+    'biometric': 'বায়োমেট্রিক',
+    'biometrics': 'বায়োমেট্রিক্স',
 }
 
 
@@ -386,6 +411,12 @@ AI_PHRASE_REPLACEMENTS = [
     (r'পর্যবেক্ষণ করা হয়েছে', 'দেখা গেছে'),
     (r'সংগঠিত হয়েছে', 'হয়েছে'),
     (r'পরিচালিত হয়', 'চলে'),
+    # Editorial AI-tell closers (e.g. "...সেটি এখন বিশ্লেষণ করা হবে।")
+    (r',\s*সেটি এখন বিশ্লেষণ করা হবে।', '।'),
+    (r'সেটি এখন বিশ্লেষণ করা হবে।', ''),
+    (r'এখন\s+বিশ্লেষণ\s+করা\s+হবে।?', ''),
+    (r',?\s*তা এখন আলোচনা করা হবে।?', '।'),
+    (r',?\s*সে বিষয়ে আলোচনা করা হবে।?', '।'),
 ]
 
 
@@ -1091,12 +1122,8 @@ def enforce_intro_sentence_count(content: str, format_type: str, intro_max_sente
         else:
             return content  # Unknown format, no rule, skip
 
-    # if len(sentences) > max_sentences:
-    #     # AI is instructed via system prompt to aim for max 4 sentences (intro_max_sentences: 4 in rules).
-    #     # If AI writes 5+ sentences, they stay in intro untouched — no code enforcement.
-    #     new_intro = ' '.join(sentences[:max_sentences])
-    #     paragraphs[intro_idx] = f'**{new_intro}**'
-    #     logger.info(f"Enforced intro: truncated to {max_sentences} sentences, dropped {len(sentences) - max_sentences} overflow")
+    # Intro sentence count is enforced via system prompt instruction only.
+    # Code truncation is intentionally disabled — trimming mid-article can drop facts.
 
     return '\n\n'.join(paragraphs)
 

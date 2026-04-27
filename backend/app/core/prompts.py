@@ -9,6 +9,7 @@ Supports loading format configs from:
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -189,8 +190,11 @@ def get_user_prompt(translated_text, article_info, input_word_count: int = None)
         "৩. ⚠️ এই নিবন্ধে কোনো সাবহেড বা সেকশন শিরোনাম নেই — আউটপুটেও কোনো সাবহেড যোগ করবেন না। শুধু শিরোনাম, বাইলাইন, ভূমিকা এবং সাধারণ অনুচ্ছেদ।"
     )
 
+    today = datetime.now().strftime('%d %B %Y')  # e.g. "27 April 2026"
+
     return f"""নিচের ভ্রমণ সংবাদটি পুনর্লিখন করুন:
 
+আজকের তারিখ: {today} (কাল নির্ধারণে ব্যবহার করুন — এর আগের ঘটনার জন্য অতীত কাল, এর পরের জন্য ভবিষ্যৎ কাল)
 মূল শিরোনাম: {headline}
 উৎস: {publisher}
 দেশ: {country}
