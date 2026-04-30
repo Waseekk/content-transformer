@@ -106,6 +106,10 @@ bengali_news_output.json
 test_all_articles.py
 test_soft_news_format.py
 code-review-*.md
+test_guardian_url.py
+test_playwright_urls.py
+backend/_temp_prompt.txt
+config/hard_news_automate.txt
 
 # Markdown files (except CLAUDE.md)
 *.md
